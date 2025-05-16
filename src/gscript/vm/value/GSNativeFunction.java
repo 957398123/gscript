@@ -16,6 +16,16 @@ public abstract class GSNativeFunction extends GSValue {
 
     public abstract GSValue call(List<GSValue> args);
 
+    /**
+     * 默认调用无this
+     * @param object
+     * @param args
+     * @return
+     */
+    public GSValue call(GSObject object, List<GSValue> args){
+        return call(args);
+    }
+
     @Override
     public String toValueString() {
         return name;

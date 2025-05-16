@@ -2,7 +2,6 @@ package gscript.vm.value;
 
 import gscript.Interpreter;
 import gscript.vm.Env;
-import gscript.vm.GSException;
 
 import java.util.HashMap;
 import java.util.List;
@@ -16,6 +15,12 @@ public class GSObject extends GSValue {
         properties = new HashMap<>();
     }
 
+    /**
+     * 获取对象成员，属性或者函数
+     *
+     * @param name
+     * @return
+     */
     public GSValue getProperty(String name) {
         GSValue value = properties.get(name);
         if (value == null) {
@@ -36,10 +41,10 @@ public class GSObject extends GSValue {
     }
 
     /**
-     * 对象调用函数
+     * 对象调用普通函数
      *
      * @param context 函数上下文
-     * @param funRef  调用函数
+     * @param funRef  调用函数（脚本内定义的函数）
      * @param args    参数
      * @return
      */
@@ -53,6 +58,18 @@ public class GSObject extends GSValue {
         GSFunction function = (GSFunction) funRef;
         context.callFunction(function, args);
         context.restNearFunctionEnv();
+    }
+
+    /**
+     * 对象调用本地函数
+     * @param context
+     * @param funRef
+     * @param args
+     */
+    public void callNativeFunction(Interpreter context
+            , GSNativeFunction funRef, List<GSValue> args) {
+        // 调用本地函数需要手动设置返回值
+        context.runStack.push(funRef.call(this, args));
     }
 
     @Override

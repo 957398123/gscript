@@ -488,9 +488,7 @@ public class Interpreter {
                         objRef.callFunction(this, (GSFunction) funRef, arg);
                     } else if (funRef.type == 9) {
                         // 本地函数不需要创建域，因为不会操作操作数栈
-                        GSNativeFunction funCall = (GSNativeFunction) funRef;
-                        // 调用本地函数需要手动设置返回值
-                        runStack.push(funCall.call(arg));
+                        objRef.callNativeFunction(this, (GSNativeFunction) funRef, arg);
                     }
                     break;
                 }
