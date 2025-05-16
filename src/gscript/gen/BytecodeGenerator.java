@@ -540,8 +540,11 @@ public class BytecodeGenerator implements Visitor {
         node.body.accept(this);
         // 执行表达式
         node.condition.accept(this);
-        // 预填false跳转至后续代码
-        emit("false_jump %d".formatted(2));
+        // 如果是值表达式，才进行跳转
+        if (node.condition.operator == null) {
+            // 预填false跳转至后续代码
+            emit("false_jump %d".formatted(2));
+        }
         emit("jump %d".formatted((start - size())));
     }
 
@@ -666,9 +669,15 @@ public class BytecodeGenerator implements Visitor {
     public void visit(WhileStatement node) {
         int constart = size();
         node.condition.accept(this);
-        int conend = size();
-        // 预填，如果表达式为false，结束
-        emit("");
+        int conend = 0;
+        boolean isNeedEndJump = false;
+        // 如果是值表达式，才进行跳转
+        if (node.condition.operator == null) {
+            conend = size();
+            isNeedEndJump = true;
+            // 预填，如果表达式为false，结束
+            emit("");
+        }
         // 创建循环域
         emit("pushenv loop");
         node.body.accept(this);
@@ -676,7 +685,9 @@ public class BytecodeGenerator implements Visitor {
         emit("popenv loop");
         // 跳转到表达式
         emit("jump %d".formatted((constart - size())));
-        emit(conend, "false_jump %d".formatted((size() - conend)));
+        if (isNeedEndJump) {
+            emit(conend, "false_jump %d".formatted((size() - conend)));
+        }
         // 这里对这段while循环里面的continue和break进行处理
         for (int i = constart; i < size(); ++i) {
             if ("continue".equals(get(i))) {
