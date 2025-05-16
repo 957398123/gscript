@@ -552,36 +552,59 @@ public class BytecodeGenerator implements Visitor {
      */
     @Override
     public void visit(ForStatement node) {
+        Node init = node.init;
+        Expression condition = node.condition;
+        Expression update = node.update;
         // 首先执行init
-        if (node.init != null) {
-            node.init.accept(this);
+        if (init != null) {
+            init.accept(this);
         }
         // 条件表达式开始位置
         int constart = size();
         // 条件表达式结束位置
         int conend = 0;
-        if (node.condition != null) {
-            node.condition.accept(this);
-            // 进行判断跳转，如果为false，结束循环，这里先预填
-            conend = size();
-            emit("");
+        // 是否有结束跳转
+        boolean isNeedEndJump = false;
+        if (condition != null) {
+            condition.accept(this);
+            // 如果是赋值表达式
+            if (condition instanceof Expression) {
+                // 如果这里是条件表达式，才进行跳转
+                Operator operator = condition.operator;
+                // 值表达式才有跳转
+                if (operator == null) {
+                    isNeedEndJump = true;
+                    conend = size();
+                    emit("");
+                }
+            }
         }
         // 执行body
         node.body.accept(this);
+        int updatestart = size();
         // 如果有update，执行update
-        if (node.update != null) {
-            node.update.accept(this);
+        if (update != null) {
+            update.accept(this);
+            // 这需要判断update表达式是否有往栈顶放值
+            Operator operator = update.operator;
+            // 如果不是关联表达式，需要去掉生成的值
+            if (operator == null) {
+                emit("pop");
+            }
         }
-        // 跳转至condition
+        // update执行完后跳转至condition
         emit("jump %d".formatted((constart - size())));
-        if (node.condition != null) {
+        // 跳转至结尾
+        if (isNeedEndJump) {
             emit(conend, "false_jump %d".formatted((size() - conend)));
         }
-        // 这里对这段for循环里面的continue和break进行处理，替换成对应的goto
+        // 这里对这段for循环里面的continue和break进行处理，替换成对应的跳转
         for (int i = constart; i < size(); i++) {
             if ("continue".equals(get(i))) {
-                emit(i, "loop_jump %d".formatted((constart - i)));
+                // 跳转至更新体
+                emit(i, "loop_jump %d".formatted((updatestart - i)));
             } else if ("break".equals(get(i))) {
+                // 跳转至结束
                 emit(i, "loop_jump %d".formatted((size() - i)));
             }
         }

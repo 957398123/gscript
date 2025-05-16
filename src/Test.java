@@ -27,6 +27,7 @@ public class Test {
             System.out.println("GS Engine Start!");
             Interpreter interpreter = new Interpreter();
             interpreter.eval(bytecodeGenerator.getByteCode());
+            System.out.println("GS Engine End!");
         }
     }
 }

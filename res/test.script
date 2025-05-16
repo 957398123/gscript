@@ -1,6 +1,8 @@
-var a = [1,2,3,4,5, function name(){println("gg");}];
-a[5]();
-
-for(var i = 0; i < a.length; ++i){
-    println(a[i]);
+var i = 0;
+for(;;){
+    if(i == 10){
+        break;
+    }
+    i++;
+    println(i);
 }
