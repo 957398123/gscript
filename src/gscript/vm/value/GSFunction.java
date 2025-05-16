@@ -24,7 +24,7 @@ public class GSFunction extends GSObject {
     }
 
     @Override
-    public String toValueString() {
+    public String getStringValue() {
         return "ƒ %s(){}".formatted(name);
     }
 }

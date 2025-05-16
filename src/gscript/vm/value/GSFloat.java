@@ -9,7 +9,22 @@ public class GSFloat extends GSValue {
     }
 
     @Override
-    public String toValueString() {
+    public String getStringValue() {
         return value + "";
+    }
+
+    @Override
+    public int getIntValue() {
+        return (int) value;
+    }
+
+    @Override
+    public float getFloatValue() {
+        return value;
+    }
+
+    @Override
+    public boolean getBoolean() {
+        return value != 0;
     }
 }

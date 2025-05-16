@@ -1,4 +1,4 @@
-import gscript.Interpreter;
+import gscript.vm.Interpreter;
 import gscript.Lexer;
 import gscript.Parser;
 import gscript.node.Node;

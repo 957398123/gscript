@@ -10,7 +10,30 @@ public class GSBool extends GSValue {
     }
 
     @Override
-    public String toValueString() {
+    public String getStringValue() {
         return value + "";
+    }
+
+    @Override
+    public int getIntValue() {
+        if (value) {
+            return 1;
+        } else {
+            return 0;
+        }
+    }
+
+    @Override
+    public float getFloatValue() {
+        if (value) {
+            return 1;
+        } else {
+            return 0;
+        }
+    }
+
+    @Override
+    public boolean getBoolean() {
+        return value;
     }
 }

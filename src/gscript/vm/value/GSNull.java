@@ -1,8 +1,7 @@
 package gscript.vm.value;
 
-import gscript.Interpreter;
+import gscript.vm.Interpreter;
 import gscript.vm.GSException;
-import org.ietf.jgss.GSSException;
 
 import java.util.List;
 
@@ -30,7 +29,7 @@ public class GSNull extends GSObject {
     }
 
     @Override
-    public String toValueString() {
+    public String getStringValue() {
         return "null";
     }
 }

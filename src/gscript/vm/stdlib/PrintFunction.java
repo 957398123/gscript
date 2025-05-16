@@ -13,7 +13,7 @@ public final class PrintFunction extends GSNativeFunction {
     @Override
     public GSValue call(List<GSValue> args) {
         GSValue value = args.get(0);
-        System.out.println(value.toValueString());
+        System.out.println(value.getStringValue());
         return GSNull.NULL;
     }
 }

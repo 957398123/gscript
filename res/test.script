@@ -1,2 +1,7 @@
-do {
-}while(++a);
+var a = 1 + 2;
+println(a);
+if(true){
+    println("hello");
+}else{
+    println("gg");
+}

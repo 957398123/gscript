@@ -9,7 +9,23 @@ public class GSStr extends GSValue {
     }
 
     @Override
-    public String toValueString() {
+    public String getStringValue() {
         return value;
     }
+
+    @Override
+    public int getIntValue() {
+        return Integer.parseInt(value);
+    }
+
+    @Override
+    public float getFloatValue() {
+        return 1;
+    }
+
+    @Override
+    public boolean getBoolean() {
+        return "true".equals(value);
+    }
+
 }

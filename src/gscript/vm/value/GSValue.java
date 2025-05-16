@@ -17,5 +17,27 @@ public abstract class GSValue {
      */
     public int type = 0;
 
-    public abstract String toValueString();
+    /**
+     * 转为string
+     * @return
+     */
+    public abstract String getStringValue();
+
+    /**
+     * 转为int
+     * @return
+     */
+    public abstract int getIntValue();
+
+    /**
+     * 转为float
+     * @return
+     */
+    public abstract float getFloatValue();
+
+    /**
+     * 转为布尔
+     * @return
+     */
+    public abstract boolean getBoolean();
 }

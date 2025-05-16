@@ -27,7 +27,22 @@ public abstract class GSNativeFunction extends GSValue {
     }
 
     @Override
-    public String toValueString() {
+    public String getStringValue() {
         return name;
+    }
+
+    @Override
+    public int getIntValue() {
+        return 1;
+    }
+
+    @Override
+    public float getFloatValue() {
+        return 1;
+    }
+
+    @Override
+    public boolean getBoolean() {
+        return true;
     }
 }

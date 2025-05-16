@@ -10,7 +10,22 @@ public class GSInt extends GSValue {
     }
 
     @Override
-    public String toValueString() {
+    public String getStringValue() {
         return value + "";
+    }
+
+    @Override
+    public int getIntValue() {
+        return value;
+    }
+
+    @Override
+    public float getFloatValue() {
+        return (float) value;
+    }
+
+    @Override
+    public boolean getBoolean() {
+        return value != 0;
     }
 }

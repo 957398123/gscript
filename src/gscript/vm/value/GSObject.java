@@ -1,6 +1,6 @@
 package gscript.vm.value;
 
-import gscript.Interpreter;
+import gscript.vm.Interpreter;
 import gscript.vm.Env;
 
 import java.util.HashMap;
@@ -73,7 +73,22 @@ public class GSObject extends GSValue {
     }
 
     @Override
-    public String toValueString() {
+    public String getStringValue() {
         return "[object Object]";
+    }
+
+    @Override
+    public int getIntValue() {
+        return 1;
+    }
+
+    @Override
+    public float getFloatValue() {
+        return 1;
+    }
+
+    @Override
+    public boolean getBoolean() {
+        return true;
     }
 }

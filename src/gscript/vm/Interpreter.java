@@ -1,8 +1,5 @@
-package gscript;
+package gscript.vm;
 
-import gscript.token.GSToken;
-import gscript.token.GSTokenType;
-import gscript.vm.Env;
 import gscript.vm.stdlib.PrintFunction;
 import gscript.vm.value.*;
 
@@ -208,42 +205,6 @@ public class Interpreter {
     }
 
     /**
-     * 获取int值
-     *
-     * @param obj
-     * @return
-     */
-    private int getIntValue(GSValue obj) {
-        int value = 0;
-        if (obj.type == 1) {
-            if (((GSBool) obj).value) {
-                value = 1;
-            } else {
-                value = 0;
-            }
-        } else if (obj.type == 2) {
-            value = ((GSInt) obj).value;
-        } else if (obj.type == 3) {
-            value = (int) ((GSFloat) obj).value;
-        }
-        return value;
-    }
-
-    public float getFloatValue(GSValue obj) {
-        float value = 0;
-        if (obj.type == 3) {
-            value = ((GSFloat) obj).value;
-        } else {
-            value = getIntValue(obj);
-        }
-        return value;
-    }
-
-    public boolean getBoolean(GSValue obj) {
-        return ((GSBool) obj).value;
-    }
-
-    /**
      * 注册本地函数
      *
      * @param name
@@ -306,13 +267,13 @@ public class Interpreter {
                         case "plus": {
                             GSValue v1 = runStack.pop();
                             if (v1.type > 3 || v2.type > 3) {
-                                String value = v1.toValueString() + v2.toValueString();
+                                String value = v1.getStringValue() + v2.getStringValue();
                                 runStack.push(new GSStr(value));
                             } else {
                                 if (v1.type < 3 && v2.type < 3) {
-                                    runStack.push(new GSInt(getIntValue(v1) + getIntValue(v2)));
+                                    runStack.push(new GSInt(v1.getIntValue() + v2.getIntValue()));
                                 } else {  // 提升为float
-                                    runStack.push(new GSFloat(getFloatValue(v1) + getFloatValue(v2)));
+                                    runStack.push(new GSFloat(v1.getFloatValue() + v2.getFloatValue()));
                                 }
                             }
                             break;
@@ -320,55 +281,55 @@ public class Interpreter {
                         case "minus": {
                             GSValue v1 = runStack.pop();
                             if (v1.type < 3 && v2.type < 3) {
-                                runStack.push(new GSInt(getIntValue(v1) - getIntValue(v2)));
+                                runStack.push(new GSInt(v1.getIntValue() - v2.getIntValue()));
                             } else {  // 提升为float
-                                runStack.push(new GSFloat(getFloatValue(v1) - getFloatValue(v2)));
+                                runStack.push(new GSFloat(v1.getFloatValue() - v2.getFloatValue()));
                             }
                             break;
                         }
                         case "mul": {
                             GSValue v1 = runStack.pop();
                             if (v1.type < 3 && v2.type < 3) {
-                                runStack.push(new GSInt(getIntValue(v1) * getIntValue(v2)));
+                                runStack.push(new GSInt(v1.getIntValue() * v2.getIntValue()));
                             } else {  // 提升为float
-                                runStack.push(new GSFloat(getFloatValue(v1) * getFloatValue(v2)));
+                                runStack.push(new GSFloat(v1.getFloatValue() * v2.getFloatValue()));
                             }
                             break;
                         }
                         case "div": {
                             GSValue v1 = runStack.pop();
                             if (v1.type < 3 && v2.type < 3) {
-                                runStack.push(new GSInt(getIntValue(v1) / getIntValue(v2)));
+                                runStack.push(new GSInt(v1.getIntValue() / v2.getIntValue()));
                             } else {  // 提升为float
-                                runStack.push(new GSFloat(getFloatValue(v1) / getFloatValue(v2)));
+                                runStack.push(new GSFloat(v1.getFloatValue() / v2.getFloatValue()));
                             }
                             break;
                         }
                         case "modulo": {
                             GSValue v1 = runStack.pop();
                             if (v1.type < 3 && v2.type < 3) {
-                                runStack.push(new GSInt(getIntValue(v1) % getIntValue(v2)));
+                                runStack.push(new GSInt(v1.getIntValue() % v2.getIntValue()));
                             } else {  // 提升为float
-                                runStack.push(new GSFloat(getFloatValue(v1) % getFloatValue(v2)));
+                                runStack.push(new GSFloat(v1.getFloatValue() % v2.getFloatValue()));
                             }
                             break;
                         }
                         case "neg": {
                             if (v2.type == 3) {
-                                runStack.push(new GSFloat(-getFloatValue(v2)));
+                                runStack.push(new GSFloat(-v2.getFloatValue()));
                             } else {
-                                runStack.push(new GSInt(-getIntValue(v2)));
+                                runStack.push(new GSInt(-v2.getIntValue()));
                             }
                             break;
                         }
                         case "ls": {
                             GSValue v1 = runStack.pop();
-                            runStack.push(new GSInt(getIntValue(v1) << getIntValue(v2)));
+                            runStack.push(new GSInt(v1.getIntValue() << v2.getIntValue()));
                             break;
                         }
                         case "rs": {
                             GSValue v1 = runStack.pop();
-                            runStack.push(new GSInt(getIntValue(v1) >> getIntValue(v2)));
+                            runStack.push(new GSInt(v1.getIntValue() >> v2.getIntValue()));
                             break;
                         }
                     }
@@ -379,35 +340,35 @@ public class Interpreter {
                     switch (bytes[1]) {
                         case "b_and": {
                             GSValue v1 = runStack.pop();
-                            runStack.push(new GSInt(getIntValue(v1) & getIntValue(v2)));
+                            runStack.push(new GSInt(v1.getIntValue() & v2.getIntValue()));
                             break;
                         }
                         case "b_or": {
                             GSValue v1 = runStack.pop();
-                            runStack.push(new GSInt(getIntValue(v1) | getIntValue(v2)));
+                            runStack.push(new GSInt(v1.getIntValue() | v2.getIntValue()));
                             break;
                         }
                         case "b_xor": {
                             GSValue v1 = runStack.pop();
-                            runStack.push(new GSInt(getIntValue(v1) ^ getIntValue(v2)));
+                            runStack.push(new GSInt(v1.getIntValue() ^ v2.getIntValue()));
                             break;
                         }
                         case "b_not": {
-                            runStack.push(new GSInt(~getIntValue(v2)));
+                            runStack.push(new GSInt(~v2.getIntValue()));
                             break;
                         }
                         case "l_and": {
                             GSValue v1 = runStack.pop();
-                            runStack.push(new GSBool(getBoolean(v1) && getBoolean(v2)));
+                            runStack.push(new GSBool(v1.getBoolean() && v2.getBoolean()));
                             break;
                         }
                         case "l_or": {
                             GSValue v1 = runStack.pop();
-                            runStack.push(new GSBool(getBoolean(v1) || getBoolean(v2)));
+                            runStack.push(new GSBool(v1.getBoolean() || v2.getBoolean()));
                             break;
                         }
                         case "l_not": {
-                            runStack.push(new GSBool(!getBoolean(v2)));
+                            runStack.push(new GSBool(!v2.getBoolean()));
                             break;
                         }
                     }
@@ -415,12 +376,12 @@ public class Interpreter {
                 }
                 case "incr": {
                     GSValue v1 = runStack.pop();
-                    runStack.push(new GSInt(getIntValue(v1) + 1));
+                    runStack.push(new GSInt(v1.getIntValue() + 1));
                     break;
                 }
                 case "decr": {
                     GSValue v1 = runStack.pop();
-                    runStack.push(new GSInt(getIntValue(v1) - 1));
+                    runStack.push(new GSInt(v1.getIntValue() - 1));
                     break;
                 }
                 case "getfield": {
@@ -440,7 +401,7 @@ public class Interpreter {
                     GSValue expr = runStack.pop();
                     GSValue value = runStack.pop();
                     GSObject ref = (GSObject) runStack.pop();
-                    ref.setProperty(expr.toValueString(), value);
+                    ref.setProperty(expr.getStringValue(), value);
                     break;
                 }
                 case "invoke": {  // 函数调用
@@ -583,58 +544,58 @@ public class Interpreter {
                     switch (bytes[1]) {
                         case "eq": {
                             if (v1.type <= 2 && v2.type <= 2) {
-                                res = getIntValue(v1) == getIntValue(v2);
+                                res = v1.getIntValue() == v2.getIntValue();
                             } else if (v1.type == 3 && v2.type == 3) {
-                                res = getFloatValue(v1) == getFloatValue(v2);
+                                res = v1.getFloatValue() == v2.getFloatValue();
                             } else if (v1.type == 5 && v2.type == 5) {
-                                ((GSStr) v2).toValueString().equals(((GSStr) v2).toValueString());
+                                ((GSStr) v2).getStringValue().equals(((GSStr) v2).getStringValue());
                             }
                             runStack.push(new GSBool(res));
                             break;
                         }
                         case "neq": {
                             if (v1.type <= 2 && v2.type <= 2) {
-                                res = getIntValue(v1) != getIntValue(v2);
+                                res = v1.getIntValue() != v2.getIntValue();
                             } else if (v1.type == 3 && v2.type == 3) {
-                                res = getFloatValue(v1) != getFloatValue(v2);
+                                res = v1.getFloatValue() != v2.getFloatValue();
                             } else if (v1.type == 5 && v2.type == 5) {
-                                res = !((GSStr) v1).toValueString().equals(((GSStr) v2).toValueString());
+                                res = !((GSStr) v1).getStringValue().equals(((GSStr) v2).getStringValue());
                             }
                             runStack.push(new GSBool(res));
                             break;
                         }
                         case "gt": {
                             if (v1.type <= 2 && v2.type <= 2) {
-                                res = getIntValue(v1) > getIntValue(v2);
+                                res = v1.getIntValue() > v2.getIntValue();
                             } else if (v1.type == 3 && v2.type == 3) {
-                                res = getFloatValue(v1) > getFloatValue(v2);
+                                res = v1.getFloatValue() > v2.getFloatValue();
                             }
                             runStack.push(new GSBool(res));
                             break;
                         }
                         case "ge": {
                             if (v1.type <= 2 && v2.type <= 2) {
-                                res = getIntValue(v1) >= getIntValue(v2);
+                                res = v1.getIntValue() >= v2.getIntValue();
                             } else if (v1.type == 3 && v2.type == 3) {
-                                res = getFloatValue(v1) >= getFloatValue(v2);
+                                res = v1.getFloatValue() >= v2.getFloatValue();
                             }
                             runStack.push(new GSBool(res));
                             break;
                         }
                         case "lt": {
                             if (v1.type <= 2 && v2.type <= 2) {
-                                res = getIntValue(v1) < getIntValue(v2);
+                                res = v1.getIntValue() < v2.getIntValue();
                             } else if (v1.type == 3 && v2.type == 3) {
-                                res = getFloatValue(v1) < getFloatValue(v2);
+                                res = v1.getFloatValue() < v2.getFloatValue();
                             }
                             runStack.push(new GSBool(res));
                             break;
                         }
                         case "le": {
                             if (v1.type <= 2 && v2.type <= 2) {
-                                res = getIntValue(v1) <= getIntValue(v2);
+                                res = v1.getIntValue() <= v2.getIntValue();
                             } else if (v1.type == 3 && v2.type == 3) {
-                                res = getFloatValue(v1) <= getFloatValue(v2);
+                                res = v1.getFloatValue() <= v2.getFloatValue();
                             }
                             runStack.push(new GSBool(res));
                             break;
