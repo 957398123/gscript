@@ -41,7 +41,6 @@ public class Interpreter {
          * 复制栈顶元素
          */
         public void copy() {
-            // TODO,这里基本类型要new
             stack.push(stack.peek());
         }
 
