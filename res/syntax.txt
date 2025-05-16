@@ -1,0 +1,191 @@
+<Program> ::= {Statement}
+
+<Statement> ::= <BlockStatement>
+    | <EmptyStatement>
+    | <VariableStatement>
+    | <IfStatement>
+    | <ForStatement>
+    | <DoWhileStatement>
+    | <WhileStatement>
+    | <FunctionStatement>
+    | <BreakStatement>
+    | <ContinueStatement>
+    | <ReturnStatement>
+    | <ExpressionStatement>
+
+# 块语句 {}包围
+<BlockStatement>           ::= "{" {Statement} "}"
+
+# 空语句
+<EmptyStatement>           ::= ";"
+
+# 变量声明语句 var a = 9; var a, b = 3;
+<VariableStatement>        ::= <VariableDeclList> ";"
+
+# 变量声明list
+<VariableDeclList>         :=  "var" <VariableDecl> { "," <VariableDecl> }
+
+# 变量声明
+<VariableDecl>             ::= <Identifier> [ "=" <Expression> ]
+
+# 标识符
+<Identifier>               ::= ("_" | "$" | [a-zA-Z]) ("_" | "$" | [a-zA-Z0-9])*
+
+# if语句
+<IfStatement>              ::= "if" "(" <Expression> ")"
+                               (
+                                 ( <BlockStatement> [ "else" ( <BlockStatement> | <IfStatement> ) ] ) | ";"
+                               )
+# FOR循环
+<ForStatement>             ::= "for" "("
+                               ( <VariableDeclList> | <Expression>? )
+                               ";" [ <Expression> ]? ";" [ <Expression> ]? ")"
+                               <BlockStatement>
+# do语句
+<DoWhileStatement>         ::= "do" <BlockStatement> "while" "(" <Expression> ")" ";"
+
+# while语句
+<WhileStatement>           ::= "while" "(" <Expression> ")" <BlockStatement>
+
+# 函数声明
+<FunctionStatement>        ::= "function" <Identifier>
+                                "(" [ <ParameterList> ] ")"
+                                "{" {Statement} "}"
+# break语句
+<BreakStatement>           ::= "break;"
+
+# continue语句
+<ContinueStatement>        ::= "continue;"
+
+# return语句
+<ReturnStatement>          ::= "return" [ <Expression> ";"]
+
+# 参数列表
+<ParameterList>            ::= <Identifier> [ "," <Identifier> ]*
+
+# 表达式语句
+<ExpressionStatement>      ::= <Expression> ";"
+
+# 表达式
+<Expression>               ::= <ConditionalExpression> ( <AssignmentOperator> <Expression> )?
+
+# 条件表达式
+<ConditionalExpression>    ::= <LogicalORExpression> "?" <Expression> ":" <Expression> | <LogicalORExpression>
+
+# 逻辑或表达式
+<LogicalORExpression>      ::= <LogicalANDExpression> { "||" <LogicalANDExpression> }
+
+# 逻辑与表达式
+<LogicalANDExpression>     ::= <BitwiseORExpression> { "&&" <BitwiseORExpression> }
+
+# 按位或
+<BitwiseORExpression>      ::= <BitwiseXORExpression> { "|" <BitwiseXORExpression> }
+
+# 按位异或
+<BitwiseXORExpression>     ::= <BitwiseANDExpression> { "^" <BitwiseANDExpression> }
+
+# 按位与
+<BitwiseANDExpression>     ::= <EqualityExpression> { "&" <EqualityExpression> }
+
+# 比较表达式
+<EqualityExpression>       ::= <RelationalExpression> { ("==" | "!=" | "===" | "!==") <RelationalExpression> }
+
+# 关系表达式
+<RelationalExpression>     ::= <ShiftExpression> { ("<" | ">" | "<=" | ">=") <ShiftExpression> }
+
+# 移位表达式
+<ShiftExpression>          ::= <AdditiveExpression> { ("<<" | ">>") <AdditiveExpression> }
+
+<AdditiveExpression>       ::= <MultiplicativeExpression> { ("+" | "-") <MultiplicativeExpression> }
+
+<MultiplicativeExpression> ::= <UnaryExpression> { ("*" | "/" | "%") <UnaryExpression> }
+
+# 一元表达式
+<UnaryExpression>          ::= ("+" | "-" | "!" | "~" ) <UnaryExpression>
+                            | ("++" | "--") <LValueExpression>
+                            | <PostfixExpression>
+
+# 左值表达式（可修改的目标）
+<LValueExpression>         ::= <CallExpression>  <MemberAccess>
+
+<CallExpression>           ::= <PrimaryExpression> { <MemberAccess> | "(" [ <ArgumentList> ] ")" }
+
+# 后缀表达式
+<PostfixExpression>        ::= (<PrimaryExpression> [ <PostfixOperator> ] | { "(" [ <ArgumentList> ] ")" })
+                            | (<CallExpression> { "(" [ <ArgumentList> ] ")" })
+
+<PostfixOperator>          ::= "++" | "--"
+
+# 关联符号
+<AssignmentOperator>       ::= "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "&=" | "|=" | "^="
+
+# 主表达式
+<PrimaryExpression>        ::= <Literal>
+                                | <Identifier>
+                                | "(" <Expression> ")"
+                                | <ArrayLiteral>
+                                | <ObjectLiteral>
+                                | <MemberFunctionStatement>
+
+# 函数声明
+<MemberFunctionStatement>  ::= "function" {<Identifier>}
+                                "(" [ <ParameterList> ] ")"
+                                "{" {Statement} "}"
+
+# 成员表达式
+<MemberAccess>             ::= ("." <Identifier> ) | ( "[" <Expression> "]" )
+
+<ArrayLiteral>             ::= "[" [ <ElementList> ] "]"
+
+<ElementList>              ::= <Expression>? { "," <Expression>? }
+
+<ObjectLiteral>            ::= "{" [ <PropertyList> ] "}"
+
+<PropertyList>             ::= <Property> { "," <Property> } [ "," ]
+
+<Property>                 ::= <PropertyName> ":" <Expression>
+
+<PropertyName>             ::= <Identifier> | <StringLiteral> | <NumericLiteral> | "[" <Expression> "]"
+
+<ArgumentList>             ::= <Expression> { "," <Expression> }
+
+<Literal>                  ::= <NumericLiteral>
+                                | <StringLiteral>
+                                | <BooleanLiteral>
+                                | <NullLiteral>
+
+# 字符串字面量
+<StringLiteral>            ::= ("\"" <StringCharacters>? "\"" | "'" <StringCharacters>? "'")
+
+<StringCharacters>         ::= <StringCharacter> { <StringCharacter> }
+
+<StringCharacter>          ::= 任何非"\"字符 | <EscapeSequence>
+
+<EscapeSequence>           ::= "\\" [btnfr"'\\]
+                              | <OctalEscape>
+                              | <UnicodeEscape>
+                              | <HexEscape>
+
+<UnicodeEscape>            ::= "u" <HexDigit> <HexDigit> <HexDigit> <HexDigit>
+
+<HexEscape>                ::= "x" <HexDigit> <HexDigit>
+
+<HexDigit>                 ::= [0-9a-fA-F]
+
+<OctalEscape>              ::= "\\" <OctalDigit> [ <OctalDigit> [ <OctalDigit> ] ]
+
+<OctalDigit>               ::= [0-7]
+
+<NumericLiteral>           ::= <DecimalLiteral> | <HexIntegerLiteral>
+
+<HexIntegerLiteral>        ::= "0" [xX] <HexDigit>+
+
+<DecimalLiteral>           ::= <DecimalIntegerLiteral> "." <DecimalDigits>? | "." <DecimalDigits>
+
+<DecimalIntegerLiteral>    ::= "0" | <NonZeroDigit> <DecimalDigits>?
+
+<DecimalDigits>            ::= <DecimalDigit> { <DecimalDigit> }
+
+<DecimalDigit>             ::= [0-9]
+
+<NonZeroDigit>             ::= [1-9]

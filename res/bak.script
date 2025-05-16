@@ -1,0 +1,46 @@
+function a(b, c){
+    a.b.c();
+    a(1,2);
+    a[0] = 2 + c() + c[0].b.add(1, 2);
+    // 设置z的值
+    var z = "ss\"sue\nn\"\roo\\";  //额呵呵/+&*%$@#$%&!@#$%^&*()
+    var ks = "呵呵";
+    var $ds = _fs;
+    var s = "你好" + "可以" + "无敌了";
+    if(b == c || b === c){
+        print("hello1");
+    }else if(b != c && b !== c){
+        ++k;
+        --k;
+    } else {
+        print("无敌了好吧", [1,2,3], {s: "zz"}, {}, [], {"z": 4});
+    }
+    for(var i = 0; i < a.length; ++i){
+        print("1");
+    }
+    for(1+2;true;){
+    }
+    k = (b+c-c*k)%c;
+    do {
+        var s = b > c;
+        s = b < c;
+        s = b <= c;
+        s = s && s;
+        s = s || s;
+        s = !s;
+        s = s & s;
+        s = s | s;
+        s = ^s;
+        s = ~s;
+        s = 1 << 2;
+        s = 1 >> 3;
+    }while(b >= c);
+}
+
+{}
+
+for(;;){}
+
+var a = 9;
+
+print(lll);
