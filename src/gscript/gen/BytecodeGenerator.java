@@ -496,12 +496,16 @@ public class BytecodeGenerator implements Visitor {
         emit("");
         // 这里处理then语句
         node.thenBranch.accept(this);
-        // if为false时的跳转位置
+        // then跳转至结尾，这里预填
+        int thenEnd = size();
+        emit("");
+        // 回填if为false时的跳转语句
         emit(start, "false_jump %d".formatted((size() - start)));
         // 如果存在解析else分支
         if (node.elseBranch != null) {
             node.elseBranch.accept(this);
         }
+        emit(thenEnd, "jump %d".formatted((size() - thenEnd)));
     }
 
     /**

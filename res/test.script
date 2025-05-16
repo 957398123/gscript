@@ -1,7 +1,9 @@
-var a = 1 + 2;
-println(a);
-if(true){
+var a = 1;
+
+if(a == 0){
     println("hello");
-}else{
+}else if(a == 2){
     println("gg");
+}else{
+    println("g3");
 }
