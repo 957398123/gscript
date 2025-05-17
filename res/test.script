@@ -7,3 +7,7 @@ if(a == 0){
 }else{
     println("g3");
 }
+
+var str = "你不能";
+
+println("我能,不等于" + str);

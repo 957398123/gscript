@@ -4,6 +4,7 @@
     | <EmptyStatement>
     | <VariableStatement>
     | <IfStatement>
+    | <SwitchStatement>
     | <ForStatement>
     | <DoWhileStatement>
     | <WhileStatement>
@@ -36,6 +37,17 @@
                                (
                                  ( <BlockStatement> [ "else" ( <BlockStatement> | <IfStatement> ) ] ) | ";"
                                )
+
+# SWITCH语句
+<SwitchStatement>          ::= "switch" "(" <Expression> ")" "{"
+                                    {
+                                        "case" <Expression> ":" [<BlockStatement>]
+                                    }
+                                    [
+                                        "default" ":" [<BlockStatement>]
+                                    ]
+                               "}"
+
 # FOR循环
 <ForStatement>             ::= "for" "("
                                ( <VariableDeclList> | <Expression>? )
