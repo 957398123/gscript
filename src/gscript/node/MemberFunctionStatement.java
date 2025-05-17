@@ -9,9 +9,9 @@ public class MemberFunctionStatement extends Node {
 
     public List<Identifier> params;
 
-    public List<Node> body;
+    public BlockStatement body;
 
-    public MemberFunctionStatement(Identifier identifier, List<Identifier> params, List<Node> body) {
+    public MemberFunctionStatement(Identifier identifier, List<Identifier> params, BlockStatement body) {
         type = "MemberFunctionStatement";
         this.identifier = identifier;
         this.params = params;

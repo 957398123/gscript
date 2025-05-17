@@ -6,7 +6,7 @@ import gscript.token.GSTokenType;
 
 import java.util.*;
 
-public class BytecodeGenerator implements Visitor {
+public class ByteCodeGenerator implements Visitor {
 
     /**
      * 字节码
@@ -74,6 +74,24 @@ public class BytecodeGenerator implements Visitor {
     }
 
     /**
+     * 处理块语句中函数声明提升
+     * @param stmt
+     */
+    private void handleFunctionDeclare(List<Node> stmt) {
+        // 这里先把function语句提升到前面
+        ListIterator<Node> iterator = stmt.listIterator();
+        while (iterator.hasNext()) {
+            Node node = iterator.next();
+            if (node instanceof FunctionStatement) {
+                iterator.remove();
+                stmt.add(0, node);
+                // 重置迭代器
+                iterator = stmt.listIterator(iterator.nextIndex());
+            }
+        }
+    }
+
+    /**
      * 生成变量声明字节码
      *
      * @param statement
@@ -103,7 +121,7 @@ public class BytecodeGenerator implements Visitor {
         // 参数列表
         List<Identifier> params = expr.params;
         // 语句列表
-        List<Node> body = expr.body;
+        BlockStatement body = expr.body;
         // 函数起始位置
         int start = size();
         // 这里先预填函数定义 fundef
@@ -114,9 +132,7 @@ public class BytecodeGenerator implements Visitor {
             emit("fstore " + param.name + " " + index++);
         }
         // 解析函数体
-        for (Node node : body) {
-            node.accept(this);
-        }
+        body.accept(this);
         // 回填函数定义（需要减去fundef）
         emit(start, "fundef %d %s".formatted((size() - start - 1), funName));
     }
@@ -129,6 +145,8 @@ public class BytecodeGenerator implements Visitor {
     @Override
     public void visit(BlockStatement statement) {
         emit("pushenv block");
+        // 将函数声明提前
+        handleFunctionDeclare(statement.stmt);
         for (Node node : statement.stmt) {
             node.accept(this);
         }
@@ -142,7 +160,10 @@ public class BytecodeGenerator implements Visitor {
      */
     @Override
     public void visit(ProgramNode program) {
-        for (Node node : program.stmt) {
+        List<Node> stmt = program.stmt;
+        // 这里先把function语句提升到前面
+        handleFunctionDeclare(stmt);
+        for (Node node : stmt) {
             node.accept(this);
         }
     }
@@ -962,7 +983,7 @@ public class BytecodeGenerator implements Visitor {
         // 参数列表
         List<Identifier> params = expr.params;
         // 语句列表
-        List<Node> body = expr.body;
+        BlockStatement body = expr.body;
         // 函数起始位置
         int start = size();
         // 这里先预填函数定义 fundefload
@@ -973,9 +994,7 @@ public class BytecodeGenerator implements Visitor {
             emit("fstore " + param.name + " " + index++);
         }
         // 解析函数体
-        for (Node node : body) {
-            node.accept(this);
-        }
+        body.accept(this);
         // 回填函数定义（需要减去fundefload）
         emit(start, "fundefload %d %s".formatted((size() - start - 1), funName));
     }

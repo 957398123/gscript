@@ -269,18 +269,19 @@ public class Parser {
             consume(GSTokenType.RPAREN, "Expected ')' after parameters.");
         }
         consume(GSTokenType.LBRACE, "Expect '{' before function statement");
-        List<Node> body = new ArrayList<>();
+        List<Node> stmt = new ArrayList<>();
         // 这里要先判定空语句
         if (!check(GSTokenType.RBRACE)) {
             do {
-                body.add(parseStatement());
+                stmt.add(parseStatement());
             } while (!check(GSTokenType.RBRACE));
             // 在这里判断最后结束语句是否是return，不是显示加上空return
-            if (!(body.get(body.size() - 1) instanceof ReturnStatement)) {
-                body.add(new ReturnStatement(null));
+            if (!(stmt.get(stmt.size() - 1) instanceof ReturnStatement)) {
+                stmt.add(new ReturnStatement(null));
             }
         }
         consume(GSTokenType.RBRACE, "Expect '}' after function statement");
+        BlockStatement body = new BlockStatement(stmt);
         return new FunctionStatement(identifier, params, body);
     }
 
@@ -309,18 +310,19 @@ public class Parser {
             consume(GSTokenType.RPAREN, "Expected ')' after parameters.");
         }
         consume(GSTokenType.LBRACE, "Expect '{' before function statement");
-        List<Node> body = new ArrayList<>();
+        List<Node> stmt = new ArrayList<>();
         // 这里要先判定空语句
         if (!check(GSTokenType.RBRACE)) {
             do {
-                body.add(parseStatement());
+                stmt.add(parseStatement());
             } while (!check(GSTokenType.RBRACE));
             // 在这里判断最后结束语句是否是return，不是显示加上空return
-            if (!(body.get(body.size() - 1) instanceof ReturnStatement)) {
-                body.add(new ReturnStatement(null));
+            if (!(stmt.get(stmt.size() - 1) instanceof ReturnStatement)) {
+                stmt.add(new ReturnStatement(null));
             }
         }
         consume(GSTokenType.RBRACE, "Expect '}' after function statement");
+        BlockStatement body = new BlockStatement(stmt);
         return new MemberFunctionStatement(identifier, params, body);
     }
 

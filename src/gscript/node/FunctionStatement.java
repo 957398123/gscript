@@ -10,9 +10,9 @@ public class FunctionStatement extends Node {
 
     public List<Identifier> params;
 
-    public List<Node> body;
+    public BlockStatement body;
 
-    public FunctionStatement(Identifier identifier, List<Identifier> params, List<Node> body) {
+    public FunctionStatement(Identifier identifier, List<Identifier> params, BlockStatement body) {
         type = "FunctionStatement";
         this.identifier = identifier;
         this.params = params;
