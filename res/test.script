@@ -1,9 +1,10 @@
-var a = {"name":"布鲁斯李", "print": print};
-
+var a = {"name":"布鲁斯李", "print": print};  // 函数声明提升
+var b = ["z", 999, "你好"];
 a.print("hello");
-
-a.print("name", true);
-
+a.print("name", true);  // 输出对象属性
+for(var i = 0; i < b.length; ++i){
+    println("b[" + i + "]" + "=" + b[i]);
+}
 function print(msg, flag){
     if(flag){
         println("obj member " + msg + "=" + this[msg]);

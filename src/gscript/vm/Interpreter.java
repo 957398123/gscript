@@ -10,19 +10,19 @@ public class Interpreter {
     /**
      * 变量域名
      */
-    private LinkedList<Env> list;
+    private final LinkedList<Env> list;
 
-    private Env gEnv;
+    private final Env gEnv;
 
     /**
      * 运行时堆栈
      */
-    public SwapStack runStack;
+    public SwapStack<GSValue> runStack;
 
     public Interpreter() {
         list = new LinkedList<>();
         gEnv = new Env("global");
-        runStack = new SwapStack();
+        runStack = new SwapStack<>();
         // 注册标准函数
         registerStdlib();
     }
@@ -59,8 +59,8 @@ public class Interpreter {
     /**
      * 从域中获取变量，未取到返回null
      *
-     * @param name
-     * @return
+     * @param name 变量名称
+     * @return 变量值
      */
     public GSValue getVariable(String name) {
         // this只在当前function域名查找
@@ -94,11 +94,11 @@ public class Interpreter {
     /**
      * 往域中设置值（会提升类型到全局）
      *
-     * @param name
-     * @param value
+     * @param name 变量名称
+     * @param value 变量值
      */
     public void setVariable(String name, GSValue value) {
-        if (list.size() == 0) {
+        if (list.isEmpty()) {
             gEnv.values.put(name, value);
         } else {
             // 从底部往头部查找
@@ -118,11 +118,11 @@ public class Interpreter {
     /**
      * 往最近的域设置值
      *
-     * @param name
-     * @param value
+     * @param name 域名称
+     * @param value 作用域
      */
     public void setNearEnvVariable(String name, GSValue value) {
-        if (list.size() == 0) {
+        if (list.isEmpty()) {
             gEnv.values.put(name, value);
         } else {
             Env env = list.getLast();
@@ -133,11 +133,11 @@ public class Interpreter {
     /**
      * 声明变量
      *
-     * @param name
+     * @param name 变量名称
      */
     public void declareVariable(String name) {
         Env env;
-        if (list.size() == 0) {
+        if (list.isEmpty()) {
             env = gEnv;
         } else {
             env = list.peekLast();
@@ -149,19 +149,9 @@ public class Interpreter {
     }
 
     /**
-     * 添加变量到全局域
-     *
-     * @param name
-     * @param value
-     */
-    public void setGlobalVar(String name, GSObject value) {
-        gEnv.values.put(name, value);
-    }
-
-    /**
      * 增加域
      *
-     * @param env
+     * @param env 变量域
      */
     public void addEnv(Env env) {
         list.add(env);
@@ -206,9 +196,8 @@ public class Interpreter {
 
     /**
      * 注册本地函数
-     *
-     * @param name
-     * @return
+     * @param name 函数名称
+     * @param fun 函数实现
      */
     private void registerNative(String name, GSNativeFunction fun) {
         gEnv.values.put(name, fun);
@@ -476,7 +465,7 @@ public class Interpreter {
                 case "aastore": {
                     GSValue value = runStack.pop();
                     GSValue key = runStack.pop();
-                    GSValue ref = (GSValue) runStack.pop();
+                    GSValue ref = runStack.pop();
                     // 这里还需要判断是数组还是对象
                     if(ref.type == 7) {  // 如果是数组
                         GSArray array = (GSArray)ref;
@@ -490,7 +479,7 @@ public class Interpreter {
                 case "avstore": {
                     GSValue value = runStack.pop();
                     GSValue key = runStack.pop();
-                    GSValue ref = (GSValue) runStack.pop();
+                    GSValue ref = runStack.pop();
                     // 这里还需要判断是数组还是对象
                     if(ref.type == 7) {  // 如果是数组
                         GSArray array = (GSArray)ref;
@@ -564,7 +553,7 @@ public class Interpreter {
                             } else if (v1.type == 3 && v2.type == 3) {
                                 res = v1.getFloatValue() == v2.getFloatValue();
                             } else if (v1.type == 5 && v2.type == 5) {
-                                ((GSStr) v2).getStringValue().equals(((GSStr) v2).getStringValue());
+                                res = v1.getStringValue().equals(v2.getStringValue());
                             }
                             runStack.push(new GSBool(res));
                             break;
@@ -575,7 +564,7 @@ public class Interpreter {
                             } else if (v1.type == 3 && v2.type == 3) {
                                 res = v1.getFloatValue() != v2.getFloatValue();
                             } else if (v1.type == 5 && v2.type == 5) {
-                                res = !((GSStr) v1).getStringValue().equals(((GSStr) v2).getStringValue());
+                                res = !v1.getStringValue().equals(v2.getStringValue());
                             }
                             runStack.push(new GSBool(res));
                             break;
@@ -665,8 +654,7 @@ public class Interpreter {
     /**
      * 执行字节码
      * 将字节码封装为匿名函数执行
-     *
-     * @param byteCodes
+     * @param byteCodes 字节码
      */
     public void eval(List<String> byteCodes) {
         String[] codes = byteCodes.toArray(new String[0]);
