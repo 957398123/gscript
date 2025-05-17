@@ -244,7 +244,7 @@ public class Interpreter {
                             break;
                         }
                         case "s": {  // 加载字符串到栈顶
-                            String str = String.join(" ", Arrays.copyOfRange(bytes, 2, bytes.length));
+                            String str = codes[ip-1].substring(8);
                             obj = new GSStr(str);
                             break;
                         }

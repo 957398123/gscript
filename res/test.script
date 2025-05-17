@@ -1,0 +1,13 @@
+var a = {"name":"布鲁斯李", "print": print};
+
+a.print("hello");
+
+a.print("name", true);
+
+function print(msg, flag){
+    if(flag){
+        println("obj member " + msg + "=" + this[msg]);
+    }else{
+        println("msg="  + msg);
+    }
+}
