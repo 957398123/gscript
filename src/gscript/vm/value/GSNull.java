@@ -32,4 +32,9 @@ public class GSNull extends GSObject {
     public String getStringValue() {
         return "null";
     }
+
+    @Override
+    public boolean getBoolean() {
+        return false;
+    }
 }

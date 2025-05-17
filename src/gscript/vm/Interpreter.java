@@ -466,23 +466,39 @@ public class Interpreter {
                     break;
                 }
                 case "aaload": {
-                    int index = ((GSInt) runStack.pop()).value;
-                    GSArray array = (GSArray) runStack.pop();
-                    runStack.push(array.getElement(index));
+                    // 这里需要做判断，因为有可能是a[1]或者a["zz"]这种，在这里判断，而不是语法树修改成属性访问
+                    GSValue key = runStack.pop();
+                    // 这里还需要判断是数组还是对象
+                    GSObject ref = (GSObject) runStack.pop();
+                    runStack.push(ref.getProperty(key.getStringValue()));
                     break;
                 }
                 case "aastore": {
                     GSValue value = runStack.pop();
-                    int index = ((GSInt) runStack.pop()).value;
-                    GSArray ref = (GSArray) runStack.pop();
-                    ref.setElement(index, value);
+                    GSValue key = runStack.pop();
+                    GSValue ref = (GSValue) runStack.pop();
+                    // 这里还需要判断是数组还是对象
+                    if(ref.type == 7) {  // 如果是数组
+                        GSArray array = (GSArray)ref;
+                        array.setElement(key.getIntValue(), value);
+                    }else{
+                        GSObject obj = (GSObject) ref;
+                        obj.setProperty(key.getStringValue(), value);
+                    }
                     break;
                 }
                 case "avstore": {
                     GSValue value = runStack.pop();
-                    int index = ((GSInt) runStack.pop()).value;
-                    GSArray ref = (GSArray) runStack.pop();
-                    ref.setElement(index, value);
+                    GSValue key = runStack.pop();
+                    GSValue ref = (GSValue) runStack.pop();
+                    // 这里还需要判断是数组还是对象
+                    if(ref.type == 7) {  // 如果是数组
+                        GSArray array = (GSArray)ref;
+                        array.setElement(key.getIntValue(), value);
+                    }else{
+                        GSObject obj = (GSObject) ref;
+                        obj.setProperty(key.getStringValue(), value);
+                    }
                     runStack.push(value);
                     break;
                 }
@@ -610,8 +626,8 @@ public class Interpreter {
                 }
                 case "false_jump": {
                     int line = Integer.parseInt(bytes[1]);
-                    boolean value = ((GSBool) runStack.pop()).value;
-                    if (!value) {
+                    GSValue value = runStack.pop();
+                    if (!value.getBoolean()) {
                         // 这里要减去自增
                         ip = ip + line - 1;
                     }

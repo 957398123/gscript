@@ -24,10 +24,10 @@ public class Test {
             node.accept(bytecodeGenerator);
             // bytecodeGenerator.print();
             // 解释执行
-            System.out.println("GS Engine Start!");
+            // System.out.println("GS Engine Start!");
             Interpreter interpreter = new Interpreter();
             interpreter.eval(bytecodeGenerator.getByteCode());
-            System.out.println("GS Engine End!");
+            // System.out.println("GS Engine End!");
         }
     }
 }
