@@ -63,26 +63,18 @@ public class Interpreter {
      * @return 变量值
      */
     public GSValue getVariable(String name) {
-        // this只在当前function域名查找
         Iterator<Env> descendingIterator = list.descendingIterator();
-        if ("this".equals(name)) {
-            // 从底部往头部查找
-            while (descendingIterator.hasNext()) {
-                Env env = descendingIterator.next();
-                if (env.values.containsKey(name)) {
-                    return env.values.get(name);
-                } else if ("function".equals(env.name)) {  // 如果当前查找到function域没有，返回null
-                    break;
-                }
+        // 从底部往头部查找，直到最近的function域
+        while (descendingIterator.hasNext()) {
+            Env env = descendingIterator.next();
+            if (env.values.containsKey(name)) {
+                return env.values.get(name);
+            } else if ("function".equals(env.name)) {  // 如果当前查找到function域没有，返回null
+                break;
             }
-        } else {
-            // 从底部往头部查找
-            while (descendingIterator.hasNext()) {
-                Env env = descendingIterator.next();
-                if (env.values.containsKey(name)) {
-                    return env.values.get(name);
-                }
-            }
+        }
+        // 如果不是this，从全局域查找
+        if (!"this".equals(name)) {
             // 查找全局域是否存在
             if (gEnv.values.containsKey(name)) {
                 return gEnv.values.get(name);
@@ -94,7 +86,7 @@ public class Interpreter {
     /**
      * 往域中设置值（会提升类型到全局）
      *
-     * @param name 变量名称
+     * @param name  变量名称
      * @param value 变量值
      */
     public void setVariable(String name, GSValue value) {
@@ -118,7 +110,7 @@ public class Interpreter {
     /**
      * 往最近的域设置值
      *
-     * @param name 域名称
+     * @param name  域名称
      * @param value 作用域
      */
     public void setNearEnvVariable(String name, GSValue value) {
@@ -186,18 +178,20 @@ public class Interpreter {
         Iterator<Env> descendingIterator = list.descendingIterator();
         while (descendingIterator.hasNext()) {
             Env env = descendingIterator.next();
-            if (!"function".equals(env.name)) {
+            if ("function".equals(env.name)) {
                 descendingIterator.remove(); // 删除当前元素
-            } else {
                 break;
+            } else {
+                descendingIterator.remove();
             }
         }
     }
 
     /**
      * 注册本地函数
+     *
      * @param name 函数名称
-     * @param fun 函数实现
+     * @param fun  函数实现
      */
     private void registerNative(String name, GSNativeFunction fun) {
         gEnv.values.put(name, fun);
@@ -233,7 +227,7 @@ public class Interpreter {
                             break;
                         }
                         case "s": {  // 加载字符串到栈顶
-                            String str = codes[ip-1].substring(8);
+                            String str = codes[ip - 1].substring(8);
                             obj = new GSStr(str);
                             break;
                         }
@@ -407,7 +401,6 @@ public class Interpreter {
                     // 调用函数时要创建函数域
                     if (funRef.type == 6) {
                         GSFunction funCall = (GSFunction) funRef;
-                        // 调用函数
                         // 创建函数域
                         addEnv(new Env("function"));
                         callFunction(funCall, arg);
@@ -467,10 +460,10 @@ public class Interpreter {
                     GSValue key = runStack.pop();
                     GSValue ref = runStack.pop();
                     // 这里还需要判断是数组还是对象
-                    if(ref.type == 7) {  // 如果是数组
-                        GSArray array = (GSArray)ref;
+                    if (ref.type == 7) {  // 如果是数组
+                        GSArray array = (GSArray) ref;
                         array.setElement(key.getIntValue(), value);
-                    }else{
+                    } else {
                         GSObject obj = (GSObject) ref;
                         obj.setProperty(key.getStringValue(), value);
                     }
@@ -481,10 +474,10 @@ public class Interpreter {
                     GSValue key = runStack.pop();
                     GSValue ref = runStack.pop();
                     // 这里还需要判断是数组还是对象
-                    if(ref.type == 7) {  // 如果是数组
-                        GSArray array = (GSArray)ref;
+                    if (ref.type == 7) {  // 如果是数组
+                        GSArray array = (GSArray) ref;
                         array.setElement(key.getIntValue(), value);
-                    }else{
+                    } else {
                         GSObject obj = (GSObject) ref;
                         obj.setProperty(key.getStringValue(), value);
                     }
@@ -654,6 +647,7 @@ public class Interpreter {
     /**
      * 执行字节码
      * 将字节码封装为匿名函数执行
+     *
      * @param byteCodes 字节码
      */
     public void eval(List<String> byteCodes) {
