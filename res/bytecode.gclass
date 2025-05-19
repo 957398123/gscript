@@ -6,6 +6,7 @@
 # 负号，将运算结果放到栈顶       -a
 # 左移操作符，将运算结果放到栈顶  a << 5
 # 右移操作符，将运算结果放到栈顶  a >> 5
+# 字节码格式 0x01(byte) 0x01(byte)
 # ...,value1, [value2]
 # ...,value
 arith_op [plus|minus|mul|div|modulo|neg|ls|rs]
@@ -13,36 +14,161 @@ arith_op [plus|minus|mul|div|modulo|neg|ls|rs]
 # 加载数组索引
 # ...,arrayref,index
 # ...value
+# 字节码 0x02
 aaload
 
 # 存储数组内容
 # ...,arrayref,index,value
 # ...
+# 字节码 0x03
 aastore
 
 # 存储数组内容，并且将值再放回栈顶
 # ...,arrayref,index,value
 # ...,value
+# 字节码 0x04
 avstore
 
-# 入栈一个变量(引用值类型可能是对象、数组、函数)
-# 入栈一个整数
-# 入栈一个浮点数
-# 入栈字符串
-# 入栈布尔型数据
+# 入栈一个变量(引用值类型可能是对象、数组、函数) 变量名
+# 入栈一个整数 值
+# 入栈一个浮点数 值
+# 入栈字符串 值
+# 入栈布尔型数据 值
 # ...
 # ...,value
+# 字节码 0x05 0x01(类型) len(数据长度,格式Int) ....(装载的数据字节)
 const [a|i|f|s|b] value
+
+# 复制栈顶一个值
+# ...,value
+# ...,value,value
+# 字节码 0x06
+copy
+
+# 比较2个值是否相等，并且返回比较结果  ==
+# 比较2个值是否不相等，并且返回比较结果  !=
+# 比较值value1是否大于value2
+# 比较值value1是否大于等于value2
+# 比较值value1是否小于value2
+# 比较值value1是否小于等于value2
+# ...,value1,value2
+# ...,value
+# 字节码 0x07
+comp [eq|neq|gt|ge|lt|le]
+
+# 在当前变量域增加变量，如果变量已存在，忽略
+# ...
+# ...
+# 字节码 0x08
+declare a
 
 # 将栈顶的值减1后放回栈顶
 # ...,value
 # ...,value
+# 字节码 0x09
 decr
 
-# 出栈当前值，并存储到变量b（如果不存在，会提升到全局域）
+# 根据当前栈顶的值决定是否跳转，false跳转
 # ...,value
 # ...
-store b
+# 字节码 0x0A
+false_jump offset
+
+# 设置函数形参，第一个分量是函数形参名，第二个分量是实参索引(加入变量到当前域)
+# ...
+# ...
+# 字节码 0x0B
+fstore a, 0
+
+# 定义函数 第一个分量是函数长度，第二个分量是函数名称
+# ...
+# ...
+# 字节码 0x0C
+fundef 10 add
+
+# 定义成员函数并加载到栈顶
+# ...
+# ...value
+# 字节码 0x0D
+fundefload 10 add
+
+# 获取对象属性 a.b
+# ...,objectref
+# ...,value
+# 字节码 0x0E
+getfield name
+
+# 将栈顶的值加1后放回栈顶
+# ...,value
+# ...,value
+# 字节码 0x0F
+incr
+
+# 函数调用 函数自己从栈上取对应的实参 2表示参数个数
+# methodref, [arg1, [arg2 ...]]
+# value
+# 字节码 0x10
+invoke 2
+
+# 成员函数调用 函数自己从栈上取对应的实参 2表示参数个数
+# objectref, methodref, [arg1, [arg2 ...]]
+# value
+# 字节码 0x11
+invokeMember 3
+
+# 无条件跳转
+# ...
+# ...
+# 字节码 0x12
+jump offset
+
+# 循环中跳转，执行后销毁最近的loop域
+# ...
+# ...
+# 字节码 0x13
+loop_jump 5
+
+# 加载null到栈顶
+# ...
+# ...,null
+# 字节码 0x14
+lda_null
+
+# 创建对象实例
+# ...
+# ...,objectref
+# 字节码 0x15
+new Object
+
+# 从栈顶弹出一个值
+# ...,value
+# ...
+# 字节码 0x16
+pop
+
+# 销毁作用域
+# ...
+# ...
+# 字节码 0x17
+popenv [loop|block]
+
+# 创建作用域
+# ...
+# ...
+# 字节码 0x18
+pushenv [loop|block]
+
+# 设置对象属性 a.b = 9
+# ...,objectref,value,[expr]
+# ...
+# 字节码 0x19
+putfield name
+
+# 设置对象属性 a.b = 9 key取expr
+# ...,objectref,value, expr
+# ...
+# 字节码 0x1A
+putfieldExpr
 
 # 按位与运算，将运算结果放到栈顶 a & b
 # 按位或运算，将运算结果放到栈顶 a | b
@@ -53,119 +179,23 @@ store b
 # 逻辑非，对布尔型数据取反 !a
 # ...,value1, [value2]
 # ...,value
+# 字节码 0x1B
 rela_op [b_and|b_or|b_xor|b_not|l_and|l_or|l_not]
-
-# 将栈顶的值加1后放回栈顶
-# ...,value
-# ...,value
-incr
-
-# 获取对象属性 a.b
-# ...,objectref
-# ...,value
-getfield name
-
-# 设置对象属性 a.b = 9
-# ...,objectref,value,[expr]
-# ...
-putfield name
-
-# 设置对象属性 a.b = 9 key取expr
-# ...,objectref,value, expr
-# ...
-putfieldExpr
-
-# 函数调用 函数自己从栈上取对应的实参 2表示参数个数
-# methodref, [arg1, [arg2 ...]]
-# value
-invoke 2
-
-# 成员函数调用 函数自己从栈上取对应的实参 2表示参数个数
-# objectref, methodref, [arg1, [arg2 ...]]
-# value
-invokeMember 3
-
-# 复制栈顶一个值
-# ...,value
-# ...,value,value
-copy
-
-# 交换栈顶的值
-# ...,value1,value2
-# ...,value2,value1
-swap
-
-# 从栈顶弹出一个值
-# ...,value
-# ...
-pop
-
-# 定义函数 第一个分量是函数长度，第二个分量是函数名称
-# ...
-# ...
-fundef 10 add
-
-# 定义成员函数并加载到栈顶
-# ...
-# ...value
-fundefload 10 add
-
-# 设置函数形参，第一个分量是函数形参名，第二个分量是实参索引(加入变量到当前域)
-# ...
-# ...
-fstore a, 0
-
-# 在当前变量域增加变量，如果变量已存在，忽略
-# ...
-# ...
-declare a
-
-# 创建作用域
-# ...
-# ...
-pushenv [loop|block]
-
-# 销毁作用域
-# ...
-# ...
-popenv [loop|block]
-
-# 比较2个值是否相等，并且返回比较结果  ==
-# 比较2个值是否不相等，并且返回比较结果  !=
-# 比较值value1是否大于value2
-# 比较值value1是否大于等于value2
-# 比较值value1是否小于value2
-# 比较值value1是否小于等于value2
-# ...,value1,value2
-# ...,value
-comp [eq|neq|gt|ge|lt|le]
-
-# 无条件跳转
-# ...
-# ...
-jump offset
-
-# 根据当前栈顶的值决定是否跳转，false跳转
-# ...,value
-# ...
-false_jump offset
-
-# 循环中跳转，执行后销毁最近的loop域
-# ...
-# ...
-loop_jump 5
-
-# 加载null到栈顶
-# ...
-# ...,null
-lda_null
-
-# 创建对象实例
-# ...
-# ...,objectref
-new Object
 
 # 从函数调用返回
 # ...
 # ...
+# 字节码 0x1C
 return
+
+# 出栈当前值，并存储到变量b（如果不存在，会提升到全局域）
+# ...,value
+# ...
+# 字节码 0x1D
+store b
+
+# 交换栈顶的值
+# ...,value1,value2
+# ...,value2,value1
+# 字节码 0x1E
+swap

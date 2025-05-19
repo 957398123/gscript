@@ -9,5 +9,5 @@ function hello(){
 function hello2(){
     var a = "hello2";
     hello();
-    println("hello2=" + a);
+    println("a=" + a);
 }
