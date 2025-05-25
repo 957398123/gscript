@@ -121,7 +121,7 @@ public class ByteCodeGenerator implements Visitor {
         // 参数列表
         List<Identifier> params = expr.params;
         // 语句列表
-        BlockStatement body = expr.body;
+        List<Node> body = expr.body.stmt;
         // 函数起始位置
         int start = size();
         // 这里先预填函数定义 fundef
@@ -132,7 +132,9 @@ public class ByteCodeGenerator implements Visitor {
             emit("fstore " + param.name + " " + index++);
         }
         // 解析函数体
-        body.accept(this);
+        for (Node node : body) {
+            node.accept(this);
+        }
         // 回填函数定义（需要减去fundef）
         emit(start, "fundef %d %s".formatted((size() - start - 1), funName));
     }
