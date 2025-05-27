@@ -1,13 +1,23 @@
 var a = "hehe";
 
-hello2();
+hello();
+println("hello后面" + a);
 
 function hello(){
-    println("a=" + a);
+    var a = 9;
+    if(a < 10){
+        sum(a);
+        println("hello b=" + b);
+        println("hello a=" + a);
+    }else{
+        println("a大于10");
+    }
 }
 
-function hello2(){
-    var a = "hello2";
-    hello();
-    println("a=" + a);
+function sum(a){
+    a += 1;
+    println("sum a=" + a);
+    return 1;
+    println("return a=" + a);
+    return 12;
 }

@@ -404,8 +404,6 @@ public class Interpreter {
                         // 创建函数域
                         addEnv(new Env("function"));
                         callFunction(funCall, arg);
-                        // 销毁函数域
-                        restNearFunctionEnv();
                     } else if (funRef.type == 9) {
                         // 本地函数不需要创建域，因为不会操作操作数栈
                         GSNativeFunction funCall = (GSNativeFunction) funRef;
@@ -639,9 +637,22 @@ public class Interpreter {
                         }
                     }
                     runStack.push(value);
+                    break;
+                }
+                case "return": {
+                    // 销毁函数域
+                    restNearFunctionEnv();
+                    return;
+                }
+                default:{
+                    error("未知的指令：" + bytes[0] + "<UNK>");
                 }
             }
         }
+    }
+
+    public void error(String msg) {
+        throw new RuntimeException("Uncaught ReferenceError: " + msg);
     }
 
     /**

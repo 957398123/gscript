@@ -57,7 +57,7 @@ public class GSObject extends GSValue {
         context.setNearEnvVariable("this", this);
         GSFunction function = (GSFunction) funRef;
         context.callFunction(function, args);
-        context.restNearFunctionEnv();
+        // 不需要销毁函数域，return会销毁
     }
 
     /**

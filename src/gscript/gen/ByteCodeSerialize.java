@@ -11,10 +11,17 @@ import java.nio.file.Paths;
 import java.util.List;
 
 public class ByteCodeSerialize {
-    public static void serialize(List<String> bytecode, String filePath) {
+    public static byte[] serialize(List<String> bytecode, String filePath) {
+        byte[] result = null;
         try {
             ByteArrayOutputStream bs = new ByteArrayOutputStream();
             DataOutputStream ds = new DataOutputStream(bs);
+            // 写入魔数
+            ds.writeInt(0xFFFF);
+            //
+            // 写入指令长度
+            ds.writeInt(bytecode.size());
+            // 写入指令数据
             for (String code : bytecode) {
                 String[] bytes = code.split(" ");
                 switch (bytes[0]) {
@@ -84,16 +91,12 @@ public class ByteCodeSerialize {
                             }
                             case "i": {
                                 ds.writeByte(0x02);
-                                // 整数长度4
-                                ds.writeInt(0x04);
                                 // 写入数据
                                 ds.writeInt(Integer.parseInt(bytes[2]));
                                 break;
                             }
                             case "f": {
                                 ds.writeByte(0x03);
-                                // 浮点数长度4
-                                ds.writeInt(0x04);
                                 // 写入数据
                                 ds.writeFloat(Float.parseFloat(bytes[2]));
                                 break;
@@ -108,13 +111,12 @@ public class ByteCodeSerialize {
                             }
                             case "b": {
                                 ds.writeByte(0x05);
-                                ds.writeInt(0x01);
                                 // 写入布尔数据
                                 String bool = bytes[2];
                                 if ("true".equals(bool)) {
-                                    ds.writeBoolean(true);
+                                    ds.writeByte(1);
                                 } else if ("false".equals(bool)) {
-                                    ds.writeBoolean(false);
+                                    ds.writeByte(0);
                                 } else {
                                     error("const b 参数不正确，type=" + bool);
                                 }
@@ -191,7 +193,7 @@ public class ByteCodeSerialize {
                     case "fundef": {
                         ds.writeByte(0x0c);
                         ds.writeInt(Integer.parseInt(bytes[1]));
-                        byte[] data = bytes[1].getBytes(StandardCharsets.UTF_8);
+                        byte[] data = bytes[2].getBytes(StandardCharsets.UTF_8);
                         ds.writeInt(data.length);
                         ds.write(data);
                         break;
@@ -199,7 +201,7 @@ public class ByteCodeSerialize {
                     case "fundefload": {
                         ds.writeByte(0x0d);
                         ds.writeInt(Integer.parseInt(bytes[1]));
-                        byte[] data = bytes[1].getBytes(StandardCharsets.UTF_8);
+                        byte[] data = bytes[2].getBytes(StandardCharsets.UTF_8);
                         ds.writeInt(data.length);
                         ds.write(data);
                         break;
@@ -217,10 +219,12 @@ public class ByteCodeSerialize {
                     }
                     case "invoke": {
                         ds.writeByte(0x10);
+                        ds.writeInt(Integer.parseInt(bytes[1]));
                         break;
                     }
                     case "invokeMember": {
                         ds.writeByte(0x11);
+                        ds.writeInt(Integer.parseInt(bytes[1]));
                         break;
                     }
                     case "jump": {
@@ -336,8 +340,10 @@ public class ByteCodeSerialize {
             }
             // 2. 获取字节数据
             byte[] data = bs.toByteArray();
+            result = data;
             // 3. 写入文件（全路径）
             try (FileOutputStream fos = new FileOutputStream(filePath, false)) { // false表示覆盖
+                // 写入指令内容
                 fos.write(data);
             }
             ds.close();
@@ -345,6 +351,7 @@ public class ByteCodeSerialize {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        return result;
     }
 
     public static void error(String message) {

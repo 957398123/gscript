@@ -1007,35 +1007,35 @@ public class ByteCodeGenerator implements Visitor {
                 break;
             }
             case PLUS_EQUAL: {  // +=
-                emit("plus");
+                emit("arith_op plus");
                 break;
             }
             case MINUS_EQUAL: {  // -=
-                emit("minus");
+                emit("arith_op minus");
                 break;
             }
             case STAR_EQUAL: {  // *=
-                emit("mul");
+                emit("arith_op mul");
                 break;
             }
             case SLASH_EQUAL: {  // /=
-                emit("div");
+                emit("arith_op div");
                 break;
             }
             case PERCENT_EQUAL: {  // %=
-                emit("modulo");
+                emit("arith_op modulo");
                 break;
             }
             case T_AND_ASSIGN: {  // &=
-                emit("bitand");
+                emit("rela_op b_and");
                 break;
             }
             case T_OR_ASSIGN: {   // |=
-                emit("bitor");
+                emit("rela_op b_or");
                 break;
             }
             case T_XOR_ASSIGN: {  // ^=
-                emit("bitxor");
+                emit("rela_op b_xor");
                 break;
             }
         }
