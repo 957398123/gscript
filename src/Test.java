@@ -32,7 +32,7 @@ public class Test {
             // bytecodeGenerator.print();
             // 解释执行
             // System.out.println("GS Engine Start!");
-            // ByteCodeSerialize.serialize(bytecodeGenerator.getByteCode(), classDir + File.separator + "test.gclass");
+            ByteCodeSerialize.serialize(bytecodeGenerator.getByteCode(), classDir + File.separator + "test.gclass");
             Interpreter interpreter = new Interpreter();
             interpreter.eval(bytecodeGenerator.getByteCode());
             // System.out.println("GS Engine End!");

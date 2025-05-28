@@ -23,12 +23,6 @@ public class GSNull extends GSObject {
     }
 
     @Override
-    public void callFunction(Interpreter context
-            , GSFunction name, List<GSValue> args) {
-        throw new GSException("Cannot read properties of null (setting '%s')".formatted(name));
-    }
-
-    @Override
     public String getStringValue() {
         return "null";
     }

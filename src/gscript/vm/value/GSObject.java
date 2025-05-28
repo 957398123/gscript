@@ -40,38 +40,6 @@ public class GSObject extends GSValue {
         properties.put(name, value);
     }
 
-    /**
-     * 对象调用普通函数
-     *
-     * @param context 函数上下文
-     * @param funRef  调用函数（脚本内定义的函数）
-     * @param args    参数
-     * @return
-     */
-    public void callFunction(Interpreter context
-            , GSFunction funRef, List<GSValue> args) {
-        // 调用普通函数
-        // 创建函数域
-        context.addEnv(new Env("function"));
-        // 入参this
-        context.setNearEnvVariable("this", this);
-        GSFunction function = (GSFunction) funRef;
-        context.callFunction(function, args);
-        // 不需要销毁函数域，return会销毁
-    }
-
-    /**
-     * 对象调用本地函数
-     * @param context
-     * @param funRef
-     * @param args
-     */
-    public void callNativeFunction(Interpreter context
-            , GSNativeFunction funRef, List<GSValue> args) {
-        // 调用本地函数需要手动设置返回值
-        context.runStack.push(funRef.call(this, args));
-    }
-
     @Override
     public String getStringValue() {
         return "[object Object]";

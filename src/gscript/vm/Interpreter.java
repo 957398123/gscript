@@ -17,7 +17,7 @@ public class Interpreter {
     /**
      * 运行时堆栈
      */
-    public SwapStack<GSValue> runStack;
+    private SwapStack<GSValue> runStack;
 
     public Interpreter() {
         list = new LinkedList<>();
@@ -27,7 +27,7 @@ public class Interpreter {
         registerStdlib();
     }
 
-    public static class SwapStack<T extends GSValue> {
+    private static class SwapStack<T extends GSValue> {
         private final Deque<T> stack = new ArrayDeque<>();
 
         public void push(T item) {
@@ -62,7 +62,7 @@ public class Interpreter {
      * @param name 变量名称
      * @return 变量值
      */
-    public GSValue getVariable(String name) {
+    private GSValue getVariable(String name) {
         Iterator<Env> descendingIterator = list.descendingIterator();
         // 从底部往头部查找，直到最近的function域
         while (descendingIterator.hasNext()) {
@@ -89,7 +89,7 @@ public class Interpreter {
      * @param name  变量名称
      * @param value 变量值
      */
-    public void setVariable(String name, GSValue value) {
+    private void setVariable(String name, GSValue value) {
         if (list.isEmpty()) {
             gEnv.values.put(name, value);
         } else {
@@ -113,7 +113,7 @@ public class Interpreter {
      * @param name  域名称
      * @param value 作用域
      */
-    public void setNearEnvVariable(String name, GSValue value) {
+    private void setNearEnvVariable(String name, GSValue value) {
         if (list.isEmpty()) {
             gEnv.values.put(name, value);
         } else {
@@ -127,7 +127,7 @@ public class Interpreter {
      *
      * @param name 变量名称
      */
-    public void declareVariable(String name) {
+    private void declareVariable(String name) {
         Env env;
         if (list.isEmpty()) {
             env = gEnv;
@@ -145,21 +145,21 @@ public class Interpreter {
      *
      * @param env 变量域
      */
-    public void addEnv(Env env) {
+    private void addEnv(Env env) {
         list.add(env);
     }
 
     /**
      * 减少域
      */
-    public void removeLastEnv() {
+    private void removeLastEnv() {
         list.removeLast();
     }
 
     /**
      * 恢复变量域到最近的循环域
      */
-    public void restNearLoopEnv() {
+    private void restNearLoopEnv() {
         Iterator<Env> descendingIterator = list.descendingIterator();
         while (descendingIterator.hasNext()) {
             Env env = descendingIterator.next();
@@ -174,7 +174,7 @@ public class Interpreter {
     /**
      * 恢复变量域到最近的函数域
      */
-    public void restNearFunctionEnv() {
+    private void restNearFunctionEnv() {
         Iterator<Env> descendingIterator = list.descendingIterator();
         while (descendingIterator.hasNext()) {
             Env env = descendingIterator.next();
@@ -193,7 +193,7 @@ public class Interpreter {
      * @param name 函数名称
      * @param fun  函数实现
      */
-    private void registerNative(String name, GSNativeFunction fun) {
+    public void registerNative(String name, GSNativeFunction fun) {
         gEnv.values.put(name, fun);
     }
 
@@ -400,10 +400,9 @@ public class Interpreter {
                     GSValue funRef = runStack.pop();
                     // 调用函数时要创建函数域
                     if (funRef.type == 6) {
-                        GSFunction funCall = (GSFunction) funRef;
                         // 创建函数域
                         addEnv(new Env("function"));
-                        callFunction(funCall, arg);
+                        callFunction((GSFunction) funRef, arg);
                     } else if (funRef.type == 9) {
                         // 本地函数不需要创建域，因为不会操作操作数栈
                         GSNativeFunction funCall = (GSNativeFunction) funRef;
@@ -426,10 +425,17 @@ public class Interpreter {
                     GSObject objRef = (GSObject) runStack.pop();
                     // 调用函数时要创建函数域
                     if (funRef.type == 6) {  //
-                        objRef.callFunction(this, (GSFunction) funRef, arg);
+                        // 调用普通函数
+                        // 创建函数域
+                        addEnv(new Env("function"));
+                        // 入参this
+                        setNearEnvVariable("this", objRef);
+                        callFunction((GSFunction) funRef, arg);
                     } else if (funRef.type == 9) {
                         // 本地函数不需要创建域，因为不会操作操作数栈
-                        objRef.callNativeFunction(this, (GSNativeFunction) funRef, arg);
+                        GSNativeFunction funCall = (GSNativeFunction) funRef;
+                        // 调用本地函数需要手动设置返回值
+                        runStack.push(funCall.call(objRef, args));
                     }
                     break;
                 }
@@ -644,14 +650,14 @@ public class Interpreter {
                     restNearFunctionEnv();
                     return;
                 }
-                default:{
+                default: {
                     error("未知的指令：" + bytes[0] + "<UNK>");
                 }
             }
         }
     }
 
-    public void error(String msg) {
+    private void error(String msg) {
         throw new RuntimeException("Uncaught ReferenceError: " + msg);
     }
 
