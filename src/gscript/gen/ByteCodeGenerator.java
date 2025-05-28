@@ -75,20 +75,26 @@ public class ByteCodeGenerator implements Visitor {
 
     /**
      * 处理块语句中函数声明提升
+     *
      * @param stmt
      */
     private void handleFunctionDeclare(List<Node> stmt) {
         // 这里先把function语句提升到前面
-        ListIterator<Node> iterator = stmt.listIterator();
-        while (iterator.hasNext()) {
-            Node node = iterator.next();
+        List<Node> functionStatements = new ArrayList<>();
+        // 临时存储其他类型的元素
+        List<Node> otherStatements = new ArrayList<>();
+        // 遍历列表并分类存储
+        for (Node node : stmt) {
             if (node instanceof FunctionStatement) {
-                iterator.remove();
-                stmt.add(0, node);
-                // 重置迭代器
-                iterator = stmt.listIterator(iterator.nextIndex());
+                functionStatements.add(node);
+            } else {
+                otherStatements.add(node);
             }
         }
+        // 清空原列表并将FunctionStatement元素添加到最前面
+        stmt.clear();
+        stmt.addAll(functionStatements);
+        stmt.addAll(otherStatements);
     }
 
     /**

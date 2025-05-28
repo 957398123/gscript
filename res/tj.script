@@ -1,0 +1,3 @@
+function beforePlayerTick(){
+    println("player.name=" + player.name);
+}
