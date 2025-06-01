@@ -286,6 +286,11 @@ public class ByteCodeGenerator implements Visitor {
             case TRUE:
             case FALSE: {
                 emit("const %s %s".formatted("b", token.value));
+                break;
+            }
+            case NULL: {
+                emit("lda_null");
+                break;
             }
         }
     }

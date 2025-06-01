@@ -33,7 +33,7 @@ function getPercentageMp(){
 
 // 是否是挂机点
 function isHangUpColRow(){
-    return extend.pCol == player.col && extend.pRow == player.row;
+    return gameEnv.pCol == player.col && gameEnv.pRow == player.row;
 }
 
 // 医生战斗逻辑
@@ -46,7 +46,7 @@ function battleApothecary(){
             var hpPer = getPercentageHp();
             var mpPer = getPercentageMp();
             if(isHangUpColRow && ((hpPer > 70 && mpPer > 70) || player.isBeAttack) ){
-                println("can attack!");
+
             }else{
             }
         }else if(status == 1){  // 寻径中

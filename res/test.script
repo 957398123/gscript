@@ -1,23 +1,19 @@
-var a = "hehe";
-
-hello();
-println("hello后面" + a);
-
-function hello(){
-    var a = 9;
-    if(a < 10){
-        sum(a);
-        println("hello b=" + b);
-        println("hello a=" + a);
-    }else{
-        println("a大于10");
-    }
+var a = {};
+var b = null;
+var c = null;
+println("b=" + b);
+if(a == b){
+    println("a==b");
 }
 
-function sum(a){
-    a += 1;
-    println("sum a=" + a);
-    return 1;
-    println("return a=" + a);
-    return 12;
+if(a != b){
+    println("a!=b");
+}
+
+if(c == b){
+    println("c==b");
+}
+
+if(c != b){
+    println("c!=b");
 }

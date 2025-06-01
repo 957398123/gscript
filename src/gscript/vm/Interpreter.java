@@ -551,6 +551,8 @@ public class Interpreter {
                                 res = v1.getFloatValue() == v2.getFloatValue();
                             } else if (v1.type == 5 && v2.type == 5) {
                                 res = v1.getStringValue().equals(v2.getStringValue());
+                            } else if (v1.type == 8 && v2.type == 8) {
+                                res = true;
                             }
                             runStack.push(new GSBool(res));
                             break;
@@ -562,6 +564,10 @@ public class Interpreter {
                                 res = v1.getFloatValue() != v2.getFloatValue();
                             } else if (v1.type == 5 && v2.type == 5) {
                                 res = !v1.getStringValue().equals(v2.getStringValue());
+                            } else if (v1.type == 8 && v2.type == 8) {
+                                res = false;
+                            }else {
+                                res = true;
                             }
                             runStack.push(new GSBool(res));
                             break;
@@ -671,6 +677,5 @@ public class Interpreter {
         String[] codes = byteCodes.toArray(new String[0]);
         GSFunction fun = new GSFunction("anonymous", codes);
         callFunction(fun, null);
-        runStack.pop();
     }
 }
