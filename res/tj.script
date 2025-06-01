@@ -1,3 +1,59 @@
+// 挂机状态 0-恢复 1-寻路 2-战斗
+var status = 0;
+
+// 玩家tick之前
 function beforePlayerTick(){
-    println("player.name=" + player.name);
+    // 判断玩家是否在挂机状态
+    if(player.isHangup){
+        // 如果是医生
+        if(player.imgID == 3 || player.imgID == 4){
+            // 调用医生战斗逻辑
+            battleApothecary();
+        }
+    }
+}
+
+// 获取玩家血量百分比
+function getPercentageHp(){
+    var r = 0;
+    if(player.maxHp != 0){
+        r = (player.curHp / player.maxHp) * 100;
+    }
+    return r;
+}
+
+// 获取玩家蓝量百分比
+function getPercentageMp(){
+    var r = 0;
+    if(player.maxMp != 0){
+        r = (player.curMp / player.maxMp) * 100;
+    }
+    return r;
+}
+
+// 是否是挂机点
+function isHangUpColRow(){
+    return extend.pCol == player.col && extend.pRow == player.row;
+}
+
+// 医生战斗逻辑
+function battleApothecary(){
+    println("call battleApothecary");
+    // 如果玩家没有死亡
+    if(player.state != 5){
+
+        if(status == 0){  // 恢复中
+            var hpPer = getPercentageHp();
+            var mpPer = getPercentageMp();
+            if(isHangUpColRow && ((hpPer > 70 && mpPer > 70) || player.isBeAttack) ){
+                println("can attack!");
+            }else{
+            }
+        }else if(status == 1){  // 寻径中
+        }else if(status == 2){  // 进入战斗
+        }
+    }else {
+        status = 0;
+        keyPressed(NUM_11);
+    }
 }

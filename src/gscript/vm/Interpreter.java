@@ -671,5 +671,6 @@ public class Interpreter {
         String[] codes = byteCodes.toArray(new String[0]);
         GSFunction fun = new GSFunction("anonymous", codes);
         callFunction(fun, null);
+        runStack.pop();
     }
 }

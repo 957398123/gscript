@@ -13,6 +13,7 @@ public abstract class GSValue {
      * 7 array
      * 8 null
      * 9 native function
+     * 10 wrapper object
      * 设计这个是快速类型运算
      */
     public int type = 0;

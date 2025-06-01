@@ -1,10 +1,6 @@
 package gscript.vm.value;
 
-import gscript.vm.Interpreter;
-import gscript.vm.Env;
-
 import java.util.HashMap;
-import java.util.List;
 
 public class GSObject extends GSValue {
 
