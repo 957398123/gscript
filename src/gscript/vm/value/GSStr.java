@@ -28,4 +28,17 @@ public class GSStr extends GSValue {
         return "true".equals(value);
     }
 
+    @Override
+    public boolean eq(GSValue object) {
+        if(object.type == 5){
+            return value.equals(object.getStringValue());
+        }else {
+            return false;
+        }
+    }
+
+    @Override
+    public boolean neq(GSValue object) {
+        return !eq(object);
+    }
 }

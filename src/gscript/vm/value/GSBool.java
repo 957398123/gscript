@@ -36,4 +36,14 @@ public class GSBool extends GSValue {
     public boolean getBoolean() {
         return value;
     }
+
+    @Override
+    public boolean eq(GSValue object) {
+        return value = object.getBoolean();
+    }
+
+    @Override
+    public boolean neq(GSValue object){
+        return value != object.getBoolean();
+    }
 }

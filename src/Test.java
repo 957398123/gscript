@@ -30,7 +30,7 @@ public class Test {
             Node node = parser.parseProgram();
             ByteCodeGenerator bytecodeGenerator = new ByteCodeGenerator();
             node.accept(bytecodeGenerator);
-            bytecodeGenerator.print();
+            // bytecodeGenerator.print();
             // 解释执行
             // System.out.println("GS Engine Start!");
             ByteCodeSerialize.serialize(bytecodeGenerator.getByteCode(), classDir + File.separator + fileName + ".gclass");

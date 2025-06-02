@@ -28,4 +28,34 @@ public class GSInt extends GSValue {
     public boolean getBoolean() {
         return value != 0;
     }
+
+    @Override
+    public boolean eq(GSValue object) {
+        return value == object.getIntValue();
+    }
+
+    @Override
+    public boolean neq(GSValue object) {
+        return value != object.getIntValue();
+    }
+
+    @Override
+    public boolean gt(GSValue object) {
+        return value > object.getIntValue();
+    }
+
+    @Override
+    public boolean ge(GSValue object) {
+        return value >= object.getIntValue();
+    }
+
+    @Override
+    public boolean lt(GSValue object) {
+        return value < object.getIntValue();
+    }
+
+    @Override
+    public boolean le(GSValue object) {
+        return value <= object.getIntValue();
+    }
 }

@@ -542,70 +542,29 @@ public class Interpreter {
                 case "comp": {
                     GSValue v2 = runStack.pop();
                     GSValue v1 = runStack.pop();
-                    boolean res = false;
                     switch (bytes[1]) {
                         case "eq": {
-                            if (v1.type <= 2 && v2.type <= 2) {
-                                res = v1.getIntValue() == v2.getIntValue();
-                            } else if (v1.type <= 3 || v2.type <= 3) {
-                                res = v1.getFloatValue() == v2.getFloatValue();
-                            } else if (v1.type == 5 && v2.type == 5) {
-                                res = v1.getStringValue().equals(v2.getStringValue());
-                            } else if (v1.type == 8 && v2.type == 8) {
-                                res = true;
-                            }
-                            runStack.push(new GSBool(res));
+                            runStack.push(new GSBool(v1.eq(v2)));
                             break;
                         }
                         case "neq": {
-                            if (v1.type <= 2 && v2.type <= 2) {
-                                res = v1.getIntValue() != v2.getIntValue();
-                            } else if (v1.type <= 3 || v2.type <= 3) {
-                                res = v1.getFloatValue() != v2.getFloatValue();
-                            } else if (v1.type == 5 && v2.type == 5) {
-                                res = !v1.getStringValue().equals(v2.getStringValue());
-                            } else if (v1.type == 8 && v2.type == 8) {
-                                res = false;
-                            }else {
-                                res = true;
-                            }
-                            runStack.push(new GSBool(res));
+                            runStack.push(new GSBool(v1.neq(v2)));
                             break;
                         }
                         case "gt": {
-                            if (v1.type <= 2 && v2.type <= 2) {
-                                res = v1.getIntValue() > v2.getIntValue();
-                            } else if (v1.type <= 3 || v2.type <= 3) {
-                                res = v1.getFloatValue() > v2.getFloatValue();
-                            }
-                            runStack.push(new GSBool(res));
+                            runStack.push(new GSBool(v1.gt(v2)));
                             break;
                         }
                         case "ge": {
-                            if (v1.type <= 2 && v2.type <= 2) {
-                                res = v1.getIntValue() >= v2.getIntValue();
-                            } else if (v1.type <= 3 || v2.type <= 3) {
-                                res = v1.getFloatValue() >= v2.getFloatValue();
-                            }
-                            runStack.push(new GSBool(res));
+                            runStack.push(new GSBool(v1.ge(v2)));
                             break;
                         }
                         case "lt": {
-                            if (v1.type <= 2 && v2.type <= 2) {
-                                res = v1.getIntValue() < v2.getIntValue();
-                            } else if (v1.type <= 3 || v2.type <= 3) {
-                                res = v1.getFloatValue() < v2.getFloatValue();
-                            }
-                            runStack.push(new GSBool(res));
+                            runStack.push(new GSBool(v1.lt(v2)));
                             break;
                         }
                         case "le": {
-                            if (v1.type <= 2 && v2.type <= 2) {
-                                res = v1.getIntValue() <= v2.getIntValue();
-                            } else if (v1.type <= 3 || v2.type <= 3) {
-                                res = v1.getFloatValue() <= v2.getFloatValue();
-                            }
-                            runStack.push(new GSBool(res));
+                            runStack.push(new GSBool(v1.le(v2)));
                             break;
                         }
                     }

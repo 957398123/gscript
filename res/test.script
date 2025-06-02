@@ -1,19 +1,6 @@
-var a = {};
-var b = null;
-var c = null;
+var a = -1;
+var b = 4.2;
+if(a <= b){
+    println("a <= b");
+}
 println("b=" + b);
-if(a == b){
-    println("a==b");
-}
-
-if(a != b){
-    println("a!=b");
-}
-
-if(c == b){
-    println("c==b");
-}
-
-if(c != b){
-    println("c!=b");
-}

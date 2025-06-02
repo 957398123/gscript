@@ -31,4 +31,14 @@ public class GSNull extends GSObject {
     public boolean getBoolean() {
         return false;
     }
+
+    @Override
+    public boolean eq(GSValue object) {
+        return object.type == 8;
+    }
+
+    @Override
+    public boolean neq(GSValue object) {
+        return object.type != 8;
+    }
 }

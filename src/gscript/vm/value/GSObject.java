@@ -55,4 +55,5 @@ public class GSObject extends GSValue {
     public boolean getBoolean() {
         return true;
     }
+
 }

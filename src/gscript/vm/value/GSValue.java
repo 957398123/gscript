@@ -20,25 +20,87 @@ public abstract class GSValue {
 
     /**
      * 转为string
+     *
      * @return
      */
     public abstract String getStringValue();
 
     /**
      * 转为int
+     *
      * @return
      */
     public abstract int getIntValue();
 
     /**
      * 转为float
+     *
      * @return
      */
     public abstract float getFloatValue();
 
     /**
      * 转为布尔
+     *
      * @return
      */
     public abstract boolean getBoolean();
+
+    /**
+     * 比较函数
+     *
+     * @param object
+     * @return
+     */
+    public boolean eq(GSValue object) {
+        return this == object;
+    }
+
+    /**
+     * 是否不等于
+     * @param object
+     * @return
+     */
+    public boolean neq(GSValue object) {
+        return this != object;
+    }
+
+    /**
+     * 是否大于
+     *
+     * @param object
+     * @return
+     */
+    public boolean gt(GSValue object) {
+        return false;
+    }
+
+    /**
+     * 是否大于等于
+     *
+     * @param object
+     * @return
+     */
+    public boolean ge(GSValue object) {
+        return false;
+    }
+
+    /**
+     * 是否小于
+     * @param object
+     * @return
+     */
+    public boolean lt(GSValue object) {
+        return false;
+    }
+
+    /**
+     * 是否小于等于
+     * @param object
+     * @return
+     */
+    public boolean le(GSValue object) {
+        return false;
+    }
+
 }
