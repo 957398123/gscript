@@ -2,11 +2,20 @@ package gscript.vm.value;
 
 public class GSBool extends GSValue {
 
-    public boolean value;
+    private boolean value;
 
-    public GSBool(boolean value) {
+    public static final GSBool TRUE = new GSBool(true);
+
+    public static final GSBool FALSE = new GSBool(false);
+
+    private GSBool(boolean value) {
         type = 1;
         this.value = value;
+    }
+
+    public static GSBool getGSBool(boolean value) {
+        if (value) return TRUE;
+        else return FALSE;
     }
 
     @Override
@@ -43,7 +52,7 @@ public class GSBool extends GSValue {
     }
 
     @Override
-    public boolean neq(GSValue object){
+    public boolean neq(GSValue object) {
         return value != object.getBoolean();
     }
 }

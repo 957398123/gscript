@@ -53,7 +53,12 @@ function battleApothecary(){
                     // 更新状态
                     status = 1;
                 }
-            }else{
+            }else if(gameEnv.isFixHangUp && !isHangUpColRow()){ // 如果是定点挂机，并且不在挂机位置
+                // 如果当前不是寻径目标
+                if(!player.isAimColRow(gameEnv.pCol, gameEnv.pRow)){
+                    player.setAimColRow(gameEnv.pCol, gameEnv.pRow);
+                }
+            }else if(hpPer < 90){
             }
         }else if(status == 1){  // 寻径中
         }else if(status == 2){  // 进入战斗

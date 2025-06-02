@@ -19,7 +19,7 @@ public class Test {
         // 提取 Test.class 的所在目录路径
         File classFile = new File(classUrl.getPath());
         String classDir = classFile.getParent();
-        String fileName = "tj";
+        String fileName = "test";
         InputStream in = Test.class.getResourceAsStream(fileName + ".script");
         if (in != null) {
             String content = new String(in.readAllBytes(), StandardCharsets.UTF_8);
@@ -30,12 +30,12 @@ public class Test {
             Node node = parser.parseProgram();
             ByteCodeGenerator bytecodeGenerator = new ByteCodeGenerator();
             node.accept(bytecodeGenerator);
-            bytecodeGenerator.print();
+            // bytecodeGenerator.print();
             // 解释执行
             // System.out.println("GS Engine Start!");
             ByteCodeSerialize.serialize(bytecodeGenerator.getByteCode(), classDir + File.separator + fileName + ".gclass");
             Interpreter interpreter = new Interpreter();
-            // interpreter.eval(bytecodeGenerator.getByteCode());
+            interpreter.eval(bytecodeGenerator.getByteCode());
             // System.out.println("GS Engine End!");
         }
     }

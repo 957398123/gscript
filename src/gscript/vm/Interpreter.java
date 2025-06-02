@@ -232,7 +232,7 @@ public class Interpreter {
                             break;
                         }
                         case "b": {  // 加载布尔型到栈顶
-                            obj = new GSBool(Boolean.parseBoolean(value));
+                            obj = GSBool.getGSBool(Boolean.parseBoolean(value));
                             break;
                         }
                     }
@@ -342,16 +342,16 @@ public class Interpreter {
                         }
                         case "l_and": {
                             GSValue v1 = runStack.pop();
-                            runStack.push(new GSBool(v1.getBoolean() && v2.getBoolean()));
+                            runStack.push(GSBool.getGSBool(v1.getBoolean() && v2.getBoolean()));
                             break;
                         }
                         case "l_or": {
                             GSValue v1 = runStack.pop();
-                            runStack.push(new GSBool(v1.getBoolean() || v2.getBoolean()));
+                            runStack.push(GSBool.getGSBool(v1.getBoolean() || v2.getBoolean()));
                             break;
                         }
                         case "l_not": {
-                            runStack.push(new GSBool(!v2.getBoolean()));
+                            runStack.push(GSBool.getGSBool(!v2.getBoolean()));
                             break;
                         }
                     }
@@ -544,27 +544,27 @@ public class Interpreter {
                     GSValue v1 = runStack.pop();
                     switch (bytes[1]) {
                         case "eq": {
-                            runStack.push(new GSBool(v1.eq(v2)));
+                            runStack.push(GSBool.getGSBool(v1.eq(v2)));
                             break;
                         }
                         case "neq": {
-                            runStack.push(new GSBool(v1.neq(v2)));
+                            runStack.push(GSBool.getGSBool(v1.neq(v2)));
                             break;
                         }
                         case "gt": {
-                            runStack.push(new GSBool(v1.gt(v2)));
+                            runStack.push(GSBool.getGSBool(v1.gt(v2)));
                             break;
                         }
                         case "ge": {
-                            runStack.push(new GSBool(v1.ge(v2)));
+                            runStack.push(GSBool.getGSBool(v1.ge(v2)));
                             break;
                         }
                         case "lt": {
-                            runStack.push(new GSBool(v1.lt(v2)));
+                            runStack.push(GSBool.getGSBool(v1.lt(v2)));
                             break;
                         }
                         case "le": {
-                            runStack.push(new GSBool(v1.le(v2)));
+                            runStack.push(GSBool.getGSBool(v1.le(v2)));
                             break;
                         }
                     }

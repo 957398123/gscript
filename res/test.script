@@ -1,1 +1,11 @@
-var a = c.f();
+var a = false;
+function getFalse(){
+    return false;
+}
+if(a || !getFalse()){
+    println("a");
+}
+
+if(true && !a){
+    println("!a");
+}
