@@ -1,6 +1,1 @@
-var a = -1;
-var b = 4.2;
-if(a <= b){
-    println("a <= b");
-}
-println("b=" + b);
+var a = c.f();

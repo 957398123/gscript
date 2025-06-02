@@ -38,15 +38,21 @@ function isHangUpColRow(){
 
 // 医生战斗逻辑
 function battleApothecary(){
-    println("call battleApothecary");
     // 如果玩家没有死亡
     if(player.state != 5){
-
         if(status == 0){  // 恢复中
             var hpPer = getPercentageHp();
             var mpPer = getPercentageMp();
-            if(isHangUpColRow && ((hpPer > 70 && mpPer > 70) || player.isBeAttack) ){
-
+            if(isHangUpColRow && ((hpPer > 70 && mpPer > 70) || player.isBeAttack)){
+                var target = gameEnv.getNearFightObj();
+                if(target != null){
+                    // 设置当前对象
+                    gameEnv.setCurrentTarget(target);
+                    // 设置选择寻径目标
+                    player.setAimColRow(target.col, target.row);
+                    // 更新状态
+                    status = 1;
+                }
             }else{
             }
         }else if(status == 1){  // 寻径中

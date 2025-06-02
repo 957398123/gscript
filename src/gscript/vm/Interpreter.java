@@ -389,11 +389,11 @@ public class Interpreter {
                 }
                 case "invoke": {  // 函数调用
                     int num = Integer.parseInt(bytes[1]);
-                    ArrayList<GSValue> arg = null;
+                    ArrayList<GSValue> params = null;
                     if (num > 0) {
-                        arg = new ArrayList<>();
+                        params = new ArrayList<>();
                         do {
-                            arg.add(0, runStack.pop());
+                            params.add(0, runStack.pop());
                             --num;
                         } while (num > 0);
                     }
@@ -402,22 +402,22 @@ public class Interpreter {
                     if (funRef.type == 6) {
                         // 创建函数域
                         addEnv(new Env("function"));
-                        callFunction((GSFunction) funRef, arg);
+                        callFunction((GSFunction) funRef, params);
                     } else if (funRef.type == 9) {
                         // 本地函数不需要创建域，因为不会操作操作数栈
                         GSNativeFunction funCall = (GSNativeFunction) funRef;
                         // 调用本地函数需要手动设置返回值
-                        runStack.push(funCall.call(arg));
+                        runStack.push(funCall.call(params));
                     }
                     break;
                 }
                 case "invokeMember": {  // 函数调用
                     int num = Integer.parseInt(bytes[1]);
-                    ArrayList<GSValue> arg = null;
+                    ArrayList<GSValue> params = null;
                     if (num > 0) {
-                        arg = new ArrayList<>();
+                        params = new ArrayList<>();
                         do {
-                            arg.add(0, runStack.pop());
+                            params.add(0, runStack.pop());
                             --num;
                         } while (num > 0);
                     }
@@ -430,12 +430,12 @@ public class Interpreter {
                         addEnv(new Env("function"));
                         // 入参this
                         setNearEnvVariable("this", objRef);
-                        callFunction((GSFunction) funRef, arg);
+                        callFunction((GSFunction) funRef, params);
                     } else if (funRef.type == 9) {
                         // 本地函数不需要创建域，因为不会操作操作数栈
                         GSNativeFunction funCall = (GSNativeFunction) funRef;
                         // 调用本地函数需要手动设置返回值
-                        runStack.push(funCall.call(objRef, args));
+                        runStack.push(funCall.call(objRef, params));
                     }
                     break;
                 }
