@@ -323,6 +323,7 @@ public class ByteCodeGenerator implements Visitor {
                 }
                 case MINUS: {
                     emit("arith_op minus");
+                    break;
                 }
                 default: {
                     error("Unsupported additive operator: '" + type + "'. Expected '+' or '-'.");
