@@ -246,6 +246,7 @@ public class ByteCodeSerialize {
                         byte[] data = bytes[1].getBytes(StandardCharsets.UTF_8);
                         ds.writeInt(data.length);
                         ds.write(data);
+                        break;
                     }
                     case "pop": {
                         ds.writeByte(0x16);

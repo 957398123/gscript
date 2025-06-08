@@ -1,11 +1,5 @@
-var a = false;
-function getFalse(){
-    return false;
-}
-if(a || !getFalse()){
-    println("a");
-}
+var a = "呵呵";
 
-if(true && !a){
-    println("!a");
-}
+a += "无敌" + "寂寞";
+
+println(a);
