@@ -575,8 +575,10 @@ public class ByteCodeGenerator implements Visitor {
     @Override
     public void visit(DoWhileStatement node) {
         int start = size();
+        int bstart = size();
         // 首先执行一次语句
         node.body.accept(this);
+        int bend = size();
         // 执行表达式
         node.condition.accept(this);
         // 如果是值表达式，才进行跳转
@@ -585,6 +587,9 @@ public class ByteCodeGenerator implements Visitor {
             emit("false_jump %d".formatted(2));
         }
         emit("jump %d".formatted((start - size())));
+        // 这里替换块域为loop域
+        emit(bstart, "pushenv loop");
+        emit(bend-1, "popenv loop");
     }
 
     /**
@@ -621,8 +626,10 @@ public class ByteCodeGenerator implements Visitor {
                 }
             }
         }
+        int bstart = size();
         // 执行body
         node.body.accept(this);
+        int bend = size();
         int updatestart = size();
         // 如果有update，执行update
         if (update != null) {
@@ -650,6 +657,9 @@ public class ByteCodeGenerator implements Visitor {
                 emit(i, "loop_jump %d".formatted((size() - i)));
             }
         }
+        // 这里替换块域为loop域
+        emit(bstart, "pushenv loop");
+        emit(bend-1, "popenv loop");
     }
 
     /**
@@ -718,10 +728,9 @@ public class ByteCodeGenerator implements Visitor {
             emit("");
         }
         // 创建循环域
-        emit("pushenv loop");
+        int bstart = size();
         node.body.accept(this);
-        // 销毁循环域
-        emit("popenv loop");
+        int bend = size();
         // 跳转到表达式
         emit("jump %d".formatted((constart - size())));
         if (isNeedEndJump) {
@@ -735,6 +744,9 @@ public class ByteCodeGenerator implements Visitor {
                 emit(i, "loop_jump %d".formatted((size() - i)));
             }
         }
+        // 这里替换块域为loop域
+        emit(bstart, "pushenv loop");
+        emit(bend-1, "popenv loop");
     }
 
     /**
