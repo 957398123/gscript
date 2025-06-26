@@ -1,5 +1,7 @@
-var a = "呵呵";
+if(true && true && false){
+    println("1");
+}
 
-a += "无敌" + "寂寞";
-
-println(a);
+if(true && true && true){
+    println("2");
+}

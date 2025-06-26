@@ -1,0 +1,114 @@
+// 天劫战斗模块
+
+// 战斗状态 0-恢复状态中 1-寻径中
+var battle_status = 0;
+
+// 挂机类型
+
+// 挂机战斗函数
+function battle(){
+    // 获取玩家当前目标
+    var target = player.target;
+    var hpPer = getPercentageHp();
+    var mpPer = getPercentageMp();
+    // 如果玩家没有死亡
+    if(player.state != 5){
+        if(battle_status == 0){  // 恢复中
+            if(isHangUpColRow() && ((hpPer > 70 && mpPer > 70) || player.isBeAttack)){
+                var target = gameEnv.getNearFightObj();
+                if(target != null){
+                    // 设置当前对象
+                    gameEnv.setCurrentTarget(target);
+                    // 设置选择寻径目标
+                    player.setAimColRow(target.col, target.row);
+                    // 更新状态
+                    battle_status = 1;
+                }
+            }else if(!isHangUpColRow()){ // 如果不在挂机位置
+                // 如果当前挂机点不是寻径目标，回到挂机点
+                if(!player.isAimColRow(gameEnv.pCol, gameEnv.pRow)){
+                    player.setAimColRow(gameEnv.pCol, gameEnv.pRow);
+                }
+            }else if(hpPer < 90 && player.canCastSkill(2)){
+                gameEnv.setCurrentTarget(player);
+                player.caskSkill(player, 2);
+            }
+        }else if(battle_status == 1){  // 寻径中
+            // 目标存在，并且不是玩家
+            if(target != null && target != player){
+                if(gameEnv.inDistance(player, target, 60)){
+                    // 进入战斗
+                    player.resetFindPath();
+                    battle_status = 2;
+                }else {
+                    // 实时更新寻径位置
+                    player.setAimColRow(target.col, target.row);
+                }
+            }else {
+                // 如果丢失目标，回到挂机点
+                battle_status = 0;
+            }
+        }else if(battle_status == 2){  // 进入战斗
+            if(target != null && target != player){
+                // 如果怪物血量大于0
+                if(target.curHp > 0){
+                    // 进入施法范围
+                    if(gameEnv.inDistance(player, target, 80)){
+                        // 判断是否可以释放技能，这里注意吟唱技能时没有内置CD的
+                        if (hpPer < 40 && player.canCastSkill(2)) {
+                            // 这里必须设置为当前选中对象
+                            player.caskSkill(target, 2);
+                        } else if (player.canCastSkill(1)) {  // 释放飓风之牙
+                            player.caskSkill(target, 1);
+                        } else { // 判断是否可以普通攻击
+                            // 判断当前是否能攻击到
+                            if (player.canNormalAttack(target)) {
+                                if (player.normalAttackCount > 30) {  // 如果普通攻击CD好了
+                                    // 瞬移进行普通攻击
+                                    player.setObjPosition(target.col, target.row);
+                                    player.normalAttck();
+                                }
+                            }
+                        }
+                    }else {
+                        battle_status = 1;
+                    }
+                }else{
+                    player.stopBattle();
+                    battle_status = 0;
+                }
+            }else {
+                // 没有怪物，回到原点
+                battle_status = 0;
+            }
+        }
+    }else {
+        // hook状态置位0
+        hook_status = 0;
+        battle_status = 0;
+        gameEnv.keyPressed(NUM_11);
+    }
+}
+
+// 获取玩家血量百分比
+function getPercentageHp(){
+    var r = 0;
+    if(player.maxHp != 0){
+        r = (player.curHp / player.maxHp) * 100;
+    }
+    return r;
+}
+
+// 获取玩家蓝量百分比
+function getPercentageMp(){
+    var r = 0;
+    if(player.maxMp != 0){
+        r = (player.curMp / player.maxMp) * 100;
+    }
+    return r;
+}
+
+// 是否是挂机点
+function isHangUpColRow(){
+    return gameEnv.pCol == player.col && gameEnv.pRow == player.row;
+}

@@ -1,0 +1,111 @@
+// 天劫挂机模块
+
+// 巡逻挂机状态 -1-结束状态 0-初始状态 1-寻径(寻找) 2-寻径中
+var hook_status = 0;
+
+// 挂机地点列表，如果当前挂机地图设置了一系列挂机坐标，会打完怪物后移动到下一个挂机点
+var hook_pos = null;
+
+// 当前挂机点位置
+var hook_offset = 0;
+
+// 步进方式
+var step = 1;
+
+// 当前挂机地图坐标
+var hook_pos = null;
+
+// 挂机地图坐标
+var hook_maps = [
+    {"name": "城阳谷林一", "pos":[[66, 27], [53, 6], [35, 10], [26, 21], [14, 10], [12, 37], [40, 56], [64, 33]]},
+    {"name": "姬水部落", "pos":[[2, 27], [18, 41], [32, 66], [43, 55], [66, 63], [60, 24], [46, 32], [22, 19]]},
+    {"name": "火鬼腐宅", "pos":[[10, 54], [13, 67], [23, 67], [38, 72], [52, 72], [69, 72], [75, 65], [62, 53], [50, 53], [36, 51], [28, 48], [17, 37], [7, 7], [21, 9], [32, 7], [40, 5], [47, 5], [57, 7], [68, 10], [69, 21], [75, 33]]}
+];
+
+// 巡逻挂机实现函数
+function patrolBattle(){
+    // 首先检测当前状态
+    if(hook_status == 0){
+        // 初始状态，检测当前地图是否有挂机坐标
+        var index = getMapIndex(gameEnv.mapName);
+        if(index != -1){
+            hook_pos = hook_maps[index].pos;
+            hook_status = 1;
+            printMessage("[王辅]：检测到该地图有挂机数据，开始巡逻挂机！");
+        }else{
+            hook_pos = null;
+            hook_status = -1;
+            printMessage("[王辅]：当前地图：" + gameEnv.mapName + "不支持巡逻挂机！");
+        }
+    }else if(hook_status == 1){  // 设置巡逻挂机位置
+        // 获取当前坐标位置
+        var pos = hook_pos[hook_offset];
+        // 设置当前挂机位置
+        gameEnv.setHangupPos(pos[0], pos[1]);
+        // 前往该位置
+        player.setAimColRow(pos[0], pos[1]);
+        // 更新状态
+        hook_status = 2;
+        // 输出日志
+        printMessage("[王辅]：开始前往第" + hook_offset + "个坐标：(" + pos[0] + ", " + pos[1] + ")");
+    }else if(hook_status == 2){  // 寻径
+        // 获取目标坐标位置
+        var pos = hook_pos[hook_offset];
+        // 判断是否到达目标位置
+        if(pos[0] == player.col && pos[1] == player.row){
+            // 更新挂机状态
+            hook_status = 3;
+            printMessage("[王辅]：抵达挂机点，开始执行挂机操作！");
+        }else if(!player.isAimColRow(pos[0], pos[1])){
+            // 如果更改了寻径坐标，纠正
+            player.setAimColRow(pos[0], pos[1]);
+        }
+    }else if(hook_status == 3){  // 挂机状态
+        // 检测周围是否有可攻击敌人，没有前往下一个地点
+        if(!isAttackableUnitSelected() && gameEnv.getNearFightObj() == null){
+            hook_offset += step;
+            // 边界处理
+            if(hook_offset >= hook_pos.length){
+                hook_offset -= 1;
+                step = -1;
+            }
+            if(hook_offset < 0){
+                hook_offset += 1;
+                step = 1;
+            }
+            hook_status = 1;
+            // 输出日志
+            printMessage("[王辅]：当前位置怪物已清空，前往下一挂机点！");
+        }else {
+            // 开始挂机战斗处理
+            battle();
+        }
+    }else if(hook_status == -1){
+        // 直接原地挂机
+        battle();
+    }
+}
+
+// 查找地图挂机坐标数据 -1表示不存在
+function getMapIndex(mapName){
+    var index = -1;
+    for(var i = 0; i < hook_maps.length; ++i){
+        if(hook_maps[i].name == mapName){
+            index = i;
+            break;
+        }
+    }
+    return index;
+}
+
+// 输出信息到控制台
+function printMessage(msg){
+    gameEnv.printMessage(7, msg);
+    println(msg);
+}
+
+// 是否选中敌方单位
+function isAttackableUnitSelected(){
+    var target = player.target;
+    return target != null && target.type == 2;
+}

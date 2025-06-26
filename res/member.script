@@ -1,0 +1,27 @@
+// 会员模块
+
+// 会员账号
+var MEMBERS_ACCOUNTS = ["957398123", "957398124"];
+
+// 会员名称
+var MEMBERS_NAMES = ["装备回收官", "医者2"];
+
+// 返回是否是会员账号
+function isMemberAccount(account){
+    for(var i = 0; i < MEMBERS_ACCOUNTS.length; ++i){
+        if(account == MEMBERS_ACCOUNTS[i]){
+            return true;
+        }
+    }
+    return false;
+}
+
+// 返回是否会员名称
+function isMemberName(name){
+    for(var i = 0; i < MEMBERS_NAMES.length; ++i){
+        if(name == MEMBERS_NAMES[i]){
+            return true;
+        }
+    }
+    return false;
+}

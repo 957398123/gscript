@@ -1,130 +1,70 @@
-// 挂机状态 0-恢复 1-寻路 2-战斗
-var status = 0;
+// 天劫hook模块
+
+// 帧函数回调列表
+var FRAME_CALL = [];
 
 // 分钟计数
 var MINUTE_COUNT = 0;
 
-// 五分钟定时器
-var FIVE_MINUTE_TIMER = 0;
+// 分钟回调列表
+var MINUTE_CALL = [];
 
-// 是否正在查询修理
-var isQueryRepart = false;
+// 游戏初始化时调用
+function start(){
+    // 更新版本号
+    gameEnv.setVersion(100728832);
+    // 注册时间播报
+    regMinuteCall(printRunTime);
+    // 注册仓库存钱
+    regMinuteCall(checkStore);
+    // 注册清理背包
+    regMinuteCall(checkPackage);
+    regFrameCall(cleanPackage);
+    // 注册修理装备
+    regMinuteCall(checkEquip);
+    regFrameCall(repairEquip);
+}
 
-// 是否正在修理装备
-var isRepartEquip = false;
-
-// 是否正在查询背包
-var isQueryPackage = false;
-
-// 背包保留物品
-var RETAIN_ITEMS = ["小还丹"];
-
-// 按键#
-var NUM_11 = 16;
+// 进入游戏界面时调用
+function entryGame(){
+    // 输出hello
+    printMessage("[王辅]：欢迎使用王牌辅助！");
+    if(isMemberAccount(player.account) || isMemberName(player.name)){
+        printMessage("[王辅]：欢迎您，尊贵的会员！");
+    }else{
+        // 置位不能挂机
+        player.setHangup(false);
+        printMessage("[王辅]：您不是王辅会员，请注册会员！");
+    }
+}
 
 // 玩家tick之前
 function beforePlayerTick(){
-    // 更新计数器
+    // 定时模块
     updateCount();
-    // 判断玩家是否在挂机状态
+    // 检测是否挂机
     if(player.isHangup){
-        fiveMinuteTimer();
-        // 如果是医生
-        if(player.imgID == 3 || player.imgID == 4){
-            // 调用医生战斗逻辑
-            battleApothecary();
-        }
+        // 巡逻挂机
+        patrolBattle();
     }
 }
 
-// 一分钟定时器
-function oneMinuteTimer(){
-    // 输出运行时间
-    gameEnv.printMessage(7, "[王辅]：王辅已运行" + formatTime(gameEnv.getRuntime()));
-}
-
-// 五分钟定时器
-function fiveMinuteTimer(){
-    if(MINUTE_COUNT - FIVE_MINUTE_TIMER >= 5){
-        FIVE_MINUTE_TIMER = MINUTE_COUNT;
-        // 检测是否需要卖出物品
-        checkPackage();
-        // 检测是否需要修理装备
-        checkEquip();
+// tick回调结束时回调
+function endTick(){
+    if(gameEnv.curState == 17){
+        gameEnv.keyPressed(SOFT_OK);
     }
 }
 
-// 检测背包状态
-function checkPackage(){
-    if(!isQueryPackage ){
-        gameEnv.printMessage(7, "[王辅]：开始更新背包信息！");
-        gameEnv.queryPackage();
-        isQueryPackage = true;
-    }
-    // 如果查询背包完成
-    if(isQueryPackage && gameEnv.isQueryPackage){
-        gameEnv.printMessage(7, "[王辅]：更新背包信息完成！");
-        gameEnv.printMessage(7, "[王辅]：开始清空背包！");
-        var saleTotal = 0;
-        for(var i = 0; i < 36; ++i){
-            // 输出当前背包内容
-            var item = gameEnv.getPackage(i);
-            // 如果物品存在，并且允许出售
-            if(item[0] > 0 && isSaleItem(item[2])){
-                gameEnv.printMessage(7, "[王辅]：售卖物品，名称：" + item[2] + "，单价：" + item[5] + "，数量：" + item[1]);
-                saleTotal += item[5] * item[1];
-                gameEnv.saleItem(i, item[1]);
-            }
-        }
-        isQueryPackage = false;
-        gameEnv.printMessage(7, "[王辅]：背包清理完成！合计卖出：" + saleTotal + "，背包金额：" + player.money);
-    }
-}
-
-// 检测是否能售卖该物品
-function isSaleItem(item){
-    for(var i = 0; i < RETAIN_ITEMS.length; ++i){
-        if(item == RETAIN_ITEMS[i]){
-            return false;
-        }
-    }
-    return true;
-}
-
-// 检查装备
-function checkEquip(){
-    if(!isQueryRepart){
-        FIVE_MINUTE_TIMER = MINUTE_COUNT;
-        isQueryRepart = true;
-        // 更新修理信息
-        gameEnv.updateRepair();
-        gameEnv.printMessage(7, "[王辅]：开始更新装备修理信息！");
-    }
-    // 如果更新了装备状态，并且装备修理查询完成
-    if(isQueryRepart && gameEnv.isQueryRepart){
-        isQueryRepart = false;
-        var fixAllPrice = gameEnv.fixAllPrice;
-        var money = player.money;
-        gameEnv.printMessage(7, "[王辅]：修装查询完成，当前修装总需金钱：" + fixAllPrice);
-        gameEnv.printMessage(7, "[王辅]：玩家背包当前金钱：" + money);
-        if(fixAllPrice > 0){
-            // 优先从玩家背包扣除，不够从仓库取钱
-            if(money >= fixAllPrice){
-                // 修理全部装备
-                isRepartEquip = true;
-                gameEnv.repairItem();
-                gameEnv.printMessage(7, "[王辅]：开始修理装备！");
-            }else {
-                // 从仓库取钱
-                gameEnv.printMessage(7, "[王辅]：修理装备所需金钱不够！");
-            }
-        }else{
-            gameEnv.printMessage(7, "[王辅]：装备无需修理！");
-        }
-    }
-    if(isRepartEquip && gameEnv.isRepartEquip){
-        isRepartEquip = false;
-        gameEnv.printMessage(7, "[王辅]：修理装备完成！");
+// 确定挂机时回调
+function onHangup(){
+    // 检测当前玩家是否是会员
+    if(isMemberAccount(player.account) || isMemberName(player.name)){
+        //printMessage("[王辅]：开始执行挂机操作！");
+        player.setHangup(true);
+    }else{
+        player.setHangup(false);
+        //printMessage("[王辅]：您不是王辅会员，请注册会员！");
     }
 }
 
@@ -132,146 +72,29 @@ function checkEquip(){
 function updateCount(){
     var currTime = gameEnv.getRuntime();
     var count = currTime / 60;
+    // 回调每一帧的注册函数
+    invokeMethods(FRAME_CALL);
+    // 一分钟计时器
     if(count > MINUTE_COUNT){
         MINUTE_COUNT = count;
-        oneMinuteTimer();
+        // 回调所有注册的函数
+        invokeMethods(MINUTE_CALL);
     }
 }
 
-// 格式化时间
-function formatTime(time){
-    var day = time / 86400;
-    var hour = time / 3600;
-    var minute = (time % 3600) / 60;
-    var second = time % 60;
-    var str = "";
-    if(day > 0){
-        str += day + "天";
-    }
-    if(hour > 0){
-        str += hour + "时";
-    }
-    if(minute > 0){
-        str += minute + "分";
-    }
-    str += second + "秒";
-    return str;
-}
-
-// 获取玩家血量百分比
-function getPercentageHp(){
-    var r = 0;
-    if(player.maxHp != 0){
-        r = (player.curHp / player.maxHp) * 100;
-    }
-    return r;
-}
-
-// 获取玩家蓝量百分比
-function getPercentageMp(){
-    var r = 0;
-    if(player.maxMp != 0){
-        r = (player.curMp / player.maxMp) * 100;
-    }
-    return r;
-}
-
-// 是否是挂机点
-function isHangUpColRow(){
-    return gameEnv.pCol == player.col && gameEnv.pRow == player.row;
-}
-
-// 医生战斗逻辑
-function battleApothecary(){
-    // 获取玩家当前目标
-    var target = player.target;
-    var hpPer = getPercentageHp();
-    var mpPer = getPercentageMp();
-    // 如果玩家没有死亡
-    if(player.state != 5){
-        if(status == 0){  // 恢复中
-            if(isHangUpColRow && ((hpPer > 70 && mpPer > 70) || player.isBeAttack)){
-                var target = gameEnv.getNearFightObj();
-                if(target != null){
-                    // 设置当前对象
-                    gameEnv.setCurrentTarget(target);
-                    // 设置选择寻径目标
-                    player.setAimColRow(target.col, target.row);
-                    // 更新状态
-                    status = 1;
-                }
-            }else if(gameEnv.isFixHangUp && !isHangUpColRow()){ // 如果是定点挂机，并且不在挂机位置
-                // 如果当前不是寻径目标
-                if(!player.isAimColRow(gameEnv.pCol, gameEnv.pRow)){
-                    player.setAimColRow(gameEnv.pCol, gameEnv.pRow);
-                }
-            }else if(hpPer < 90 && player.canCastSkill(2)){
-                gameEnv.setCurrentTarget(player);
-                player.caskSkill(player, 2);
-            }
-        }else if(status == 1){  // 寻径中
-            if(player != target){
-                if(gameEnv.inDistance(player, target, 60)){
-                    // 进入战斗
-                    player.resetFindPath();
-                    status = 2;
-                }else {
-                    // 实时更新寻径位置
-                    player.setAimColRow(target.col, target.row);
-                }
-            }else {
-                // 如果选择对象是自己，恢复选择状态
-                status = 0;
-            }
-        }else if(status == 2){  // 进入战斗
-            if(target != null && target != player){
-                // 如果怪物血量大于0
-                if(target.curHp > 0){
-                    // 进入施法范围
-                    if(gameEnv.inDistance(player, target, 80)){
-                        // 判断是否可以释放技能，这里注意吟唱技能时没有内置CD的
-                        if (hpPer < 40 && player.canCastSkill(2)) {
-                            // 这里必须设置为当前选中对象
-                            player.caskSkill(target, 2);
-                        } else if (player.canCastSkill(1)) {  // 释放飓风之牙
-                            player.caskSkill(target, 1);
-                        } else { // 判断是否可以普通攻击
-                            // 判断当前是否能攻击到
-                            if (player.canNormalAttack(target)) {
-                                if (player.normalAttackCount > 30) {  // 如果普通攻击CD好了
-                                    // 瞬移进行普通攻击
-                                    player.setObjPosition(target.col, target.row);
-                                    player.normalAttck();
-                                }
-                            }
-                        }
-                    }else {
-                        status = 1;
-                    }
-                }else{
-                    player.stopBattle();
-                    status = 0;
-                }
-            }else {
-                // 没有怪物
-                status = 0;
-            }
-        }
-    }else {
-        status = 0;
-        gameEnv.keyPressed(NUM_11);
+// 调用数组函数
+function invokeMethods(methods){
+    for(var i = 0; i < methods.length; ++i){
+        methods[i]();
     }
 }
 
-// 游戏初始化时调用
-function start(){
-    // 更新版本号
-    gameEnv.setVersion(100729088);
-    // 检测是否能够使用辅助
+// 注册分钟运行函数
+function regMinuteCall(call){
+    MINUTE_CALL[MINUTE_CALL.length] = call;
 }
 
-// 进入游戏界面时调用
-function entryGame(){
-    // 输出hello
-    gameEnv.printMessage(7, "[王辅]：欢迎使用王牌辅助！");
+// 注册帧运行函数
+function regFrameCall(call){
+    FRAME_CALL[FRAME_CALL.length] = call;
 }
