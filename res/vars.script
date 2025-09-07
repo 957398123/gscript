@@ -7,10 +7,16 @@ var GAME_VARS = {};
 GAME_VARS.isAllowWall = false;
 
 // 是否自动修理
-GAME_VARS.isAutoRepart = true;
+GAME_VARS.isAutoRepart = false;
+
+// 修理间隔时间
+GAME_VARS.repartInterval = 5;
 
 // 是否自动售卖
-GAME_VARS.isAutoSales = true;
+GAME_VARS.isAutoSale = false;
+
+// 售卖间隔时间
+GAME_VARS.saleInterval = 5;
 
 // 移动速度
 GAME_VARS.moveSpeed = 1;

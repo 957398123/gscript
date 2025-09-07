@@ -57,6 +57,14 @@ function initUIConfig(){
     }else{
         rb1.setChooseItem(1);
     }
+    // 按钮值发生改变时回调
+    rb1.addChooseCallMethods(function (value) {
+        if(value == 0){
+            GAME_VARS.isAllowWall = true;
+        }else{
+            GAME_VARS.isAllowWall = false;
+        }
+    });
     // 选项 自动修理
     var rb2 = uiFrame.createUIRadioButton(35, 38 + 1 * 14, 0, 0, "自动修理", 0);
     rb2.addItems("开");
@@ -67,28 +75,57 @@ function initUIConfig(){
     }else{
         rb2.setChooseItem(1);
     }
+    // 按钮值发生改变时回调
+    rb2.addChooseCallMethods(function (value) {
+        if(value == 0){
+            GAME_VARS.isAutoRepart = true;
+        }else{
+            GAME_VARS.isAutoRepart = false;
+        }
+    });
     // 选项 自动售卖
     var rb3 = uiFrame.createUIRadioButton(35, 38 + 2 * 14, 0, 0, "自动售卖", 0);
     rb3.addItems("开");
     rb3.addItems("关");
     // 获取选项
-    if(GAME_VARS.isAutoSales){
+    if(GAME_VARS.isAutoSale){
         rb3.setChooseItem(0);
     }else{
         rb3.setChooseItem(1);
     }
+    // 按钮值发生改变时回调
+    rb3.addChooseCallMethods(function (value) {
+        if(value == 0){
+            GAME_VARS.isAutoSale = true;
+        }else{
+            GAME_VARS.isAutoSale = false;
+        }
+    });
     // 修理间隔
     var rb4 = uiFrame.createUIRadioButton(35, 38 + 3 * 14, 0, 0, "修理间隔", 1);
     rb4.setMinNumber(1);
-    rb4.setNumber(5);
+    rb4.setNumber(GAME_VARS.repartInterval);
+    rb4.setFreePoint(60 - GAME_VARS.repartInterval);
+    // 注册值改变回调函数
+    rb4.addNumberCallMethods(function (num) {
+        // 改变修理间隔
+        GAME_VARS.repartInterval = num;
+    });
+    // 售卖间隔
     var rb5 = uiFrame.createUIRadioButton(35, 38 + 4 * 14, 0, 0, "售卖间隔", 1);
     rb5.setMinNumber(1);
-    rb5.setNumber(5);
+    rb5.setNumber(GAME_VARS.saleInterval);
+    rb5.setFreePoint(60 - GAME_VARS.saleInterval);
+    // 注册值改变回调函数
+    rb5.addNumberCallMethods(function (num) {
+        // 改变售卖间隔
+        GAME_VARS.saleInterval = num;
+    });
     var rb6 = uiFrame.createUIRadioButton(35, 38 + 5 * 14, 0, 0, "移动速度", 1);
     rb6.setMinNumber(1);
     rb6.setNumber(GAME_VARS.moveSpeed);
     // 速度最大调到9
-    rb6.setFreePoint(8);
+    rb6.setFreePoint(9 - GAME_VARS.moveSpeed);
     // 注册值改变回调函数
     rb6.addNumberCallMethods(function (num) {
         // 改变移动速度

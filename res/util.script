@@ -2,9 +2,6 @@
 // 是否正在查询背包
 var isQueryPackage = false;
 
-// 几分钟清理背包
-var cleanPackageTime = 3;
-
 // 清理计时器
 var cleanTimer = 0;
 
@@ -13,9 +10,9 @@ var RETAIN_ITEMS = [""];
 
 // 检测背包状态
 function checkPackage(){
-    if(GAME_VARS.isAutoSales && gameEnv.isCleanPackage && !isQueryPackage){
+    if(GAME_VARS.isAutoSale && gameEnv.isCleanPackage && !isQueryPackage){
         ++cleanTimer;
-        if(cleanTimer >= cleanPackageTime){
+        if(cleanTimer >= GAME_VARS.saleInterval){
             gameEnv.printMessage(7, "[王辅]：开始更新背包信息！");
             gameEnv.queryPackage();
             isQueryPackage = true;
@@ -35,7 +32,7 @@ function isSaleItem(item){
 
 // 清理背包
 function cleanPackage(){
-    if(GAME_VARS.isAutoSales && gameEnv.isCleanPackage){
+    if(GAME_VARS.isAutoSale && gameEnv.isCleanPackage){
         // 如果查询背包完成
         if(isQueryPackage && gameEnv.isQueryPackage){
             gameEnv.printMessage(7, "[王辅]：更新背包信息完成！");
@@ -64,9 +61,6 @@ function cleanPackage(){
 
 //-------------------------------------------  修理模块  -------------------------------------------------
 
-// 几分钟修理装备
-var repartEquipTime = 5;
-
 // 清理计时器
 var equipTimer = 0;
 
@@ -80,7 +74,7 @@ var isRepartEquip = false;
 function checkEquip(){
     if(GAME_VARS.isAutoRepart && gameEnv.isRepairEquip && !isQueryRepart){
         ++equipTimer;
-        if(equipTimer >= repartEquipTime){
+        if(equipTimer >= GAME_VARS.repartInterval){
             // 更新修理信息
             gameEnv.printMessage(7, "[王辅]：开始更新装备修理信息！");
             isQueryRepart = true;
@@ -191,7 +185,7 @@ function checkTempMember(){
             // 是否自动修理
             GAME_VARS.isAutoRepart = false;
             // 是否自动售卖
-            GAME_VARS.isAutoSales = false;
+            GAME_VARS.isAutoSale = false;
         }
         if(TEMP_MEMBER == 0 && !IS_TEMP_MEMBER_DIALOG){
             IS_TEMP_MEMBER_DIALOG = true;
