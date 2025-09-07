@@ -1,10 +1,13 @@
 // 会员模块
 
 // 会员账号
-var MEMBERS_ACCOUNTS = ["957398123", "957398124"];
+var MEMBERS_ACCOUNTS = [];
 
 // 会员名称
-var MEMBERS_NAMES = ["装备回收官", "医者2"];
+var MEMBERS_NAMES = ["装备回收官", "无敌刺"];
+
+// 是否是会员
+var IS_MEMBER = false;
 
 // 返回是否是会员账号
 function isMemberAccount(account){

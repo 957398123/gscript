@@ -9,12 +9,19 @@ var MINUTE_COUNT = 0;
 // 分钟回调列表
 var MINUTE_CALL = [];
 
+// 临时会员体验时间(单位分钟)
+var TEMP_MEMBER = 5;
+
 // 游戏初始化时调用
 function start(){
     // 更新版本号
     gameEnv.setVersion(100728832);
     // 注册时间播报
     regMinuteCall(printRunTime);
+    // 注册公告
+    regMinuteCall(printAD);
+    // 注册临时会员检测
+    regMinuteCall(checkTempMember);
     // 注册仓库存钱
     regMinuteCall(checkStore);
     // 注册清理背包
@@ -23,17 +30,20 @@ function start(){
     // 注册修理装备
     regMinuteCall(checkEquip);
     regFrameCall(repairEquip);
+    // 初始化王辅模块
+    initHangModule();
 }
 
 // 进入游戏界面时调用
 function entryGame(){
     // 输出hello
     printMessage("[王辅]：欢迎使用王牌辅助！");
-    if(isMemberAccount(player.account) || isMemberName(player.name)){
+    IS_MEMBER = isMemberAccount(player.account) || isMemberName(player.name);
+    if(IS_MEMBER){
         printMessage("[王辅]：欢迎您，尊贵的会员！");
+    }else if(TEMP_MEMBER > 0){
+        printMessage("[王辅]：您不是王辅会员，会员体验还剩余" + TEMP_MEMBER + "分钟！");
     }else{
-        // 置位不能挂机
-        player.setHangup(false);
         printMessage("[王辅]：您不是王辅会员，请注册会员！");
     }
 }
@@ -59,12 +69,12 @@ function endTick(){
 // 确定挂机时回调
 function onHangup(){
     // 检测当前玩家是否是会员
-    if(isMemberAccount(player.account) || isMemberName(player.name)){
-        //printMessage("[王辅]：开始执行挂机操作！");
+    if(IS_MEMBER || TEMP_MEMBER > 0){
+        printMessage("[王辅]：开始执行挂机操作！");
         player.setHangup(true);
     }else{
         player.setHangup(false);
-        //printMessage("[王辅]：您不是王辅会员，请注册会员！");
+        printMessage("[王辅]：您不是王辅会员，请注册会员！");
     }
 }
 

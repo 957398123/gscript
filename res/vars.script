@@ -1,0 +1,16 @@
+// 游戏控制变量
+
+// 命名空间
+var GAME_VARS = {};
+
+// 是否允许穿墙
+GAME_VARS.isAllowWall = false;
+
+// 是否自动修理
+GAME_VARS.isAutoRepart = true;
+
+// 是否自动售卖
+GAME_VARS.isAutoSales = true;
+
+// 移动速度
+GAME_VARS.moveSpeed = 1;

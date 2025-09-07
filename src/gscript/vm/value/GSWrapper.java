@@ -1,8 +1,8 @@
 package gscript.vm.value;
 
-public abstract class GSWarpper extends GSObject{
+public abstract class GSWrapper extends GSObject{
 
-    public GSWarpper() {
+    public GSWrapper() {
         this.type = 10;
     }
 

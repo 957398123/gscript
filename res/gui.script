@@ -1,0 +1,256 @@
+// gui空间，避免变量污染
+var guiZone = {};
+
+// 初始化王辅模块
+function initHangModule(){
+    // 初始化数据
+    initHangData();
+    // 初始化王辅子菜单
+    initHangSubMenu();
+    // 初始化设置界面
+    initUIConfig();
+    // 初始化挂机UI界面
+    initUIForm();
+    // 初始化最强NPC
+    initNpcForm();
+}
+
+// 初始化列表
+function initHangData(){
+    var hangUI = {"index": 0, "options": []};
+    guiZone.hangUI = hangUI;
+}
+
+// 初始化子菜单
+function initHangSubMenu(){
+    var hangUI = guiZone.hangUI;
+    var subMenu = ["1 挂机", "2 功能", "3 寻路", "4 设置"];
+    hangUI.hangMenu = uiFrame.createUIMenu(145, 23, 60, 0, null, subMenu);
+}
+
+// 初始化设置UI
+function initUIConfig(){
+    var hangUI = guiZone.hangUI;
+    var configForm = uiFrame.createUIForm(0, 0, SCREEN_W, SCREEN_H, "");
+    configForm.setStyle(0);
+    var rimFrame = uiFrame.createUIRim(0, 0, SCREEN_W - 1, SCREEN_H - 1, 4);
+    var rimTitle = uiFrame.createUIRim(0, 10, 160, 17, 7);
+    var lblTitle = uiFrame.createUILabel(0, rimTitle.positionY + 3, 0, 0, "功能设置", 15718815, 1, 0);
+    var rimDown = uiFrame.createUIRim(0, 27, 160, 160, 0);
+    var rimDownInner = uiFrame.createUIRim(0, 32, 150, 150, 0);
+    var lblOk = uiFrame.createUILabel(0, 0, 0, 0, "确定", 15718815, 1, 0);
+    var lblCancel = uiFrame.createUILabel(0, 0, 0, 0, "返回", 15718815, 1, 0);
+    configForm.addComponent(rimFrame);
+    configForm.addComponentInCenter(rimTitle, 2);
+    configForm.addComponentInCenter(lblTitle, 2);
+    configForm.addComponentInCenter(rimDown, 2);
+    configForm.addComponentInCenter(rimDownInner, 2);
+    configForm.addComponentInCenter(lblOk, 5);
+    configForm.addComponentInCenter(lblCancel, 6);
+    // 选项 穿墙功能
+    var rb1 = uiFrame.createUIRadioButton(35, 38 + 0 * 14, 0, 0, "允许穿墙", 0);
+    rb1.addItems("开");
+    rb1.addItems("关");
+    // 获取选项
+    if(GAME_VARS.isAllowWall){
+        rb1.setChooseItem(0);
+    }else{
+        rb1.setChooseItem(1);
+    }
+    // 选项 自动修理
+    var rb2 = uiFrame.createUIRadioButton(35, 38 + 1 * 14, 0, 0, "自动修理", 0);
+    rb2.addItems("开");
+    rb2.addItems("关");
+    // 获取选项
+    if(GAME_VARS.isAutoRepart){
+        rb2.setChooseItem(0);
+    }else{
+        rb2.setChooseItem(1);
+    }
+    // 选项 自动售卖
+    var rb3 = uiFrame.createUIRadioButton(35, 38 + 2 * 14, 0, 0, "自动售卖", 0);
+    rb3.addItems("开");
+    rb3.addItems("关");
+    // 获取选项
+    if(GAME_VARS.isAutoSales){
+        rb3.setChooseItem(0);
+    }else{
+        rb3.setChooseItem(1);
+    }
+    // 修理间隔
+    var rb4 = uiFrame.createUIRadioButton(35, 38 + 3 * 14, 0, 0, "修理间隔", 1);
+    rb4.setMinNumber(1);
+    rb4.setNumber(5);
+    var rb5 = uiFrame.createUIRadioButton(35, 38 + 4 * 14, 0, 0, "售卖间隔", 1);
+    rb5.setMinNumber(1);
+    rb5.setNumber(5);
+    var rb6 = uiFrame.createUIRadioButton(35, 38 + 5 * 14, 0, 0, "移动速度", 1);
+    rb6.setMinNumber(1);
+    rb6.setNumber(GAME_VARS.moveSpeed);
+    // 速度最大调到9
+    rb6.setFreePoint(8);
+    // 注册值改变回调函数
+    rb6.addNumberCallMethods(function (num) {
+        // 改变移动速度
+        GAME_VARS.moveSpeed = num;
+    });
+    rb2.setAroundComponent(rb1, 1);
+    rb2.setAroundComponent(rb3, 2);
+    rb4.setAroundComponent(rb3, 1);
+    rb4.setAroundComponent(rb5, 2);
+    rb5.setAroundComponent(rb4, 1);
+    rb5.setAroundComponent(rb6, 2);
+    configForm.addComponent(rb1);
+    configForm.addComponent(rb2);
+    configForm.addComponent(rb3);
+    configForm.addComponent(rb4);
+    configForm.addComponent(rb5);
+    configForm.addComponent(rb6);
+    configForm.addKeyCallMethods(configKeyPress);
+    configForm.setFocus(true);
+    hangUI.configForm = configForm;
+}
+
+// 初始化挂机UI
+function initUIForm(){
+    var hangUI = guiZone.hangUI;
+    var baseForm = uiFrame.createUIForm(0, 0, SCREEN_W, SCREEN_H, "");
+    baseForm.setStyle(0);
+    var rimFrame = uiFrame.createUIRim(0, 0, SCREEN_W - 1, SCREEN_H - 1, 4);
+    var rimTitle = uiFrame.createUIRim(0, 10, 160, 17, 7);
+    var lblTitle = uiFrame.createUILabel(0, rimTitle.positionY + 3, 0, 0, "挂机设置", 15718815, 1, 0);
+    var rimDown = uiFrame.createUIRim(0, 27, 160, 160, 0);
+    var rimDownInner = uiFrame.createUIRim(0, 32, 150, 150, 0);
+    var lblOk = uiFrame.createUILabel(0, 0, 0, 0, "挂机", 15718815, 1, 0);
+    var lblCancel = uiFrame.createUILabel(0, 0, 0, 0, "返回", 15718815, 1, 0);
+    baseForm.addComponent(rimFrame);
+    baseForm.addComponentInCenter(rimTitle, 2);
+    baseForm.addComponentInCenter(lblTitle, 2);
+    baseForm.addComponentInCenter(rimDown, 2);
+    baseForm.addComponentInCenter(rimDownInner, 2);
+    baseForm.addComponentInCenter(lblOk, 5);
+    baseForm.addComponentInCenter(lblCancel, 6);
+    // 选项 巡逻挂机
+    var rb1 = uiFrame.createUIRadioButton(35, 38 + 0 * 14, 0, 0, "允许穿墙", 0);
+    rb1.addItems("开");
+    rb1.addItems("关");
+    rb1.setChooseItem(0);
+    hangUI.options.push(rb1);
+    // 选项 指定野怪
+    var rb2 = uiFrame.createUIRadioButton(35, 38 + 1 * 14, 0, 0, "指定怪物", 0);
+    rb2.addItems("开");
+    rb2.addItems("关");
+    rb2.setChooseItem(1);
+    hangUI.options.push(rb2);
+    // 选项 自动吃药
+    var rb3 = uiFrame.createUIRadioButton(35, 38 + 2 * 14, 0, 0, "自动吃药", 0);
+    rb3.addItems("开");
+    rb3.addItems("关");
+    rb3.setChooseItem(0);
+    hangUI.options.push(rb3);
+    // 选项 自动修理
+    var rb4 = uiFrame.createUIRadioButton(35, 38 + 3 * 14, 0, 0, "自动修理", 0);
+    rb4.addItems("开");
+    rb4.addItems("关");
+    rb4.setChooseItem(1);
+    hangUI.options.push(rb4);
+    // 选项 自动清理
+    var rb5 = uiFrame.createUIRadioButton(35, 38 + 4 * 14, 0, 0, "自动清理", 0);
+    rb5.addItems("开");
+    rb5.addItems("关");
+    rb5.setChooseItem(1);
+    hangUI.options.push(rb5);
+    // 选项 自动清理
+    var rb6 = uiFrame.createUIRadioButton(35, 38 + 5 * 14, 0, 0, "允许穿墙", 0);
+    rb6.addItems("开");
+    rb6.addItems("关");
+    rb6.setChooseItem(0);
+    hangUI.options.push(rb6);
+    baseForm.addComponent(rb1);
+    baseForm.addComponent(rb2);
+    baseForm.addComponent(rb3);
+    baseForm.addComponent(rb4);
+    baseForm.addComponent(rb5);
+    baseForm.addComponent(rb6);
+    baseForm.addKeyCallMethods(hangKeyPress);
+    baseForm.setComponentFocus(rb1);
+    hangUI.baseForm = baseForm;
+}
+
+// 初始化最强NPC
+function initNpcForm(){
+    var hangUI = guiZone.hangUI;
+    var tmpItem = [55, 3, 7, 8, 9, 11];
+    var subMenu = ["进入氏族领地", "修理", "拍卖", "精炼", "仓库", "邮件"];
+    var state = [-1, -1, -1, -1, -1, -1];
+    var npcMenu = uiFrame.createUIMenu(5, 48, 164, 142, null, subMenu);
+    npcMenu.setMenuItems(tmpItem, subMenu, state);
+    npcMenu.setRimStyle(0);
+    npcMenu.setFlushType(1);
+    hangUI.npcMenu = npcMenu;
+}
+
+// 处理王辅菜单选择OK时的按键处理
+function keyInHangMenuOk(){
+    var hangUI = guiZone.hangUI;
+    // 如果为空
+    if(uiFrame.getHangMenu() == null){
+        uiFrame.setHangMenu(hangUI.hangMenu);
+    }else{
+        // 获取是否会员
+        if(IS_MEMBER || TEMP_MEMBER > 0){
+            // 获取当前索引
+            var hangMenu = uiFrame.getHangMenu();
+            var index = hangMenu.getCurrentPointer();
+            hangUI.index = index;
+            if(index == 1){
+                uiFrame.setNpcMenu(hangUI.npcMenu);
+            }else if(index == 3){
+                // 设置显示子内容
+                gameEnv.setRightMenuSubState(0);
+            }else {
+                uiFrame.addGameForm("msg", "功能正在开发中，敬请期待！", "确定", null, SCREEN_W - 30, 110);
+            }
+        }else{
+            uiFrame.addGameForm("msg", "您不是王辅会员，请注册会员！", "确定", null, SCREEN_W - 30, 110);
+        }
+    }
+}
+
+// 王辅按键分发
+function keyHangUI(){
+    var hangUI = guiZone.hangUI;
+    var index = hangUI.index;
+    if(index == 0){
+        hangUI.baseForm.handPressKey();
+    }else if(index == 3){
+        hangUI.configForm.handPressKey();
+    }
+}
+
+// 绘制王辅UI
+function drawHangUI(g){
+    var hangUI = guiZone.hangUI;
+    var index = hangUI.index;
+    if(index == 0){
+        hangUI.baseForm.draw(g);
+    }else if(index == 3){
+        hangUI.configForm.draw(g);
+    }
+}
+
+function hangKeyPress(){
+    var hangUI = guiZone.hangUI;
+    if(gameEnv.isKeyPress(SOFT_RIGHT)){
+        gameEnv.setGameState(0);
+    }
+}
+
+// 配置界面按键
+function configKeyPress(){
+    var configForm = guiZone.hangUI.configForm;
+    if(gameEnv.isKeyPress(SOFT_RIGHT)){
+        gameEnv.setGameState(0);
+    }
+}
+

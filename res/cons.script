@@ -1,7 +1,66 @@
 // 常量表
 
 // 按键#
-var NUM_11 = 16;
+
+// 数字按键0
+var NUM_0 = 0;
+
+// 数字按键1
+var NUM_1 = 1;
+
+// 数字按键2
+var NUM_2 = 2;
+
+// 数字按键3
+var NUM_3 = 3;
+
+// 数字按键4
+var NUM_4 = 4;
+
+// 数字按键5
+var NUM_5 = 5;
+
+// 数字按键6
+var NUM_6 = 6;
+
+// 数字按键7
+var NUM_7 = 7;
+
+// 数字按键8
+var NUM_8 = 8;
+
+// 数字按键9
+var NUM_9 = 9;
+
+// 方向键-左
+var ARROW_LEFT = 10;
+
+// 方向键-上
+var ARROW_TOP = 11;
+
+// 方向键-右
+var ARROW_RIGHT = 12;
+
+// 方向键-下
+var ARROW_BOTTOM = 13;
 
 // OK键
 var SOFT_OK = 14;
+
+// 数字按键*
+var NUM_10 = 15;
+
+// 数字按键#
+var NUM_11 = 16;
+
+// 左软键
+var SOFT_LEFT = 17;
+
+// 右软键
+var SOFT_RIGHT = 18;
+
+// 屏幕宽度
+var SCREEN_W = 240;
+
+// 屏幕高度
+var SCREEN_H = 320;

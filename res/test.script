@@ -1,7 +1,8 @@
-if(true && true && false){
-    println("1");
+println("zz");
+function a(b){
+    b(22);
 }
 
-if(true && true && true){
-    println("2");
-}
+a(function (num) {
+    println("number=" + num);
+});

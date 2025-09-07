@@ -13,7 +13,7 @@ var RETAIN_ITEMS = [""];
 
 // 检测背包状态
 function checkPackage(){
-    if(player.isHangup && gameEnv.isCleanPackage && !isQueryPackage){
+    if(GAME_VARS.isAutoSales && gameEnv.isCleanPackage && !isQueryPackage){
         ++cleanTimer;
         if(cleanTimer >= cleanPackageTime){
             gameEnv.printMessage(7, "[王辅]：开始更新背包信息！");
@@ -35,7 +35,7 @@ function isSaleItem(item){
 
 // 清理背包
 function cleanPackage(){
-    if(player.isHangup && gameEnv.isCleanPackage){
+    if(GAME_VARS.isAutoSales && gameEnv.isCleanPackage){
         // 如果查询背包完成
         if(isQueryPackage && gameEnv.isQueryPackage){
             gameEnv.printMessage(7, "[王辅]：更新背包信息完成！");
@@ -78,7 +78,7 @@ var isRepartEquip = false;
 
 // 检查装备
 function checkEquip(){
-    if(player.isHangup && gameEnv.isRepairEquip && !isQueryRepart){
+    if(GAME_VARS.isAutoRepart && gameEnv.isRepairEquip && !isQueryRepart){
         ++equipTimer;
         if(equipTimer >= repartEquipTime){
             // 更新修理信息
@@ -91,7 +91,7 @@ function checkEquip(){
 
 // 修理装备
 function repairEquip(){
-    if(player.isHangup && gameEnv.isRepairEquip){
+    if(GAME_VARS.isAutoRepart && gameEnv.isRepairEquip){
         // 如果更新了装备状态，并且装备修理查询完成
         if(isQueryRepart && gameEnv.isQueryRepart){
             isQueryRepart = false;
@@ -158,6 +158,45 @@ function printRunTime(){
         runTimer = 0;
         // 输出运行时间
         gameEnv.printMessage(7, "[王辅]：王辅已运行" + formatTime(gameEnv.getRuntime()));
+    }
+}
+
+var adTimer = 0;
+
+// 播报广告
+function printAD(){
+    ++adTimer;
+    if(!IS_MEMBER && adTimer >= 3){
+        adTimer = 0;
+        gameEnv.broadcastMessage("王辅官方群：583627835，进群获取会员以及更强大功能！！！");
+    }
+}
+
+// 是否已经弹窗提醒
+var IS_TEMP_MEMBER_DIALOG = false;
+
+// 检测临时会员
+function checkTempMember(){
+    if(!IS_MEMBER){
+        if(TEMP_MEMBER > 0){
+            --TEMP_MEMBER;
+            printMessage("[王辅]：您不是王辅会员，会员体验还剩余" + TEMP_MEMBER + "分钟！");
+        }
+        // 会员到期
+        if(TEMP_MEMBER == 0){
+            // 还原加速
+            GAME_VARS.moveSpeed = 1;
+            // 是否允许穿墙
+            GAME_VARS.isAllowWall = false;
+            // 是否自动修理
+            GAME_VARS.isAutoRepart = false;
+            // 是否自动售卖
+            GAME_VARS.isAutoSales = false;
+        }
+        if(TEMP_MEMBER == 0 && !IS_TEMP_MEMBER_DIALOG){
+            IS_TEMP_MEMBER_DIALOG = true;
+            uiFrame.addGameForm("msg", "您的体验会员已到期，请注册会员！", "确定", null, SCREEN_W - 30, 110);
+        }
     }
 }
 
