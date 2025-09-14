@@ -17,7 +17,7 @@ function initHangModule(){
 
 // 初始化列表
 function initHangData(){
-    var hangUI = {"index": 0, "options": []};
+    var hangUI = {"index": 0};
     guiZone.hangUI = hangUI;
 }
 
@@ -131,18 +131,60 @@ function initUIConfig(){
         // 改变移动速度
         GAME_VARS.moveSpeed = num;
     });
+    // 选项 自动售卖
+    var rb7 = uiFrame.createUIRadioButton(35, 38 + 6 * 14, 0, 0, "解除聊天限制", 0);
+    rb7.addItems("开");
+    rb7.addItems("关");
+    // 获取选项
+    if(GAME_VARS.isLimitChat){
+        rb7.setChooseItem(0);
+    }else{
+        rb7.setChooseItem(1);
+    }
+    // 按钮值发生改变时回调
+    rb7.addChooseCallMethods(function (value) {
+        if(value == 0){
+            GAME_VARS.isLimitChat = true;
+        }else{
+            GAME_VARS.isLimitChat = false;
+        }
+    });
+    // 选项 自动存钱
+    var rb8 = uiFrame.createUIRadioButton(35, 38 + 7 * 14, 0, 0, "自动存钱", 0);
+    rb8.addItems("开");
+    rb8.addItems("关");
+    // 获取选项
+    if(GAME_VARS.isAutoStore){
+        rb8.setChooseItem(0);
+    }else{
+        rb8.setChooseItem(1);
+    }
+    // 按钮值发生改变时回调
+    rb8.addChooseCallMethods(function (value) {
+        if(value == 0){
+            GAME_VARS.isAutoStore = true;
+        }else{
+            GAME_VARS.isAutoStore = false;
+        }
+    });
     rb2.setAroundComponent(rb1, 1);
     rb2.setAroundComponent(rb3, 2);
     rb4.setAroundComponent(rb3, 1);
     rb4.setAroundComponent(rb5, 2);
     rb5.setAroundComponent(rb4, 1);
     rb5.setAroundComponent(rb6, 2);
+    rb6.setAroundComponent(rb5, 1);
+    rb6.setAroundComponent(rb7, 2);
+    rb7.setAroundComponent(rb6, 1);
+    rb7.setAroundComponent(rb8, 2);
     configForm.addComponent(rb1);
     configForm.addComponent(rb2);
     configForm.addComponent(rb3);
     configForm.addComponent(rb4);
     configForm.addComponent(rb5);
     configForm.addComponent(rb6);
+    configForm.addComponent(rb7);
+    configForm.addComponent(rb8);
     configForm.addKeyCallMethods(configKeyPress);
     configForm.setFocus(true);
     hangUI.configForm = configForm;
@@ -160,6 +202,24 @@ function initUIForm(){
     var rimDownInner = uiFrame.createUIRim(0, 32, 150, 150, 0);
     var lblOk = uiFrame.createUILabel(0, 0, 0, 0, "挂机", 15718815, 1, 0);
     var lblCancel = uiFrame.createUILabel(0, 0, 0, 0, "返回", 15718815, 1, 0);
+    // 选项 定点挂机
+    var rb1 = uiFrame.createUIRadioButton(35, 38 + 0 * 14, 0, 0, "定点挂机", 0);
+    rb1.addItems("开");
+    rb1.addItems("关");
+    // 获取选项
+    if(GAME_VARS.isPatrol){
+        rb1.setChooseItem(0);
+    }else{
+        rb1.setChooseItem(1);
+    }
+    // 按钮值发生改变时回调
+    rb1.addChooseCallMethods(function (value) {
+        if(value == 0){
+            GAME_VARS.isPatrol = true;
+        }else{
+            GAME_VARS.isPatrol = false;
+        }
+    });
     baseForm.addComponent(rimFrame);
     baseForm.addComponentInCenter(rimTitle, 2);
     baseForm.addComponentInCenter(lblTitle, 2);
@@ -167,50 +227,9 @@ function initUIForm(){
     baseForm.addComponentInCenter(rimDownInner, 2);
     baseForm.addComponentInCenter(lblOk, 5);
     baseForm.addComponentInCenter(lblCancel, 6);
-    // 选项 巡逻挂机
-    var rb1 = uiFrame.createUIRadioButton(35, 38 + 0 * 14, 0, 0, "允许穿墙", 0);
-    rb1.addItems("开");
-    rb1.addItems("关");
-    rb1.setChooseItem(0);
-    hangUI.options.push(rb1);
-    // 选项 指定野怪
-    var rb2 = uiFrame.createUIRadioButton(35, 38 + 1 * 14, 0, 0, "指定怪物", 0);
-    rb2.addItems("开");
-    rb2.addItems("关");
-    rb2.setChooseItem(1);
-    hangUI.options.push(rb2);
-    // 选项 自动吃药
-    var rb3 = uiFrame.createUIRadioButton(35, 38 + 2 * 14, 0, 0, "自动吃药", 0);
-    rb3.addItems("开");
-    rb3.addItems("关");
-    rb3.setChooseItem(0);
-    hangUI.options.push(rb3);
-    // 选项 自动修理
-    var rb4 = uiFrame.createUIRadioButton(35, 38 + 3 * 14, 0, 0, "自动修理", 0);
-    rb4.addItems("开");
-    rb4.addItems("关");
-    rb4.setChooseItem(1);
-    hangUI.options.push(rb4);
-    // 选项 自动清理
-    var rb5 = uiFrame.createUIRadioButton(35, 38 + 4 * 14, 0, 0, "自动清理", 0);
-    rb5.addItems("开");
-    rb5.addItems("关");
-    rb5.setChooseItem(1);
-    hangUI.options.push(rb5);
-    // 选项 自动清理
-    var rb6 = uiFrame.createUIRadioButton(35, 38 + 5 * 14, 0, 0, "允许穿墙", 0);
-    rb6.addItems("开");
-    rb6.addItems("关");
-    rb6.setChooseItem(0);
-    hangUI.options.push(rb6);
+    baseForm.addKeyCallMethods(hangHangKey);
     baseForm.addComponent(rb1);
-    baseForm.addComponent(rb2);
-    baseForm.addComponent(rb3);
-    baseForm.addComponent(rb4);
-    baseForm.addComponent(rb5);
-    baseForm.addComponent(rb6);
-    baseForm.addKeyCallMethods(hangKeyPress);
-    baseForm.setComponentFocus(rb1);
+    baseForm.setFocus(true);
     hangUI.baseForm = baseForm;
 }
 
@@ -240,11 +259,11 @@ function keyInHangMenuOk(){
             var hangMenu = uiFrame.getHangMenu();
             var index = hangMenu.getCurrentPointer();
             hangUI.index = index;
-            if(index == 1){
-                uiFrame.setNpcMenu(hangUI.npcMenu);
-            }else if(index == 3){
+            if(index == 0 || index == 3){
                 // 设置显示子内容
                 gameEnv.setRightMenuSubState(0);
+            }else if(index == 1){
+                uiFrame.setNpcMenu(hangUI.npcMenu);
             }else {
                 uiFrame.addGameForm("msg", "功能正在开发中，敬请期待！", "确定", null, SCREEN_W - 30, 110);
             }
@@ -254,7 +273,7 @@ function keyInHangMenuOk(){
     }
 }
 
-// 王辅按键分发
+// 王辅功能按键分发
 function keyHangUI(){
     var hangUI = guiZone.hangUI;
     var index = hangUI.index;
@@ -276,10 +295,46 @@ function drawHangUI(g){
     }
 }
 
-function hangKeyPress(){
-    var hangUI = guiZone.hangUI;
-    if(gameEnv.isKeyPress(SOFT_RIGHT)){
-        gameEnv.setGameState(0);
+// 挂机按键处理
+function hangHangKey(){
+    var baseForm = guiZone.hangUI.baseForm;
+    // 首先获取当前聚焦面板
+    if(baseForm.isFocusSelf()){
+        if(gameEnv.isKeyPress(SOFT_OK) || gameEnv.isKeyPress(SOFT_LEFT)){
+            // 弹出挂机选项
+            baseForm.addAboutForm("hangup", "确实要挂机吗？", 2, 140, 0);
+            var aboutForm = baseForm.getAboutForm();
+            // 增加弹框回调函数
+            if(aboutForm != null){
+                aboutForm.addKeyCallMethods(function(){
+                    if(gameEnv.isKeyPress(SOFT_OK) || gameEnv.isKeyPress(SOFT_LEFT)){
+                        // 设置开始挂机
+                        // 检测当前玩家是否是会员
+                        if(IS_MEMBER || TEMP_MEMBER > 0){
+                            // 如果设置了定点挂机，设置挂机点
+                            if(GAME_VARS.isPatrol){
+                                battle_pCol = player.col;
+                                battle_pRow = player.row;
+                                printMessage("[王辅]：挂机类型：定点挂机，当前定点坐标(" + battle_pCol + ", " + battle_pRow + ")。");
+                            }
+                            printMessage("[王辅]：开始执行挂机操作！");
+                            GAME_VARS.isHangUp = true;
+                        }else{
+                            GAME_VARS.isHangUp = false;
+                            printMessage("[王辅]：您不是王辅会员，请注册会员！");
+                        }
+                    }else if(gameEnv.isKeyPress(SOFT_RIGHT)){
+                        GAME_VARS.isHangUp = false;
+                        printMessage("[王辅]：当前挂机已取消！");
+                    }
+                    // 置空弹框
+                    guiZone.hangUI.baseForm.clearAboutForm();
+                    gameEnv.setGameState(0);
+                });
+            }
+        }else if(gameEnv.isKeyPress(SOFT_RIGHT)){
+            gameEnv.setGameState(0);
+        }
     }
 }
 

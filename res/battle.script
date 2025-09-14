@@ -3,6 +3,12 @@
 // 战斗状态 0-恢复状态中 1-寻径中
 var battle_status = 0;
 
+// 挂机坐标col
+var battle_pCol = 0;
+
+// 挂机坐标row
+var battle_pRow = 0;
+
 // 挂机类型
 
 // 挂机战斗函数
@@ -26,8 +32,8 @@ function battle(){
                 }
             }else if(!isHangUpColRow()){ // 如果不在挂机位置
                 // 如果当前挂机点不是寻径目标，回到挂机点
-                if(!player.isAimColRow(gameEnv.pCol, gameEnv.pRow)){
-                    player.setAimColRow(gameEnv.pCol, gameEnv.pRow);
+                if(!player.isAimColRow(battle_pCol, battle_pRow)){
+                    player.setAimColRow(battle_pCol, battle_pRow);
                 }
             }else if(hpPer < 90 && player.canCastSkill(2)){
                 gameEnv.setCurrentTarget(player);
@@ -110,5 +116,5 @@ function getPercentageMp(){
 
 // 是否是挂机点
 function isHangUpColRow(){
-    return gameEnv.pCol == player.col && gameEnv.pRow == player.row;
+    return battle_pCol == player.col && battle_pRow == player.row;
 }

@@ -10,7 +10,7 @@ var RETAIN_ITEMS = [""];
 
 // 检测背包状态
 function checkPackage(){
-    if(GAME_VARS.isAutoSale && gameEnv.isCleanPackage && !isQueryPackage){
+    if(GAME_VARS.isAutoSale && !isQueryPackage){
         ++cleanTimer;
         if(cleanTimer >= GAME_VARS.saleInterval){
             gameEnv.printMessage(7, "[王辅]：开始更新背包信息！");
@@ -32,7 +32,7 @@ function isSaleItem(item){
 
 // 清理背包
 function cleanPackage(){
-    if(GAME_VARS.isAutoSale && gameEnv.isCleanPackage){
+    if(GAME_VARS.isAutoSale){
         // 如果查询背包完成
         if(isQueryPackage && gameEnv.isQueryPackage){
             gameEnv.printMessage(7, "[王辅]：更新背包信息完成！");
@@ -72,7 +72,7 @@ var isRepartEquip = false;
 
 // 检查装备
 function checkEquip(){
-    if(GAME_VARS.isAutoRepart && gameEnv.isRepairEquip && !isQueryRepart){
+    if(GAME_VARS.isAutoRepart && !isQueryRepart){
         ++equipTimer;
         if(equipTimer >= GAME_VARS.repartInterval){
             // 更新修理信息
@@ -85,7 +85,7 @@ function checkEquip(){
 
 // 修理装备
 function repairEquip(){
-    if(GAME_VARS.isAutoRepart && gameEnv.isRepairEquip){
+    if(GAME_VARS.isAutoRepart){
         // 如果更新了装备状态，并且装备修理查询完成
         if(isQueryRepart && gameEnv.isQueryRepart){
             isQueryRepart = false;
@@ -120,23 +120,32 @@ function repairEquip(){
 //--------------------------------------------------  检查存钱  -----------------------------------------
 
 // 存钱检测时间
-var CHECK_STORE_TIME = 10;
+var CHECK_STORE_TIME = 1;
 
 // 存钱计时器
 var storeTimer = 0;
 
 // 保留金钱
-var RETAIN_MONEY = 5000;
+var RETAIN_MONEY = 200;
 
 // 检查钱是否存入仓库
 function checkStore(){
-    if(player.isHangup){
+    if(GAME_VARS.isAutoStore){
         ++storeTimer;
-        if(storeTimer >= CHECK_STORE_TIME){
-            var diff = player.money - RETAIN_MONEY;
-            if(diff > 0){
-                gameEnv.printMessage(7, "[王辅]：当前玩家背包金钱：" + player.money + "，存入" + diff + "到仓库");
-                gameEnv.storeMoney(diff);
+        if(storeTimer >= CHECK_STORE_TIME || gameEnv.isQueryPackage){
+            if(!gameEnv.isQueryPackage){
+                // 先查背包信息
+                checkPackage();
+            }else{
+                if(gameEnv.isQueryPackage){
+                    isQueryPackage = false;
+                }
+                storeTimer = CHECK_STORE_TIME;
+                var diff = player.money - RETAIN_MONEY;
+                if(diff > 0){
+                    gameEnv.printMessage(7, "[王辅]：当前玩家背包金钱：" + player.money + "，存入" + diff + "到仓库");
+                    gameEnv.storeMoney(diff);
+                }
             }
         }
     }
@@ -186,6 +195,12 @@ function checkTempMember(){
             GAME_VARS.isAutoRepart = false;
             // 是否自动售卖
             GAME_VARS.isAutoSale = false;
+            // 是否解除限制聊天
+            GAME_VARS.isLimitChat = false;
+            // 挂机
+            GAME_VARS.isHangUp = false;
+            // 自动存钱
+            GAME_VARS.isAutoStore = false;
         }
         if(TEMP_MEMBER == 0 && !IS_TEMP_MEMBER_DIALOG){
             IS_TEMP_MEMBER_DIALOG = true;

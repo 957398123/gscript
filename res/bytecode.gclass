@@ -182,7 +182,7 @@ putfieldExpr
 # 字节码 0x1B
 rela_op [b_and|b_or|b_xor|b_not|l_and|l_or|l_not]
 
-# 从函数调用返回
+# 从函数调用返回(函数返回时一定要往栈顶放一个值)
 # ...
 # ...
 # 字节码 0x1C

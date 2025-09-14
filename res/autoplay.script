@@ -109,3 +109,14 @@ function isAttackableUnitSelected(){
     var target = player.target;
     return target != null && target.type == 2;
 }
+
+// 挂机函数 每一帧会执行
+function hangUpFrame(){
+    if(GAME_VARS.isHangUp){
+        patrolBattle();
+    }
+}
+
+// 挂机函数 每一秒执行
+function hangUpSecond(){
+}

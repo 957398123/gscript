@@ -9,6 +9,12 @@ var MINUTE_COUNT = 0;
 // 分钟回调列表
 var MINUTE_CALL = [];
 
+// 秒计数器
+var SECOND_COUNT = 0;
+
+// 秒回调列表
+var SECOND_CALL = [];
+
 // 临时会员体验时间(单位分钟)
 var TEMP_MEMBER = 5;
 
@@ -30,6 +36,10 @@ function start(){
     // 注册修理装备
     regMinuteCall(checkEquip);
     regFrameCall(repairEquip);
+    // 注册挂机模块
+    regFrameCall(hangUpFrame);
+    regSecondCall(hangUpSecond);
+
     // 初始化王辅模块
     initHangModule();
 }
@@ -37,14 +47,14 @@ function start(){
 // 进入游戏界面时调用
 function entryGame(){
     // 输出hello
-    printMessage("[王辅]：欢迎使用王牌辅助！");
+    printMessage("[王辅]：欢迎使用王牌辅助" + GAME_VARS.version + "！");
     IS_MEMBER = isMemberAccount(player.account) || isMemberName(player.name);
     if(IS_MEMBER){
         printMessage("[王辅]：欢迎您，尊贵的会员！");
     }else if(TEMP_MEMBER > 0){
         printMessage("[王辅]：您不是王辅会员，会员体验还剩余" + TEMP_MEMBER + "分钟！");
     }else{
-        printMessage("[王辅]：您不是王辅会员，请注册会员！");
+        printMessage("[王辅]：您不是王辅会员，体验功能结束，请注册会员！");
     }
 }
 
@@ -52,11 +62,6 @@ function entryGame(){
 function beforePlayerTick(){
     // 定时模块
     updateCount();
-    // 检测是否挂机
-    if(player.isHangup){
-        // 巡逻挂机
-        patrolBattle();
-    }
 }
 
 // tick回调结束时回调
@@ -66,28 +71,23 @@ function endTick(){
     }
 }
 
-// 确定挂机时回调
-function onHangup(){
-    // 检测当前玩家是否是会员
-    if(IS_MEMBER || TEMP_MEMBER > 0){
-        printMessage("[王辅]：开始执行挂机操作！");
-        player.setHangup(true);
-    }else{
-        player.setHangup(false);
-        printMessage("[王辅]：您不是王辅会员，请注册会员！");
-    }
-}
-
 // 更新运行时间
 function updateCount(){
+    // 获取运行了多少秒
     var currTime = gameEnv.getRuntime();
     var count = currTime / 60;
-    // 回调每一帧的注册函数
+    // 回调帧的注册函数
     invokeMethods(FRAME_CALL);
-    // 一分钟计时器
+    // 回调秒计时器
+    if(currTime > SECOND_COUNT){
+        SECOND_COUNT = currTime;
+        // 回调注册的函数
+        invokeMethods(SECOND_CALL);
+    }
+    // 回调分钟计时器
     if(count > MINUTE_COUNT){
         MINUTE_COUNT = count;
-        // 回调所有注册的函数
+        // 回调注册的函数
         invokeMethods(MINUTE_CALL);
     }
 }
@@ -102,6 +102,11 @@ function invokeMethods(methods){
 // 注册分钟运行函数
 function regMinuteCall(call){
     MINUTE_CALL[MINUTE_CALL.length] = call;
+}
+
+// 注册秒运行函数
+function regSecondCall(call){
+    SECOND_CALL[SECOND_CALL.length] = call;
 }
 
 // 注册帧运行函数

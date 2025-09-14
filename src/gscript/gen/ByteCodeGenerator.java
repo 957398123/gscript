@@ -128,18 +128,24 @@ public class ByteCodeGenerator implements Visitor {
         List<Identifier> params = expr.params;
         // 语句列表
         List<Node> body = expr.body.stmt;
+        // 这里要对空函数做处理
         // 函数起始位置
         int start = size();
         // 这里先预填函数定义 fundef
         emit("");
-        int index = 0;
-        // 将实参加入到本地变量表
-        for (Identifier param : params) {
-            emit("fstore " + param.name + " " + index++);
-        }
-        // 解析函数体
-        for (Node node : body) {
-            node.accept(this);
+        if (body.size() == 0) {
+            emit("lda_null");
+            emit("return");
+        } else {
+            int index = 0;
+            // 将实参加入到本地变量表
+            for (Identifier param : params) {
+                emit("fstore " + param.name + " " + index++);
+            }
+            // 解析函数体
+            for (Node node : body) {
+                node.accept(this);
+            }
         }
         // 回填函数定义（需要减去fundef）
         emit(start, "fundef %d %s".formatted((size() - start - 1), funName));
@@ -589,7 +595,7 @@ public class ByteCodeGenerator implements Visitor {
         emit("jump %d".formatted((start - size())));
         // 这里替换块域为loop域
         emit(bstart, "pushenv loop");
-        emit(bend-1, "popenv loop");
+        emit(bend - 1, "popenv loop");
     }
 
     /**
@@ -659,7 +665,7 @@ public class ByteCodeGenerator implements Visitor {
         }
         // 这里替换块域为loop域
         emit(bstart, "pushenv loop");
-        emit(bend-1, "popenv loop");
+        emit(bend - 1, "popenv loop");
     }
 
     /**
@@ -746,7 +752,7 @@ public class ByteCodeGenerator implements Visitor {
         }
         // 这里替换块域为loop域
         emit(bstart, "pushenv loop");
-        emit(bend-1, "popenv loop");
+        emit(bend - 1, "popenv loop");
     }
 
     /**
