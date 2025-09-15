@@ -119,4 +119,19 @@ function hangUpFrame(){
 
 // 挂机函数 每一秒执行
 function hangUpSecond(){
+    // 如果是在战斗状态，每隔一段时间防毒
+    if(hook_hasCastMdg){
+        // 更新猛毒蛊计数
+        hook_MdgCount -= 1;
+        if(hook_MdgCount == 0){
+            hook_hasCastMdg = false;
+        }
+    }
+    // 更新天破龙卷计数
+    if(hook_hasCastTplj){
+        hook_TpljCount -= 1;
+        if(hook_TpljCount == 0){
+            hook_hasCastTplj = false;
+        }
+    }
 }

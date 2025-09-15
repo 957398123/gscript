@@ -9,24 +9,43 @@ var battle_pCol = 0;
 // 挂机坐标row
 var battle_pRow = 0;
 
+// 是否已经释放猛毒蛊
+var hook_hasCastMdg = false;
+
+// 猛毒蛊时间计数(单位秒)
+var hook_MdgCount = 0;
+
+// 是否已经释放天破龙卷
+var hook_hasCastTplj = false;
+
+// 天破龙卷时间计数(单位秒)
+var hook_TpljCount = 0;
+
+// 是否已经释放黄帝内径
+var hook_hasCastHdnj = false;
+
+// 黄帝内径时间计数(单位秒)
+var hook_HdnjCount = 0;
+
 // 挂机类型
 
 // 挂机战斗函数
 function battle(){
     // 获取玩家当前目标
-    var target = player.target;
     var hpPer = getPercentageHp();
     var mpPer = getPercentageMp();
     // 如果玩家没有死亡
     if(player.state != 5){
         if(battle_status == 0){  // 恢复中
-            if(isHangUpColRow() && ((hpPer > 70 && mpPer > 70) || player.isBeAttack)){
-                var target = gameEnv.getNearFightObj();
-                if(target != null){
+            hook_hasCastMdg = false;
+            hook_hasCastTplj = false;
+            if(player.isBeAttack || (isHangUpColRow() && ((hpPer > 70 && mpPer > 70)))){
+                var fightObj = gameEnv.getNearFightObj();
+                if(fightObj != null){
                     // 设置当前对象
-                    gameEnv.setCurrentTarget(target);
+                    gameEnv.setCurrentTarget(fightObj);
                     // 设置选择寻径目标
-                    player.setAimColRow(target.col, target.row);
+                    player.setAimColRow(fightObj.col, fightObj.row);
                     // 更新状态
                     battle_status = 1;
                 }
@@ -40,6 +59,7 @@ function battle(){
                 player.caskSkill(player, 2);
             }
         }else if(battle_status == 1){  // 寻径中
+            var target = player.target;
             // 目标存在，并且不是玩家
             if(target != null && target != player){
                 if(gameEnv.inDistance(player, target, 60)){
@@ -55,6 +75,7 @@ function battle(){
                 battle_status = 0;
             }
         }else if(battle_status == 2){  // 进入战斗
+            var target = player.target;
             if(target != null && target != player){
                 // 如果怪物血量大于0
                 if(target.curHp > 0){
@@ -64,7 +85,16 @@ function battle(){
                         if (hpPer < 40 && player.canCastSkill(2)) {
                             // 这里必须设置为当前选中对象
                             player.caskSkill(target, 2);
-                        } else if (player.canCastSkill(1)) {  // 释放飓风之牙
+                        }else if (!hook_hasCastMdg && player.canCastSkill(7)) {  // 释放猛毒蛊
+                            hook_hasCastMdg = true;
+                            hook_MdgCount = 15;
+                            player.caskSkill(target, 7);
+                            printMessage("[王辅]：释放猛毒蛊！");
+                        }else if (!hook_hasCastTplj && player.canCastSkill(9)) {  // 释放天破龙卷
+                            hook_hasCastTplj = true;
+                            hook_TpljCount = 2;
+                            player.caskSkill(target, 9);
+                        }else if (player.canCastSkill(1)) {  // 释放飓风之牙
                             player.caskSkill(target, 1);
                         } else { // 判断是否可以普通攻击
                             // 判断当前是否能攻击到
