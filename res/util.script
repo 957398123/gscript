@@ -187,24 +187,8 @@ function checkTempMember(){
         }
         // 会员到期
         if(TEMP_MEMBER == 0){
-            // 还原加速
-            GAME_VARS.moveSpeed = 1;
-            // 是否允许穿墙
-            GAME_VARS.isAllowWall = false;
-            // 是否自动修理
-            GAME_VARS.isAutoRepart = false;
-            // 是否自动售卖
-            GAME_VARS.isAutoSale = false;
-            // 是否解除限制聊天
-            GAME_VARS.isLimitChat = false;
-            // 还原挂机选项
-            setIsHangUp(false);
-            // 自动存钱
-            GAME_VARS.isAutoStore = false;
-            // 是否遇敌锁定
-            GAME_VARS.isLockEnemy = false;
-            // 是否移动施法
-            GAME_VARS.isMoveCast = false;
+            // 关闭会员功能
+            disableMemberConfig();
         }
         if(TEMP_MEMBER == 0 && !IS_TEMP_MEMBER_DIALOG){
             IS_TEMP_MEMBER_DIALOG = true;

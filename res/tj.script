@@ -48,10 +48,16 @@ function start(){
 function entryGame(){
     // 输出hello
     printMessage("[王辅]：欢迎使用王牌辅助" + GAME_VARS.version + "！");
-    IS_MEMBER = isMemberAccount(player.account) || isMemberName(player.name);
-    if(IS_MEMBER){
+    IS_SUPER_MEMBER = isSuperAccount(player.account) || isSuperName(player.name);
+    IS_MEMBER = IS_SUPER_MEMBER || isMemberAccount(player.account) || isMemberName(player.name);
+    if(IS_SUPER_MEMBER){
+        enableSuperMemberConfig();
+        printMessage("[王辅]：欢迎您，尊贵的超级会员！");
+    }else if(IS_MEMBER){
+        enableMemberConfig();
         printMessage("[王辅]：欢迎您，尊贵的会员！");
     }else if(TEMP_MEMBER > 0){
+        enableMemberConfig();
         printMessage("[王辅]：您不是王辅会员，会员体验还剩余" + TEMP_MEMBER + "分钟！");
     }else{
         printMessage("[王辅]：您不是王辅会员，体验功能结束，请注册会员！");

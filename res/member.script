@@ -1,13 +1,22 @@
 // 会员模块
 
 // 会员账号
-var MEMBERS_ACCOUNTS = ["957398123", "957398124", "qq1111"];
+var MEMBERS_ACCOUNTS = ["957398123", "957398124", "946932819", "hcn123456"];
+
+// 高级会员账号
+var SUPER_ACCOUNTS = ["957398123"];
 
 // 会员名称
-var MEMBERS_NAMES = ["装备回收官", "无敌刺"];
+var MEMBERS_NAMES = ["米雪"];
+
+// 高级会员名称
+var SUPER_NAMES= [];
 
 // 是否是会员
 var IS_MEMBER = false;
+
+// 是否是超级会员
+var IS_SUPER_MEMBER = false;
 
 // 返回是否是会员账号
 function isMemberAccount(account){
@@ -27,4 +36,57 @@ function isMemberName(name){
         }
     }
     return false;
+}
+
+// 返回是否是超级会员账号
+function isSuperAccount(account){
+    for(var i = 0; i < SUPER_ACCOUNTS.length; ++i){
+        if(account == SUPER_ACCOUNTS[i]){
+            return true;
+        }
+    }
+    return false;
+}
+
+// 返回是否超级会员名称
+function isSuperName(name){
+    for(var i = 0; i < SUPER_NAMES.length; ++i){
+        if(name == SUPER_NAMES[i]){
+            return true;
+        }
+    }
+    return false;
+}
+
+// 初始化会员设置
+function enableMemberConfig(){
+    setBoolOptionGameVars("isAllowWall", true);
+    setBoolOptionGameVars("isAutoRepart", true);
+    setBoolOptionGameVars("isAutoSale", false);
+    setBoolOptionGameVars("isLimitChat", true);
+    setBoolOptionGameVars("isAutoStore", true);
+    setBoolOptionGameVars("isLockEnemy", false);
+    setBoolOptionGameVars("isMoveCast", false);
+}
+
+// 初始化超级会员设置
+function enableSuperMemberConfig(){
+    enableMemberConfig();
+    setBoolOptionGameVars("isLockEnemy", true);
+    setBoolOptionGameVars("isMoveCast", true);
+}
+
+// 关闭会员设置
+function disableMemberConfig(){
+    setBoolOptionGameVars("isAllowWall", false);
+    setBoolOptionGameVars("isAutoRepart", false);
+    setBoolOptionGameVars("isAutoSale", false);
+    setBoolOptionGameVars("isLimitChat", false);
+    setBoolOptionGameVars("isAutoStore", false);
+    setBoolOptionGameVars("isLockEnemy", false);
+    setBoolOptionGameVars("isMoveCast", false);
+    // 还原加速
+    setNumberOptionGameVars("moveSpeed", 1);
+    // 关闭挂机
+    setIsHangUp(false);
 }

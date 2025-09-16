@@ -13,24 +13,28 @@ function initHangModule(){
     initUIForm();
     // 初始化最强NPC
     initNpcForm();
+    // 初始化高级界面
+    initHighForm();
 }
 
 // 初始化列表
 function initHangData(){
-    var hangUI = {"index": 0};
+    // keyMap变量对应的按键
+    var hangUI = {"index": 0, "keyMap": {}};
     guiZone.hangUI = hangUI;
 }
 
 // 初始化子菜单
 function initHangSubMenu(){
     var hangUI = guiZone.hangUI;
-    var subMenu = ["1 挂机", "2 功能", "3 寻路", "4 设置"];
+    var subMenu = ["1 挂机", "2 功能", "3 寻路", "4 设置", "5 高级"];
     hangUI.hangMenu = uiFrame.createUIMenu(145, 23, 60, 0, null, subMenu);
 }
 
 // 初始化设置UI
 function initUIConfig(){
     var hangUI = guiZone.hangUI;
+    var keyMap = hangUI.keyMap;
     var configForm = uiFrame.createUIForm(0, 0, SCREEN_W, SCREEN_H, "");
     configForm.setStyle(0);
     var rimFrame = uiFrame.createUIRim(0, 0, SCREEN_W - 1, SCREEN_H - 1, 4);
@@ -131,7 +135,7 @@ function initUIConfig(){
         // 改变移动速度
         GAME_VARS.moveSpeed = num;
     });
-    // 选项 自动售卖
+    // 选项 解除聊天限制
     var rb7 = uiFrame.createUIRadioButton(35, 38 + 6 * 14, 0, 0, "解除聊天限制", 0);
     rb7.addItems("开");
     rb7.addItems("关");
@@ -167,42 +171,14 @@ function initUIConfig(){
             GAME_VARS.isAutoStore = false;
         }
     });
-    // 选项 遇敌锁定
-    var rb9 = uiFrame.createUIRadioButton(35, 38 + 8 * 14, 0, 0, "远距锁敌", 0);
-    rb9.addItems("开");
-    rb9.addItems("关");
-    // 获取选项
-    if(GAME_VARS.isLockEnemy){
-        rb9.setChooseItem(0);
-    }else{
-        rb9.setChooseItem(1);
-    }
-    // 按钮值发生改变时回调
-    rb9.addChooseCallMethods(function (value) {
-        if(value == 0){
-            GAME_VARS.isLockEnemy = true;
-        }else{
-            GAME_VARS.isLockEnemy = false;
-        }
-    });
-    // 选项 移动施法
-    var rb10 = uiFrame.createUIRadioButton(35, 38 + 9 * 14, 0, 0, "移动施法", 0);
-    rb10.addItems("开");
-    rb10.addItems("关");
-    // 获取选项
-    if(GAME_VARS.isMoveCast){
-        rb10.setChooseItem(0);
-    }else{
-        rb10.setChooseItem(1);
-    }
-    // 按钮值发生改变时回调
-    rb10.addChooseCallMethods(function (value) {
-        if(value == 0){
-            GAME_VARS.isMoveCast = true;
-        }else{
-            GAME_VARS.isMoveCast = false;
-        }
-    });
+    // 持有引用
+    keyMap.isAllowWall = rb1;
+    keyMap.isAutoRepart = rb2;
+    keyMap.isAutoSale = rb3;
+    keyMap.isLimitChat = rb7;
+    keyMap.isAutoStore = rb8;
+    keyMap.moveSpeed = rb6;
+    // 设置上下选项
     rb2.setAroundComponent(rb1, 1);
     rb2.setAroundComponent(rb3, 2);
     rb4.setAroundComponent(rb3, 1);
@@ -214,10 +190,6 @@ function initUIConfig(){
     rb7.setAroundComponent(rb6, 1);
     rb7.setAroundComponent(rb8, 2);
     rb8.setAroundComponent(rb7, 1);
-    rb8.setAroundComponent(rb9, 2);
-    rb9.setAroundComponent(rb8, 1);
-    rb9.setAroundComponent(rb10, 2);
-    rb10.setAroundComponent(rb9, 1);
     configForm.addComponent(rb1);
     configForm.addComponent(rb2);
     configForm.addComponent(rb3);
@@ -226,8 +198,6 @@ function initUIConfig(){
     configForm.addComponent(rb6);
     configForm.addComponent(rb7);
     configForm.addComponent(rb8);
-    configForm.addComponent(rb9);
-    configForm.addComponent(rb10);
     configForm.addKeyCallMethods(configKeyPress);
     configForm.setFocus(true);
     hangUI.configForm = configForm;
@@ -297,7 +267,7 @@ function keyInHangMenuOk(){
         uiFrame.setHangMenu(hangUI.hangMenu);
     }else{
         // 获取是否会员
-        if(IS_MEMBER || TEMP_MEMBER > 0){
+        if(IS_SUPER_MEMBER || IS_MEMBER || TEMP_MEMBER > 0){
             // 获取当前索引
             var hangMenu = uiFrame.getHangMenu();
             var index = hangMenu.getCurrentPointer();
@@ -307,6 +277,13 @@ function keyInHangMenuOk(){
                 gameEnv.setRightMenuSubState(0);
             }else if(index == 1){
                 uiFrame.setNpcMenu(hangUI.npcMenu);
+            }else if(index == 4){
+                if(IS_SUPER_MEMBER){
+                    // 设置显示子内容
+                    gameEnv.setRightMenuSubState(0);
+                }else{
+                    uiFrame.addGameForm("msg", "高级功能仅对超级会员开放！", "确定", null, SCREEN_W - 30, 110);
+                }
             }else {
                 uiFrame.addGameForm("msg", "功能正在开发中，敬请期待！", "确定", null, SCREEN_W - 30, 110);
             }
@@ -314,6 +291,75 @@ function keyInHangMenuOk(){
             uiFrame.addGameForm("msg", "您不是王辅会员，请注册会员！", "确定", null, SCREEN_W - 30, 110);
         }
     }
+}
+
+// 初始化高级设置UI
+function initHighForm(){
+    var hangUI = guiZone.hangUI;
+    var keyMap = hangUI.keyMap;
+    var highForm = uiFrame.createUIForm(0, 0, SCREEN_W, SCREEN_H, "");
+    highForm.setStyle(0);
+    var rimFrame = uiFrame.createUIRim(0, 0, SCREEN_W - 1, SCREEN_H - 1, 4);
+    var rimTitle = uiFrame.createUIRim(0, 10, 160, 17, 7);
+    var lblTitle = uiFrame.createUILabel(0, rimTitle.positionY + 3, 0, 0, "高级", 15718815, 1, 0);
+    var rimDown = uiFrame.createUIRim(0, 27, 160, 160, 0);
+    var rimDownInner = uiFrame.createUIRim(0, 32, 150, 150, 0);
+    var lblOk = uiFrame.createUILabel(0, 0, 0, 0, "确定", 15718815, 1, 0);
+    var lblCancel = uiFrame.createUILabel(0, 0, 0, 0, "返回", 15718815, 1, 0);
+    highForm.addComponent(rimFrame);
+    highForm.addComponentInCenter(rimTitle, 2);
+    highForm.addComponentInCenter(lblTitle, 2);
+    highForm.addComponentInCenter(rimDown, 2);
+    highForm.addComponentInCenter(rimDownInner, 2);
+    highForm.addComponentInCenter(lblOk, 5);
+    highForm.addComponentInCenter(lblCancel, 6);
+    // 选项 遇敌锁定
+    var rb1 = uiFrame.createUIRadioButton(35, 38 + 0 * 14, 0, 0, "远距锁敌", 0);
+    rb1.addItems("开");
+    rb1.addItems("关");
+    // 获取选项
+    if(GAME_VARS.isLockEnemy){
+        rb1.setChooseItem(0);
+    }else{
+        rb1.setChooseItem(1);
+    }
+    // 按钮值发生改变时回调
+    rb1.addChooseCallMethods(function (value) {
+        if(value == 0){
+            GAME_VARS.isLockEnemy = true;
+        }else{
+            GAME_VARS.isLockEnemy = false;
+        }
+    });
+    // 选项 移动施法
+    var rb2 = uiFrame.createUIRadioButton(35, 38 + 1 * 14, 0, 0, "移动施法", 0);
+    rb2.addItems("开");
+    rb2.addItems("关");
+    // 获取选项
+    if(GAME_VARS.isMoveCast){
+        rb2.setChooseItem(0);
+    }else{
+        rb2.setChooseItem(1);
+    }
+    // 按钮值发生改变时回调
+    rb2.addChooseCallMethods(function (value) {
+        if(value == 0){
+            GAME_VARS.isMoveCast = true;
+        }else{
+            GAME_VARS.isMoveCast = false;
+        }
+    });
+    // 持有引用
+    keyMap.isLockEnemy = rb1;
+    keyMap.isMoveCast = rb2;
+    rb1.setAroundComponent(rb2, 2);
+    rb2.setAroundComponent(rb1, 1);
+    highForm.addComponent(rb1);
+    highForm.addComponent(rb2);
+    highForm.addKeyCallMethods(configKeyPress);
+    highForm.setFocus(true);
+    // 高级功能
+    hangUI.highForm = highForm;
 }
 
 // 王辅功能按键分发
@@ -324,6 +370,8 @@ function keyHangUI(){
         hangUI.baseForm.handPressKey();
     }else if(index == 3){
         hangUI.configForm.handPressKey();
+    }else if(index == 4){
+        hangUI.highForm.handPressKey();
     }
 }
 
@@ -335,6 +383,8 @@ function drawHangUI(g){
         hangUI.baseForm.draw(g);
     }else if(index == 3){
         hangUI.configForm.draw(g);
+    } else if(index == 4){
+        hangUI.highForm.draw(g);
     }
 }
 

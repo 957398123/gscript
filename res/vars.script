@@ -4,12 +4,10 @@
 var GAME_VARS = {};
 
 // 王辅版本
-GAME_VARS.version = "V2.2";
+GAME_VARS.version = "V2.3";
 
 // 游戏公告
-GAME_VARS.gameNotice = "王辅版本V2.1，新增解除聊天限制功能！";
-
-GAME_VARS.gameNotice += "王辅版本" + GAME_VARS.version + "，新增医生挂机功能！";
+GAME_VARS.gameNotice = "王辅版本" + GAME_VARS.version + "，修复了一些问题，即将增加全职业挂机功能！";
 
 // 是否挂机
 GAME_VARS.isHangUp = false;
@@ -18,10 +16,10 @@ GAME_VARS.isHangUp = false;
 GAME_VARS.isPatrol = true;
 
 // 是否允许穿墙
-GAME_VARS.isAllowWall = true;
+GAME_VARS.isAllowWall = false;
 
 // 是否自动修理
-GAME_VARS.isAutoRepart = true;
+GAME_VARS.isAutoRepart = false;
 
 // 修理间隔时间
 GAME_VARS.repartInterval = 5;
@@ -36,13 +34,64 @@ GAME_VARS.saleInterval = 5;
 GAME_VARS.moveSpeed = 1;
 
 // 解除聊天限制
-GAME_VARS.isLimitChat = true;
+GAME_VARS.isLimitChat = false;
 
 // 是否自动存钱
-GAME_VARS.isAutoStore = true;
+GAME_VARS.isAutoStore = false;
 
 // 是否远距锁敌
-GAME_VARS.isLockEnemy = true;
+GAME_VARS.isLockEnemy = false;
 
 // 是否移动施法
-GAME_VARS.isMoveCast = true;
+GAME_VARS.isMoveCast = false;
+
+// 星号键类型 0-快速聊天 1-锁定怪物 2-锁定敌对玩家 3-锁定怪物+敌对玩家 4-仅友方
+GAME_VARS.lockType = 0;
+
+// 设置单选按钮变量
+function setBoolOptionGameVars(name, value){
+    var keyMap = guiZone.hangUI.keyMap;
+    var rb = null;
+    if(name == "isAllowWall"){
+        GAME_VARS.isAllowWall = value;
+        rb = keyMap.isAllowWall;
+    }else if(name == "isAutoRepart"){
+        GAME_VARS.isAutoRepart = value;
+        rb = keyMap.isAutoRepart;
+    }else if(name == "isAutoSale"){
+        GAME_VARS.isAutoSale = value;
+        rb = keyMap.isAutoSale;
+    }else if(name == "isLimitChat"){
+        GAME_VARS.isLimitChat = value;
+        rb = keyMap.isLimitChat;
+    }else if(name == "isAutoStore"){
+        GAME_VARS.isAutoStore = value;
+        rb = keyMap.isAutoStore;
+    }else if(name == "isLockEnemy"){
+        GAME_VARS.isLockEnemy = value;
+        rb = keyMap.isLockEnemy;
+    }else if(name == "isMoveCast"){
+        GAME_VARS.isMoveCast = value;
+        rb = keyMap.isMoveCast;
+    }
+    if(rb != null){
+        if(value){
+            rb.setChooseItem(0);
+        }else{
+            rb.setChooseItem(1);
+        }
+    }
+}
+
+// 设置数值变量
+function setNumberOptionGameVars(name, value){
+    var keyMap = guiZone.hangUI.keyMap;
+    var rb = null;
+    if(name == "moveSpeed"){
+        GAME_VARS.moveSpeed = value;
+        rb = keyMap.moveSpeed;
+    }
+    if(rb != null){
+        rb.setNumber(value);
+    }
+}
