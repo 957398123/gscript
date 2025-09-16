@@ -197,10 +197,14 @@ function checkTempMember(){
             GAME_VARS.isAutoSale = false;
             // 是否解除限制聊天
             GAME_VARS.isLimitChat = false;
-            // 挂机
-            GAME_VARS.isHangUp = false;
+            // 还原挂机选项
+            setIsHangUp(false);
             // 自动存钱
             GAME_VARS.isAutoStore = false;
+            // 是否遇敌锁定
+            GAME_VARS.isLockEnemy = false;
+            // 是否移动施法
+            GAME_VARS.isMoveCast = false;
         }
         if(TEMP_MEMBER == 0 && !IS_TEMP_MEMBER_DIALOG){
             IS_TEMP_MEMBER_DIALOG = true;

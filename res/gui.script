@@ -167,6 +167,42 @@ function initUIConfig(){
             GAME_VARS.isAutoStore = false;
         }
     });
+    // 选项 遇敌锁定
+    var rb9 = uiFrame.createUIRadioButton(35, 38 + 8 * 14, 0, 0, "远距锁敌", 0);
+    rb9.addItems("开");
+    rb9.addItems("关");
+    // 获取选项
+    if(GAME_VARS.isLockEnemy){
+        rb9.setChooseItem(0);
+    }else{
+        rb9.setChooseItem(1);
+    }
+    // 按钮值发生改变时回调
+    rb9.addChooseCallMethods(function (value) {
+        if(value == 0){
+            GAME_VARS.isLockEnemy = true;
+        }else{
+            GAME_VARS.isLockEnemy = false;
+        }
+    });
+    // 选项 移动施法
+    var rb10 = uiFrame.createUIRadioButton(35, 38 + 9 * 14, 0, 0, "移动施法", 0);
+    rb10.addItems("开");
+    rb10.addItems("关");
+    // 获取选项
+    if(GAME_VARS.isMoveCast){
+        rb10.setChooseItem(0);
+    }else{
+        rb10.setChooseItem(1);
+    }
+    // 按钮值发生改变时回调
+    rb10.addChooseCallMethods(function (value) {
+        if(value == 0){
+            GAME_VARS.isMoveCast = true;
+        }else{
+            GAME_VARS.isMoveCast = false;
+        }
+    });
     rb2.setAroundComponent(rb1, 1);
     rb2.setAroundComponent(rb3, 2);
     rb4.setAroundComponent(rb3, 1);
@@ -177,6 +213,11 @@ function initUIConfig(){
     rb6.setAroundComponent(rb7, 2);
     rb7.setAroundComponent(rb6, 1);
     rb7.setAroundComponent(rb8, 2);
+    rb8.setAroundComponent(rb7, 1);
+    rb8.setAroundComponent(rb9, 2);
+    rb9.setAroundComponent(rb8, 1);
+    rb9.setAroundComponent(rb10, 2);
+    rb10.setAroundComponent(rb9, 1);
     configForm.addComponent(rb1);
     configForm.addComponent(rb2);
     configForm.addComponent(rb3);
@@ -185,6 +226,8 @@ function initUIConfig(){
     configForm.addComponent(rb6);
     configForm.addComponent(rb7);
     configForm.addComponent(rb8);
+    configForm.addComponent(rb9);
+    configForm.addComponent(rb10);
     configForm.addKeyCallMethods(configKeyPress);
     configForm.setFocus(true);
     hangUI.configForm = configForm;
@@ -318,13 +361,13 @@ function hangHangKey(){
                                 printMessage("[王辅]：挂机类型：定点挂机，当前定点坐标(" + battle_pCol + ", " + battle_pRow + ")。");
                             }
                             printMessage("[王辅]：开始执行挂机操作！");
-                            GAME_VARS.isHangUp = true;
+                            setIsHangUp(true);
                         }else{
-                            GAME_VARS.isHangUp = false;
+                            setIsHangUp(false);
                             printMessage("[王辅]：您不是王辅会员，请注册会员！");
                         }
                     }else if(gameEnv.isKeyPress(SOFT_RIGHT)){
-                        GAME_VARS.isHangUp = false;
+                        setIsHangUp(false);
                         printMessage("[王辅]：当前挂机已取消！");
                     }
                     // 置空弹框

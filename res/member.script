@@ -1,7 +1,7 @@
 // 会员模块
 
 // 会员账号
-var MEMBERS_ACCOUNTS = ["957398123", "957398124"];
+var MEMBERS_ACCOUNTS = ["957398123", "957398124", "qq1111"];
 
 // 会员名称
 var MEMBERS_NAMES = ["装备回收官", "无敌刺"];

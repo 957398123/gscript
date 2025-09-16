@@ -18,7 +18,7 @@ var SECOND_CALL = [];
 // 临时会员体验时间(单位分钟)
 var TEMP_MEMBER = 5;
 
-// 游戏初始化时调用
+// 游戏初始化时调用(只会调用一次)
 function start(){
     // 更新版本号
     gameEnv.setVersion(100728832);
@@ -56,6 +56,8 @@ function entryGame(){
     }else{
         printMessage("[王辅]：您不是王辅会员，体验功能结束，请注册会员！");
     }
+    // 结束挂机
+    setIsHangUp(false);
 }
 
 // 玩家tick之前

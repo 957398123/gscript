@@ -40,3 +40,9 @@ GAME_VARS.isLimitChat = true;
 
 // 是否自动存钱
 GAME_VARS.isAutoStore = true;
+
+// 是否远距锁敌
+GAME_VARS.isLockEnemy = true;
+
+// 是否移动施法
+GAME_VARS.isMoveCast = true;

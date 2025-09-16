@@ -119,19 +119,43 @@ function hangUpFrame(){
 
 // 挂机函数 每一秒执行
 function hangUpSecond(){
-    // 如果是在战斗状态，每隔一段时间防毒
-    if(hook_hasCastMdg){
-        // 更新猛毒蛊计数
-        hook_MdgCount -= 1;
-        if(hook_MdgCount == 0){
-            hook_hasCastMdg = false;
+    // 如果是在战斗状态，每隔一段时间放毒
+    if(GAME_VARS.isHangUp){
+        if(player.profession == 3){  // 如果当前职业是医生
+            if(hook_hasCastMdg){
+                // 更新猛毒蛊计数
+                hook_MdgCount -= 1;
+                if(hook_MdgCount == 0){
+                    hook_hasCastMdg = false;
+                }
+            }
+            // 更新天破龙卷计数
+            if(hook_hasCastTplj){
+                hook_TpljCount -= 1;
+                if(hook_TpljCount == 0){
+                    hook_hasCastTplj = false;
+                }
+            }
         }
     }
-    // 更新天破龙卷计数
-    if(hook_hasCastTplj){
-        hook_TpljCount -= 1;
-        if(hook_TpljCount == 0){
-            hook_hasCastTplj = false;
-        }
+}
+
+// 重置autoplay
+function restAutoPlay(){
+    hook_status = 0;
+    hook_pos = null;
+    hook_offset = 0;
+    step = 1;
+    hook_pos = null;
+}
+
+// 设置是否挂机
+function setIsHangUp(value){
+    GAME_VARS.isHangUp = value;
+    if(!value){
+        // 重置autoplay
+        restAutoPlay();
+        // 重置战斗模块
+        restBattle();
     }
 }

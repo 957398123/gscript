@@ -28,9 +28,28 @@ var hook_hasCastHdnj = false;
 var hook_HdnjCount = 0;
 
 // 挂机类型
-
-// 挂机战斗函数
 function battle(){
+    if(player.profession == 1){  //  剑客
+        battleSwordMan();
+    }else if(player.profession == 2){  // 道士
+        battleTaoist();
+    }else if(player.profession == 3){  // 医生
+        battleApothecary();
+    }else if(player.profession == 4){  // 刺客
+        battleAssassin();
+    }
+}
+
+//-------------------------------------------  剑客战斗模块  -------------------------------------------------
+function battleSwordMan(){
+}
+
+//-------------------------------------------  道士战斗模块  -------------------------------------------------
+function battleTaoist(){
+}
+
+//-------------------------------------------  医生战斗模块  -------------------------------------------------
+function battleApothecary(){
     // 获取玩家当前目标
     var hpPer = getPercentageHp();
     var mpPer = getPercentageMp();
@@ -126,6 +145,10 @@ function battle(){
     }
 }
 
+//-------------------------------------------  刺客战斗模块  -------------------------------------------------
+function battleAssassin(){
+}
+
 // 获取玩家血量百分比
 function getPercentageHp(){
     var r = 0;
@@ -147,4 +170,18 @@ function getPercentageMp(){
 // 是否是挂机点
 function isHangUpColRow(){
     return battle_pCol == player.col && battle_pRow == player.row;
+}
+
+// 重置战斗模块
+function restBattle(){
+    battle_status = 0;
+    battle_pCol = 0;
+    battle_pRow = 0;
+    hook_hasCastMdg = false;
+    hook_MdgCount = 0;
+    hook_hasCastTplj = false;
+    hook_TpljCount = 0;
+    hook_hasCastHdnj = false;
+    hook_HdnjCount = 0;
+    player.stopBattle();
 }
