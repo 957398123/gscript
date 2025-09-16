@@ -9,24 +9,6 @@ var battle_pCol = 0;
 // 挂机坐标row
 var battle_pRow = 0;
 
-// 是否已经释放猛毒蛊
-var hook_hasCastMdg = false;
-
-// 猛毒蛊时间计数(单位秒)
-var hook_MdgCount = 0;
-
-// 是否已经释放天破龙卷
-var hook_hasCastTplj = false;
-
-// 天破龙卷时间计数(单位秒)
-var hook_TpljCount = 0;
-
-// 是否已经释放黄帝内径
-var hook_hasCastHdnj = false;
-
-// 黄帝内径时间计数(单位秒)
-var hook_HdnjCount = 0;
-
 // 挂机类型
 function battle(){
     if(player.profession == 1){  //  剑客
@@ -45,10 +27,154 @@ function battleSwordMan(){
 }
 
 //-------------------------------------------  道士战斗模块  -------------------------------------------------
+
+// 是否已经释放天雷神盾
+var hook_hasCastTlsd = false;
+
+// 天雷神盾时间计数(单位秒)
+var hook_TlsdCount = 0;
+
+// 是否已经释放金刚咒
+var hook_hasCastJgz = false;
+
+// 金刚咒时间计数(单位秒)
+var hook_JgzCount = 0;
+
+// 是否已经释放玄灵结界
+var hook_hasCastXljj = false;
+
+// 玄灵结界时间计数(单位秒)
+var hook_XljjCount = 0;
+
+// 是否已经释放紫极狂雷
+var hook_hasCastZjkl = false;
+
+// 紫极狂雷时间计数(单位秒)
+var hook_ZjklCount = 0;
+
 function battleTaoist(){
+// 获取玩家当前目标
+    var hpPer = getPercentageHp();
+    var mpPer = getPercentageMp();
+    // 如果玩家没有死亡
+    if(player.state != 5){
+        if(battle_status == 0){  // 恢复中
+            hook_hasCastMdg = false;
+            hook_hasCastTplj = false;
+            if(player.isBeAttack || (isHangUpColRow() && ((hpPer > 70 && mpPer > 60)))){
+                var fightObj = gameEnv.getNearFightObj();
+                if(fightObj != null){
+                    // 设置当前对象
+                    gameEnv.setCurrentTarget(fightObj);
+                    // 设置选择寻径目标
+                    player.setAimColRow(fightObj.col, fightObj.row);
+                    // 更新状态
+                    battle_status = 1;
+                }
+            }else if(!isHangUpColRow()){ // 如果不在挂机位置
+                // 如果当前挂机点不是寻径目标，回到挂机点
+                if(!player.isAimColRow(battle_pCol, battle_pRow)){
+                    player.setAimColRow(battle_pCol, battle_pRow);
+                }
+            }else {
+                // 默认选中自身，等待吃药
+                gameEnv.setCurrentTarget(player);
+            }
+        }else if(battle_status == 1){  // 寻径中
+            var target = player.target;
+            // 目标存在，并且不是玩家
+            if(target != null && target != player){
+                if(gameEnv.inDistance(player, target, 60)){
+                    // 进入战斗
+                    player.resetFindPath();
+                    battle_status = 2;
+                }else {
+                    // 实时更新寻径位置
+                    player.setAimColRow(target.col, target.row);
+                }
+            }else {
+                // 如果丢失目标，回到挂机点
+                battle_status = 0;
+            }
+        }else if(battle_status == 2){  // 进入战斗
+            var target = player.target;
+            if(target != null && target != player){
+                // 如果怪物血量大于0
+                if(target.curHp > 0){
+                    // 进入施法范围
+                    if(gameEnv.inDistance(player, target, 80)){
+                        // 判断是否可以释放技能，这里注意吟唱技能时没有内置CD的
+                        if (!hook_hasCastTlsd && player.canCastSkill(4)) {  // 释放天雷神盾
+                            hook_hasCastMdg = true;
+                            hook_TlsdCount = 60;
+                            player.caskSkill(player, 4);
+                            printMessage("[王辅]：释放天雷神盾！");
+                        }else if (!hook_hasCastJgz && player.canCastSkill(12)) {  // 释放金刚咒
+                            hook_hasCastJgz = true;
+                            hook_JgzCount = 120;
+                            player.caskSkill(player, 12);
+                            printMessage("[王辅]：释放金刚咒！");
+                        }else if (!hook_hasCastXljj && player.canCastSkill(13)) {  // 释放玄灵结界
+                            hook_hasCastXljj = true;
+                            hook_XljjCount = 40;
+                            player.caskSkill(player, 13);
+                            printMessage("[王辅]：释放玄灵结界！");
+                        }else if (!hook_hasCastZjkl && player.canCastSkill(2)) {  // 释放紫极狂雷
+                            hook_hasCastZjkl = true;
+                            hook_ZjklCount = 2;
+                            player.caskSkill(target, 2);
+                        }else if (player.canCastSkill(1)) {  // 释放雷星击
+                            player.caskSkill(target, 1);
+                        } else { // 判断是否可以普通攻击
+                            // 判断当前是否能攻击到
+                            if (player.canNormalAttack(target)) {
+                                if (player.normalAttackCount > 30) {  // 如果普通攻击CD好了
+                                    // 瞬移进行普通攻击
+                                    player.setObjPosition(target.col, target.row);
+                                    player.normalAttck();
+                                }
+                            }
+                        }
+                    }else {
+                        battle_status = 1;
+                    }
+                }else{
+                    player.stopBattle();
+                    battle_status = 0;
+                }
+            }else {
+                // 没有怪物，回到原点
+                battle_status = 0;
+            }
+        }
+    }else {
+        // hook状态置位0
+        hook_status = 0;
+        battle_status = 0;
+        gameEnv.keyPressed(NUM_11);
+    }
 }
 
 //-------------------------------------------  医生战斗模块  -------------------------------------------------
+
+// 是否已经释放猛毒蛊
+var hook_hasCastMdg = false;
+
+// 猛毒蛊时间计数(单位秒)
+var hook_MdgCount = 0;
+
+// 是否已经释放天破龙卷
+var hook_hasCastTplj = false;
+
+// 天破龙卷时间计数(单位秒)
+var hook_TpljCount = 0;
+
+// 是否已经释放黄帝内径
+var hook_hasCastHdnj = false;
+
+// 黄帝内径时间计数(单位秒)
+var hook_HdnjCount = 0;
+
 function battleApothecary(){
     // 获取玩家当前目标
     var hpPer = getPercentageHp();

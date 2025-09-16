@@ -4,10 +4,10 @@
 var GAME_VARS = {};
 
 // 王辅版本
-GAME_VARS.version = "V2.3";
+GAME_VARS.version = "V2.4";
 
 // 游戏公告
-GAME_VARS.gameNotice = "王辅版本" + GAME_VARS.version + "，修复了一些问题，即将增加全职业挂机功能！";
+GAME_VARS.gameNotice = "王辅版本" + GAME_VARS.version + "，增加道士挂机功能！";
 
 // 是否挂机
 GAME_VARS.isHangUp = false;

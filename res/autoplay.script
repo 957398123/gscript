@@ -121,7 +121,33 @@ function hangUpFrame(){
 function hangUpSecond(){
     // 如果是在战斗状态，每隔一段时间放毒
     if(GAME_VARS.isHangUp){
-        if(player.profession == 3){  // 如果当前职业是医生
+        if(player.profession == 1){        // 如果当前职业是剑客
+        }else if(player.profession == 2){  // 如果当前职业是道士
+            if(hook_hasCastTlsd){
+                hook_TlsdCount -= 1;
+                if(hook_TlsdCount == 0){
+                    hook_hasCastTlsd = false;
+                }
+            }
+            if(hook_hasCastZjkl){
+                hook_ZjklCount -= 1;
+                if(hook_ZjklCount == 0){
+                    hook_hasCastZjkl = false;
+                }
+            }
+            if(hook_hasCastJgz){      //减去金刚咒CD
+                hook_JgzCount -= 1;
+                if(hook_JgzCount == 0){
+                    hook_hasCastJgz = false;
+                }
+            }
+            if(hook_hasCastXljj){      //减去玄灵结界CD
+                hook_XljjCount -= 1;
+                if(hook_XljjCount == 0){
+                    hook_hasCastXljj = false;
+                }
+            }
+        }else if(player.profession == 3){  // 如果当前职业是医生
             if(hook_hasCastMdg){
                 // 更新猛毒蛊计数
                 hook_MdgCount -= 1;
@@ -136,6 +162,7 @@ function hangUpSecond(){
                     hook_hasCastTplj = false;
                 }
             }
+        }else if(player.profession == 4){  // 当前职业是刺客
         }
     }
 }
