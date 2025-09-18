@@ -1,22 +1,17 @@
 //--------------------------------------------  清理模块  ----------------------------------------
+
 // 是否正在查询背包
 var isQueryPackage = false;
-
-// 清理计时器
-var cleanTimer = 0;
 
 // 背包保留物品
 var RETAIN_ITEMS = [""];
 
 // 检测背包状态
 function checkPackage(){
-    if(GAME_VARS.isAutoSale && !isQueryPackage){
-        ++cleanTimer;
-        if(cleanTimer >= GAME_VARS.saleInterval){
-            gameEnv.printMessage(7, "[王辅]：开始更新背包信息！");
-            gameEnv.queryPackage();
-            isQueryPackage = true;
-        }
+    isQueryPackage = true;
+    // 如果正在查询，不再次查
+    if(!gameEnv.isQueryPackage){
+        gameEnv.queryPackage();
     }
 }
 
@@ -34,7 +29,7 @@ function isSaleItem(item){
 function cleanPackage(){
     if(GAME_VARS.isAutoSale){
         // 如果查询背包完成
-        if(isQueryPackage && gameEnv.isQueryPackage){
+        if(isQueryPackage && !gameEnv.isQueryPackage){
             gameEnv.printMessage(7, "[王辅]：更新背包信息完成！");
             gameEnv.printMessage(7, "[王辅]：开始清空背包！");
             var saleTotal = 0;
@@ -53,7 +48,6 @@ function cleanPackage(){
                 }
             }
             isQueryPackage = false;
-            cleanTimer = 0;
             gameEnv.printMessage(7, "[王辅]：背包清理完成！合计卖出：" + saleTotal);
         }
     }
@@ -119,32 +113,26 @@ function repairEquip(){
 
 //--------------------------------------------------  检查存钱  -----------------------------------------
 
-// 存钱检测时间
-var CHECK_STORE_TIME = 1;
-
 // 存钱计时器
 var storeTimer = 0;
-
-// 保留金钱
-var RETAIN_MONEY = 200;
 
 // 检查钱是否存入仓库
 function checkStore(){
     if(GAME_VARS.isAutoStore){
         ++storeTimer;
-        if(storeTimer >= CHECK_STORE_TIME || gameEnv.isQueryPackage){
-            if(!gameEnv.isQueryPackage){
+        if(storeTimer >= GAME_VARS.autoStoreInterval){
+            if(!isQueryPackage){
                 // 先查背包信息
                 checkPackage();
-            }else{
-                if(gameEnv.isQueryPackage){
-                    isQueryPackage = false;
-                }
-                storeTimer = CHECK_STORE_TIME;
-                var diff = player.money - RETAIN_MONEY;
+            }else if(!gameEnv.isQueryPackage){
+                isQueryPackage = false;
+                storeTimer = 0;
+                var diff = player.money - GAME_VARS.RETAIN_MONEY;
                 if(diff > 0){
                     gameEnv.printMessage(7, "[王辅]：当前玩家背包金钱：" + player.money + "，存入" + diff + "到仓库");
                     gameEnv.storeMoney(diff);
+                }else{
+                    gameEnv.printMessage(7, "[王辅]：当前玩家背包金钱：" + player.money + "，低于存钱阀值" + GAME_VARS.RETAIN_MONEY + "!");
                 }
             }
         }

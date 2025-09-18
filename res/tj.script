@@ -30,9 +30,6 @@ function start(){
     regMinuteCall(checkTempMember);
     // 注册仓库存钱
     regMinuteCall(checkStore);
-    // 注册清理背包
-    regMinuteCall(checkPackage);
-    regFrameCall(cleanPackage);
     // 注册修理装备
     regMinuteCall(checkEquip);
     regFrameCall(repairEquip);

@@ -123,18 +123,6 @@ function hangUpSecond(){
     if(GAME_VARS.isHangUp){
         if(player.profession == 1){        // 如果当前职业是剑客
         }else if(player.profession == 2){  // 如果当前职业是道士
-            if(hook_hasCastTlsd){
-                hook_TlsdCount -= 1;
-                if(hook_TlsdCount == 0){
-                    hook_hasCastTlsd = false;
-                }
-            }
-            if(hook_hasCastZjkl){
-                hook_ZjklCount -= 1;
-                if(hook_ZjklCount == 0){
-                    hook_hasCastZjkl = false;
-                }
-            }
             if(hook_hasCastJgz){      //减去金刚咒CD
                 hook_JgzCount -= 1;
                 if(hook_JgzCount == 0){
@@ -153,13 +141,6 @@ function hangUpSecond(){
                 hook_MdgCount -= 1;
                 if(hook_MdgCount == 0){
                     hook_hasCastMdg = false;
-                }
-            }
-            // 更新天破龙卷计数
-            if(hook_hasCastTplj){
-                hook_TpljCount -= 1;
-                if(hook_TpljCount == 0){
-                    hook_hasCastTplj = false;
                 }
             }
         }else if(player.profession == 4){  // 当前职业是刺客

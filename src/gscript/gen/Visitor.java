@@ -2,6 +2,10 @@ package gscript.gen;
 
 import gscript.node.*;
 
+/**
+ * 遍历所有子节点
+ * 这里能正常生成字节码，肯定遍历了所有节点
+ */
 public interface Visitor {
 
     public void visit(VariableStatement node);

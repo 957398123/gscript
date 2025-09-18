@@ -28,12 +28,6 @@ function battleSwordMan(){
 
 //-------------------------------------------  道士战斗模块  -------------------------------------------------
 
-// 是否已经释放天雷神盾
-var hook_hasCastTlsd = false;
-
-// 天雷神盾时间计数(单位秒)
-var hook_TlsdCount = 0;
-
 // 是否已经释放金刚咒
 var hook_hasCastJgz = false;
 
@@ -46,11 +40,13 @@ var hook_hasCastXljj = false;
 // 玄灵结界时间计数(单位秒)
 var hook_XljjCount = 0;
 
-// 是否已经释放紫极狂雷
-var hook_hasCastZjkl = false;
-
-// 紫极狂雷时间计数(单位秒)
-var hook_ZjklCount = 0;
+// 置位道士所有计数
+function restTaoist(){
+    hook_hasCastJgz = false;
+    hook_JgzCount = 0;
+    hook_hasCastXljj = false;
+    hook_XljjCount = 0;
+}
 
 function battleTaoist(){
 // 获取玩家当前目标
@@ -59,8 +55,6 @@ function battleTaoist(){
     // 如果玩家没有死亡
     if(player.state != 5){
         if(battle_status == 0){  // 恢复中
-            hook_hasCastMdg = false;
-            hook_hasCastTplj = false;
             if(player.isBeAttack || (isHangUpColRow() && ((hpPer > 70 && mpPer > 60)))){
                 var fightObj = gameEnv.getNearFightObj();
                 if(fightObj != null){
@@ -98,34 +92,31 @@ function battleTaoist(){
             }
         }else if(battle_status == 2){  // 进入战斗
             var target = player.target;
-            if(target != null && target != player){
+            if(player.isSelectEnemy()){  // 如果选中可攻击单位
                 // 如果怪物血量大于0
                 if(target.curHp > 0){
                     // 进入施法范围
                     if(gameEnv.inDistance(player, target, 80)){
                         // 判断是否可以释放技能，这里注意吟唱技能时没有内置CD的
-                        if (!hook_hasCastTlsd && player.canCastSkill(4)) {  // 释放天雷神盾
-                            hook_hasCastMdg = true;
-                            hook_TlsdCount = 60;
+                        if (player.canCastSkill(4)) {  // 释放天雷神盾 内置cd42s
                             player.caskSkill(player, 4);
                             printMessage("[王辅]：释放天雷神盾！");
-                        }else if (!hook_hasCastJgz && player.canCastSkill(12)) {  // 释放金刚咒
+                        }else if (!hook_hasCastJgz && player.canCastSkill(12)) {  // 释放金刚咒 内置cd0秒，这里120秒放一次
                             hook_hasCastJgz = true;
                             hook_JgzCount = 120;
                             player.caskSkill(player, 12);
                             printMessage("[王辅]：释放金刚咒！");
-                        }else if (!hook_hasCastXljj && player.canCastSkill(13)) {  // 释放玄灵结界
+                        }else if (!hook_hasCastXljj && player.canCastSkill(13)) {  // 释放玄灵结界 内置cd4秒，这里40秒放一次
                             hook_hasCastXljj = true;
                             hook_XljjCount = 40;
                             player.caskSkill(player, 13);
                             printMessage("[王辅]：释放玄灵结界！");
-                        }else if (!hook_hasCastZjkl && player.canCastSkill(2)) {  // 释放紫极狂雷
-                            hook_hasCastZjkl = true;
-                            hook_ZjklCount = 2;
+                        }else if (player.canCastSkill(2)) {  // 释放紫极狂雷 内置cd10秒
                             player.caskSkill(target, 2);
-                        }else if (player.canCastSkill(1)) {  // 释放雷星击
+                            printMessage("[王辅]：释放紫极狂雷！");
+                        }else if (player.canCastSkill(1)) {  // 释放雷星击 内置cd0秒
                             player.caskSkill(target, 1);
-                        } else { // 判断是否可以普通攻击
+                        } else if(player.skillIndex == -1) { // 判断是否可以普通攻击
                             // 判断当前是否能攻击到
                             if (player.canNormalAttack(target)) {
                                 if (player.normalAttackCount > 30) {  // 如果普通攻击CD好了
@@ -139,12 +130,14 @@ function battleTaoist(){
                         battle_status = 1;
                     }
                 }else{
+                    // 打死当前怪物回原点
                     player.stopBattle();
                     battle_status = 0;
                 }
             }else {
-                // 没有怪物，回到原点
-                battle_status = 0;
+                // 没有怪物，选一个最近的怪物
+                var fightObj = gameEnv.getNearFightObj();
+                gameEnv.setCurrentTarget(fightObj);
             }
         }
     }else {
@@ -163,17 +156,19 @@ var hook_hasCastMdg = false;
 // 猛毒蛊时间计数(单位秒)
 var hook_MdgCount = 0;
 
-// 是否已经释放天破龙卷
-var hook_hasCastTplj = false;
-
-// 天破龙卷时间计数(单位秒)
-var hook_TpljCount = 0;
-
 // 是否已经释放黄帝内径
 var hook_hasCastHdnj = false;
 
 // 黄帝内径时间计数(单位秒)
 var hook_HdnjCount = 0;
+
+// 置位医生所有计数
+function restApothecary(){
+    hook_hasCastMdg = false;
+    hook_MdgCount = 0;
+    hook_hasCastHdnj = false;
+    hook_HdnjCount = 0;
+}
 
 function battleApothecary(){
     // 获取玩家当前目标
@@ -182,8 +177,6 @@ function battleApothecary(){
     // 如果玩家没有死亡
     if(player.state != 5){
         if(battle_status == 0){  // 恢复中
-            hook_hasCastMdg = false;
-            hook_hasCastTplj = false;
             if(player.isBeAttack || (isHangUpColRow() && ((hpPer > 70 && mpPer > 70)))){
                 var fightObj = gameEnv.getNearFightObj();
                 if(fightObj != null){
@@ -193,6 +186,8 @@ function battleApothecary(){
                     player.setAimColRow(fightObj.col, fightObj.row);
                     // 更新状态
                     battle_status = 1;
+                    // 复位计数
+                    restApothecary();
                 }
             }else if(!isHangUpColRow()){ // 如果不在挂机位置
                 // 如果当前挂机点不是寻径目标，回到挂机点
@@ -221,27 +216,29 @@ function battleApothecary(){
             }
         }else if(battle_status == 2){  // 进入战斗
             var target = player.target;
-            if(target != null && target != player){
+            if(player.isSelectEnemy()){  // 如果选中的是可攻击单位
                 // 如果怪物血量大于0
                 if(target.curHp > 0){
                     // 进入施法范围
                     if(gameEnv.inDistance(player, target, 80)){
-                        // 判断是否可以释放技能，这里注意吟唱技能时没有内置CD的
+                        // 判断是否可以释放技能，优先释放CD长的技能
                         if (hpPer < 40 && player.canCastSkill(2)) {
                             // 这里必须设置为当前选中对象
                             player.caskSkill(target, 2);
-                        }else if (!hook_hasCastMdg && player.canCastSkill(7)) {  // 释放猛毒蛊
+                        }else if (player.canCastSkill(8)) {  // 释放鬼灵地缚 内置cd是14秒
+                            player.caskSkill(target, 8);
+                            printMessage("[王辅]：释放鬼灵地缚！");
+                        }else if (!hook_hasCastMdg && player.canCastSkill(7)) {  // 释放猛毒蛊 内置cd是1秒，所以这里cd计时
                             hook_hasCastMdg = true;
                             hook_MdgCount = 15;
                             player.caskSkill(target, 7);
                             printMessage("[王辅]：释放猛毒蛊！");
-                        }else if (!hook_hasCastTplj && player.canCastSkill(9)) {  // 释放天破龙卷
-                            hook_hasCastTplj = true;
-                            hook_TpljCount = 2;
+                        }else if (player.canCastSkill(9)) {  // 释放天破龙卷  内置cd10s
                             player.caskSkill(target, 9);
-                        }else if (player.canCastSkill(1)) {  // 释放飓风之牙
+                            printMessage("[王辅]：释放天破龙卷！");
+                        }else if (player.canCastSkill(1)) {  // 释放飓风之牙 cd0
                             player.caskSkill(target, 1);
-                        } else { // 判断是否可以普通攻击
+                        } else if(player.skillIndex == -1) { // 如果没有释放技能中
                             // 判断当前是否能攻击到
                             if (player.canNormalAttack(target)) {
                                 if (player.normalAttackCount > 30) {  // 如果普通攻击CD好了
@@ -255,12 +252,14 @@ function battleApothecary(){
                         battle_status = 1;
                     }
                 }else{
+                    // 打死当前怪物回原点
                     player.stopBattle();
                     battle_status = 0;
                 }
             }else {
-                // 没有怪物，回到原点
-                battle_status = 0;
+                // 没有怪物，选一个最近的怪物
+                var fightObj = gameEnv.getNearFightObj();
+                gameEnv.setCurrentTarget(fightObj);
             }
         }
     }else {
@@ -303,11 +302,9 @@ function restBattle(){
     battle_status = 0;
     battle_pCol = 0;
     battle_pRow = 0;
-    hook_hasCastMdg = false;
-    hook_MdgCount = 0;
-    hook_hasCastTplj = false;
-    hook_TpljCount = 0;
-    hook_hasCastHdnj = false;
-    hook_HdnjCount = 0;
+    // 复位医生计数
+    restApothecary();
+    // 复位道士计数
+    restTaoist();
     player.stopBattle();
 }

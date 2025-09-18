@@ -171,6 +171,16 @@ function initUIConfig(){
             GAME_VARS.isAutoStore = false;
         }
     });
+    var rb9 = uiFrame.createUIRadioButton(35, 38 + 8 * 14, 0, 0, "存钱间隔", 1);
+    rb9.setMinNumber(1);
+    rb9.setNumber(GAME_VARS.autoStoreInterval);
+    // 最大调到60
+    rb9.setFreePoint(60 - GAME_VARS.autoStoreInterval);
+    // 注册值改变回调函数
+    rb9.addNumberCallMethods(function (num) {
+        // 改变移动速度
+        GAME_VARS.autoStoreInterval = num;
+    });
     // 持有引用
     keyMap.isAllowWall = rb1;
     keyMap.isAutoRepart = rb2;
@@ -178,6 +188,7 @@ function initUIConfig(){
     keyMap.isLimitChat = rb7;
     keyMap.isAutoStore = rb8;
     keyMap.moveSpeed = rb6;
+    keyMap.autoStoreInterval = rb9;
     // 设置上下选项
     rb2.setAroundComponent(rb1, 1);
     rb2.setAroundComponent(rb3, 2);
@@ -190,6 +201,8 @@ function initUIConfig(){
     rb7.setAroundComponent(rb6, 1);
     rb7.setAroundComponent(rb8, 2);
     rb8.setAroundComponent(rb7, 1);
+    rb8.setAroundComponent(rb9, 2);
+    rb9.setAroundComponent(rb8, 1);
     configForm.addComponent(rb1);
     configForm.addComponent(rb2);
     configForm.addComponent(rb3);
@@ -198,6 +211,7 @@ function initUIConfig(){
     configForm.addComponent(rb6);
     configForm.addComponent(rb7);
     configForm.addComponent(rb8);
+    configForm.addComponent(rb9);
     configForm.addKeyCallMethods(configKeyPress);
     configForm.setFocus(true);
     hangUI.configForm = configForm;

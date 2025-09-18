@@ -1,8 +1,21 @@
-println("zz");
-function a(b){
-    b(22);
+var GAME_VARS = {};
+
+GAME_VARS.isStop = 9;
+
+function ask(){
+    println("ask");
 }
 
-a(function (num) {
-    println("number=" + num);
-});
+var a = {};
+
+a.b = {};
+
+a.b.z = function(){
+    println("ask2");
+};
+
+a.b.c = a.b.z;
+
+a.b.c();
+
+println("GAME_VARS.isStop=" + GAME_VARS.isStop);

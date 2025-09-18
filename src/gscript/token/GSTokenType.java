@@ -116,6 +116,7 @@ public enum GSTokenType {
 
     RETURN("return"),
 
+    // 标识符 变量名或者函数名
     IDENTIFIER(""),
 
     INTEGER_DECIMAL(""),

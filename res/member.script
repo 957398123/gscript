@@ -1,16 +1,16 @@
 // 会员模块
 
 // 会员账号
-var MEMBERS_ACCOUNTS = ["957398123", "957398124", "957398125", "957398126", "946932819", "hcn123456"];
+var MEMBERS_ACCOUNTS = ["957398123", "957398124", "957398125", "957398126", "946932819", "hcn123456", "s9527", "158661436500", "tyghvb1", "qq1111"];
 
 // 高级会员账号
 var SUPER_ACCOUNTS = ["957398123"];
 
 // 会员名称
-var MEMBERS_NAMES = ["米雪"];
+var MEMBERS_NAMES = ["大鱼", "福满", "米雪", "太公6", "血色战甲", "医打怪兽", "殷饵"];
 
 // 高级会员名称
-var SUPER_NAMES= [];
+var SUPER_NAMES= ["医者1"];
 
 // 是否是会员
 var IS_MEMBER = false;
@@ -60,7 +60,7 @@ function isSuperName(name){
 
 // 初始化会员设置
 function enableMemberConfig(){
-    setBoolOptionGameVars("isAllowWall", true);
+    setBoolOptionGameVars("isAllowWall", false);
     setBoolOptionGameVars("isAutoRepart", true);
     setBoolOptionGameVars("isAutoSale", false);
     setBoolOptionGameVars("isLimitChat", true);

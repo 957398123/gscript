@@ -1,3 +1,4 @@
+import gscript.gen.ByteCodeMixuper;
 import gscript.gen.ByteCodeSerialize;
 import gscript.vm.Interpreter;
 import gscript.Lexer;
@@ -19,6 +20,7 @@ import java.util.List;
 public class Test {
     public static void main(String[] args) throws IOException {
         String[] list = new String[]{"vars", "gui", "cons", "tj", "util", "member", "battle", "autoplay"};
+        // String[] list = new String[]{"test"};
         Test.gen(list);
     }
 
@@ -55,7 +57,12 @@ public class Test {
                 Lexer lexer = new Lexer();
                 List<GSToken> tokens = lexer.tokenize(content);
                 Parser parser = new Parser(tokens);
+                // 构建节点树
                 Node node = parser.parseProgram();
+                // 代码混淆
+                // ByteCodeMixuper codeMixuper = new ByteCodeMixuper();
+                // node.accept(codeMixuper);
+                // 字节码生成
                 ByteCodeGenerator bytecodeGenerator = new ByteCodeGenerator();
                 node.accept(bytecodeGenerator);
                 Test.list2File(bytecodeGenerator.getByteCode(), classDir + File.separator + "gtxt" + File.separator + fileName + ".gtxt");

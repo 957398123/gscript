@@ -4,10 +4,10 @@
 var GAME_VARS = {};
 
 // 王辅版本
-GAME_VARS.version = "V2.4";
+GAME_VARS.version = "V2.8";
 
 // 游戏公告
-GAME_VARS.gameNotice = "王辅版本" + GAME_VARS.version + "，增加道士挂机功能！";
+GAME_VARS.gameNotice = "王辅版本" + GAME_VARS.version + "，增加挂机时显示技能CD，修复设置声音无效的问题，优化道士挂机。";
 
 // 是否挂机
 GAME_VARS.isHangUp = false;
@@ -38,6 +38,12 @@ GAME_VARS.isLimitChat = false;
 
 // 是否自动存钱
 GAME_VARS.isAutoStore = false;
+
+// 自动存钱间隔
+GAME_VARS.autoStoreInterval = 5;
+
+// 背包保留金钱
+GAME_VARS.RETAIN_MONEY = 1000;
 
 // 是否远距锁敌
 GAME_VARS.isLockEnemy = false;
@@ -90,6 +96,9 @@ function setNumberOptionGameVars(name, value){
     if(name == "moveSpeed"){
         GAME_VARS.moveSpeed = value;
         rb = keyMap.moveSpeed;
+    }else if(name == "autoStoreInterval"){
+        GAME_VARS.autoStoreInterval = value;
+        rb = keyMap.autoStoreInterval;
     }
     if(rb != null){
         rb.setNumber(value);
