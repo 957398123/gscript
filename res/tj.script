@@ -59,6 +59,8 @@ function entryGame(){
     }else{
         printMessage("[王辅]：您不是王辅会员，体验功能结束，请注册会员！");
     }
+    // 读取配置文件，覆盖默认设置
+    readGameVarRecord();
     // 结束挂机
     setIsHangUp(false);
 }

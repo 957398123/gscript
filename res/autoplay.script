@@ -25,7 +25,10 @@ var hook_maps = [
 // 巡逻挂机实现函数
 function patrolBattle(){
     // 首先检测当前状态
-    if(hook_status == 0){
+    if(GAME_VARS.isPatrol || hook_status == -1){
+        // 直接原地挂机
+        battle();
+    }else if(hook_status == 0){
         // 初始状态，检测当前地图是否有挂机坐标
         var index = getMapIndex(gameEnv.mapName);
         if(index != -1){
@@ -62,7 +65,7 @@ function patrolBattle(){
         }
     }else if(hook_status == 3){  // 挂机状态
         // 检测周围是否有可攻击敌人，没有前往下一个地点
-        if(!isAttackableUnitSelected() && gameEnv.getNearFightObj() == null){
+        if(!isAttackableUnitSelected() && gameEnv.getNearFightObj(GAME_VARS.attackScope) == null){
             hook_offset += step;
             // 边界处理
             if(hook_offset >= hook_pos.length){
@@ -80,9 +83,6 @@ function patrolBattle(){
             // 开始挂机战斗处理
             battle();
         }
-    }else if(hook_status == -1){
-        // 直接原地挂机
-        battle();
     }
 }
 

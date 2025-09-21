@@ -185,9 +185,11 @@ function initUIConfig(){
     keyMap.isAllowWall = rb1;
     keyMap.isAutoRepart = rb2;
     keyMap.isAutoSale = rb3;
+    keyMap.repartInterval = rb4;
+    keyMap.saleInterval = rb5;
+    keyMap.moveSpeed = rb6;
     keyMap.isLimitChat = rb7;
     keyMap.isAutoStore = rb8;
-    keyMap.moveSpeed = rb6;
     keyMap.autoStoreInterval = rb9;
     // 设置上下选项
     rb2.setAroundComponent(rb1, 1);
@@ -220,6 +222,7 @@ function initUIConfig(){
 // 初始化挂机UI
 function initUIForm(){
     var hangUI = guiZone.hangUI;
+    var keyMap = hangUI.keyMap;
     var baseForm = uiFrame.createUIForm(0, 0, SCREEN_W, SCREEN_H, "");
     baseForm.setStyle(0);
     var rimFrame = uiFrame.createUIRim(0, 0, SCREEN_W - 1, SCREEN_H - 1, 4);
@@ -247,6 +250,19 @@ function initUIForm(){
             GAME_VARS.isPatrol = false;
         }
     });
+    var rb2 = uiFrame.createUIRadioButton(35, 38 + 1 * 14, 0, 0, "攻击范围", 1);
+    rb2.setMinNumber(1);
+    rb2.setNumber(GAME_VARS.attackScope);
+    // 最大调到99
+    rb2.setFreePoint(99 - GAME_VARS.attackScope);
+    // 注册值改变回调函数
+    rb2.addNumberCallMethods(function (num) {
+        // 改变移动速度
+        GAME_VARS.attackScope = num;
+    });
+    // 持有引用
+    keyMap.isPatrol = rb1;
+    keyMap.attackScope = rb2;
     baseForm.addComponent(rimFrame);
     baseForm.addComponentInCenter(rimTitle, 2);
     baseForm.addComponentInCenter(lblTitle, 2);
@@ -255,7 +271,11 @@ function initUIForm(){
     baseForm.addComponentInCenter(lblOk, 5);
     baseForm.addComponentInCenter(lblCancel, 6);
     baseForm.addKeyCallMethods(hangHangKey);
+    // 设置上下选项
+    rb1.setAroundComponent(rb2, 2);
+    rb2.setAroundComponent(rb1, 1);
     baseForm.addComponent(rb1);
+    baseForm.addComponent(rb2);
     baseForm.setFocus(true);
     hangUI.baseForm = baseForm;
 }
@@ -270,6 +290,12 @@ function initNpcForm(){
     npcMenu.setMenuItems(tmpItem, subMenu, state);
     npcMenu.setRimStyle(0);
     npcMenu.setFlushType(1);
+    // 增加按钮回调函数
+    npcMenu.addCallMethods(function(index, type){
+        // 精炼前，请求能精炼的npc
+        if(type == 8){
+        }
+    });
     hangUI.npcMenu = npcMenu;
 }
 
@@ -415,7 +441,8 @@ function hangHangKey(){
             if(aboutForm != null){
                 aboutForm.addKeyCallMethods(function(){
                     if(gameEnv.isKeyPress(SOFT_OK) || gameEnv.isKeyPress(SOFT_LEFT)){
-                        // 设置开始挂机
+                        // 保存参数
+                        storeGameVarRecord();
                         // 检测当前玩家是否是会员
                         if(IS_MEMBER || TEMP_MEMBER > 0){
                             // 如果设置了定点挂机，设置挂机点
@@ -439,7 +466,9 @@ function hangHangKey(){
                     gameEnv.setGameState(0);
                 });
             }
-        }else if(gameEnv.isKeyPress(SOFT_RIGHT)){
+        }else if(gameEnv.isKeyPress(SOFT_LEFT) || gameEnv.isKeyPress(SOFT_RIGHT)){
+            // 保存参数
+            storeGameVarRecord();
             gameEnv.setGameState(0);
         }
     }
@@ -448,7 +477,9 @@ function hangHangKey(){
 // 配置界面按键
 function configKeyPress(){
     var configForm = guiZone.hangUI.configForm;
-    if(gameEnv.isKeyPress(SOFT_RIGHT)){
+    if(gameEnv.isKeyPress(SOFT_LEFT) || gameEnv.isKeyPress(SOFT_RIGHT)){
+        // 保存设置
+        storeGameVarRecord();
         gameEnv.setGameState(0);
     }
 }

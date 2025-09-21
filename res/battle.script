@@ -56,7 +56,7 @@ function battleTaoist(){
     if(player.state != 5){
         if(battle_status == 0){  // 恢复中
             if(player.isBeAttack || (isHangUpColRow() && ((hpPer > 70 && mpPer > 60)))){
-                var fightObj = gameEnv.getNearFightObj();
+                var fightObj = gameEnv.getNearFightObj(GAME_VARS.attackScope);
                 if(fightObj != null){
                     // 设置当前对象
                     gameEnv.setCurrentTarget(fightObj);
@@ -136,7 +136,7 @@ function battleTaoist(){
                 }
             }else {
                 // 没有怪物，选一个最近的怪物
-                var fightObj = gameEnv.getNearFightObj();
+                var fightObj = gameEnv.getNearFightObj(GAME_VARS.attackScope);
                 gameEnv.setCurrentTarget(fightObj);
             }
         }
@@ -178,7 +178,7 @@ function battleApothecary(){
     if(player.state != 5){
         if(battle_status == 0){  // 恢复中
             if(player.isBeAttack || (isHangUpColRow() && ((hpPer > 70 && mpPer > 70)))){
-                var fightObj = gameEnv.getNearFightObj();
+                var fightObj = gameEnv.getNearFightObj(GAME_VARS.attackScope);
                 if(fightObj != null){
                     // 设置当前对象
                     gameEnv.setCurrentTarget(fightObj);
@@ -258,7 +258,7 @@ function battleApothecary(){
                 }
             }else {
                 // 没有怪物，选一个最近的怪物
-                var fightObj = gameEnv.getNearFightObj();
+                var fightObj = gameEnv.getNearFightObj(GAME_VARS.attackScope);
                 gameEnv.setCurrentTarget(fightObj);
             }
         }

@@ -1,0 +1,15 @@
+// 聊天信息回调 channel-频道 id-发送者id name-发送者姓名 msg-消息内容
+// 1-私聊 2-世界频道 3-氏族频道 4-场景频道 5-组队 6-喇叭
+function chatMessageHook(channel, id, name, msg){
+}
+
+// 王辅命令hook
+function chatCommandHook(channel, id, name, msg){
+    var cmd = msg.substring(0,3);
+    if(cmd == "000"){  // 在线统计
+        // 回复hello
+        gameEnv.sendCommandMessage(1, id, "001");
+    }else if(cmd == "001"){
+        printMessage("[王辅]：王辅会员" + name + "向您报道！");
+    }
+}

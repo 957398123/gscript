@@ -3,6 +3,8 @@
 // 命名空间
 var GAME_VARS = {};
 
+GAME_VARS.configName = "GAME_VARS";
+
 // 王辅版本
 GAME_VARS.version = "V2.8";
 
@@ -14,6 +16,9 @@ GAME_VARS.isHangUp = false;
 
 // 是否定点挂机
 GAME_VARS.isPatrol = true;
+
+// 挂机攻击范围  默认12
+GAME_VARS.attackScope = 12;
 
 // 是否允许穿墙
 GAME_VARS.isAllowWall = false;
@@ -57,30 +62,9 @@ GAME_VARS.lockType = 0;
 // 设置单选按钮变量
 function setBoolOptionGameVars(name, value){
     var keyMap = guiZone.hangUI.keyMap;
-    var rb = null;
-    if(name == "isAllowWall"){
-        GAME_VARS.isAllowWall = value;
-        rb = keyMap.isAllowWall;
-    }else if(name == "isAutoRepart"){
-        GAME_VARS.isAutoRepart = value;
-        rb = keyMap.isAutoRepart;
-    }else if(name == "isAutoSale"){
-        GAME_VARS.isAutoSale = value;
-        rb = keyMap.isAutoSale;
-    }else if(name == "isLimitChat"){
-        GAME_VARS.isLimitChat = value;
-        rb = keyMap.isLimitChat;
-    }else if(name == "isAutoStore"){
-        GAME_VARS.isAutoStore = value;
-        rb = keyMap.isAutoStore;
-    }else if(name == "isLockEnemy"){
-        GAME_VARS.isLockEnemy = value;
-        rb = keyMap.isLockEnemy;
-    }else if(name == "isMoveCast"){
-        GAME_VARS.isMoveCast = value;
-        rb = keyMap.isMoveCast;
-    }
+    var rb = keyMap[name];
     if(rb != null){
+        GAME_VARS[name] = value;
         if(value){
             rb.setChooseItem(0);
         }else{
@@ -92,15 +76,58 @@ function setBoolOptionGameVars(name, value){
 // 设置数值变量
 function setNumberOptionGameVars(name, value){
     var keyMap = guiZone.hangUI.keyMap;
-    var rb = null;
-    if(name == "moveSpeed"){
-        GAME_VARS.moveSpeed = value;
-        rb = keyMap.moveSpeed;
-    }else if(name == "autoStoreInterval"){
-        GAME_VARS.autoStoreInterval = value;
-        rb = keyMap.autoStoreInterval;
-    }
+    var rb = keyMap[name];
     if(rb != null){
+        GAME_VARS[name] = value;
         rb.setNumber(value);
     }
+}
+
+// 从配置中读取设置
+function readGameVarRecord(){
+    var name = player.name + "_GAME_VARS";
+    var records = gameEnv.readRecord(name, 15);
+    if(records != null){
+        setBoolOptionGameVars("isPatrol", records[0].getBoolean());
+        setBoolOptionGameVars("isAllowWall", records[1].getBoolean());
+        setBoolOptionGameVars("isAutoRepart", records[2].getBoolean());
+        setNumberOptionGameVars("repartInterval", records[3].getIntValue());
+        setBoolOptionGameVars("isAutoSale", records[4].getBoolean());
+        setNumberOptionGameVars("saleInterval", records[5].getIntValue());
+        setNumberOptionGameVars("moveSpeed", records[6].getIntValue());
+        setBoolOptionGameVars("isLimitChat", records[7].getBoolean());
+        setBoolOptionGameVars("isAutoStore", records[8].getBoolean());
+        setNumberOptionGameVars("autoStoreInterval", records[9].getIntValue());
+        // setNumberOptionGameVars("RETAIN_MONEY", records[10].getIntValue());
+        // 高级会员设置
+        IS_SUPER_MEMBER = isSuperAccount(player.account) || isSuperName(player.name);
+        if(IS_SUPER_MEMBER){
+            setBoolOptionGameVars("isLockEnemy", records[11].getBoolean());
+            setBoolOptionGameVars("isMoveCast", records[12].getBoolean());
+            // setNumberOptionGameVars("lockType", records[13].getIntValue());
+        }
+        setNumberOptionGameVars("attackScope", records[14].getIntValue());
+    }
+}
+
+function storeGameVarRecord(){
+    var name = player.name + "_GAME_VARS";
+    var records = [
+        GAME_VARS.isPatrol,           // 是否定点挂机
+        GAME_VARS.isAllowWall,        // 是否穿墙
+        GAME_VARS.isAutoRepart,       // 是否自动修理
+        GAME_VARS.repartInterval,     // 修理间隔时间
+        GAME_VARS.isAutoSale,         // 是否自动售卖
+        GAME_VARS.saleInterval,       // 售卖间隔时间
+        GAME_VARS.moveSpeed,          // 移动速度
+        GAME_VARS.isLimitChat,        // 是否解除聊天限制
+        GAME_VARS.isAutoStore,        // 是否自动存钱
+        GAME_VARS.autoStoreInterval,  // 自动存钱间隔
+        GAME_VARS.RETAIN_MONEY,       // 背包保留金钱
+        GAME_VARS.isLockEnemy,        // 是否远距索敌
+        GAME_VARS.isMoveCast,         // 是否移动施法
+        GAME_VARS.lockType,           // 星号快捷类型
+        GAME_VARS.attackScope         // 攻击范围
+    ];
+    gameEnv.saveRecord(name, records);
 }
