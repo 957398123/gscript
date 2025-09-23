@@ -3,13 +3,24 @@
 // 命名空间
 var GAME_VARS = {};
 
+// 游戏变量最大值
+var GAME_VARS_MAXNUM = {
+    "hpStatusPer": 100,      // 血量最大值
+    "mpStatusPer": 100,      // 蓝量最大值
+    "attackScope": 99,       // 攻击范围最大值
+    "repartInterval": 60,    // 自动修装间隔最大值
+    "saleInterval": 60,      // 自动售卖间隔最大值
+    "moveSpeed": 9,          // 移动速度最大值
+    "autoStoreInterval": 60  // 自动存钱最大值
+};
+
 GAME_VARS.configName = "GAME_VARS";
 
 // 王辅版本
-GAME_VARS.version = "V2.8";
+GAME_VARS.version = "V3.2";
 
 // 游戏公告
-GAME_VARS.gameNotice = "王辅版本" + GAME_VARS.version + "，增加挂机时显示技能CD，修复设置声音无效的问题，优化道士挂机。";
+GAME_VARS.gameNotice = "王辅版本" + GAME_VARS.version + "，增加自定义挂机功能以及吃药。";
 
 // 是否挂机
 GAME_VARS.isHangUp = false;
@@ -17,8 +28,26 @@ GAME_VARS.isHangUp = false;
 // 是否定点挂机
 GAME_VARS.isPatrol = true;
 
+// 血量恢复挂机百分比
+GAME_VARS.hpStatusPer = 70;
+
+// 蓝量恢复挂机百分比
+GAME_VARS.mpStatusPer = 70;
+
 // 挂机攻击范围  默认12
 GAME_VARS.attackScope = 12;
+
+// 是否使用自定义挂机
+GAME_VARS.isCustomizeHangUp = false;
+
+// 是否吃红药
+GAME_VARS.isUseRedPotion = false;
+
+// 是否吃蓝药
+GAME_VARS.isUseBluePotion = false;
+
+// 是否吃紫药
+GAME_VARS.isUsePurplePotion = false;
 
 // 是否允许穿墙
 GAME_VARS.isAllowWall = false;
@@ -80,13 +109,17 @@ function setNumberOptionGameVars(name, value){
     if(rb != null){
         GAME_VARS[name] = value;
         rb.setNumber(value);
+        var maxNum = GAME_VARS_MAXNUM[name];
+        if(maxNum != null){
+            rb.setFreePoint(maxNum - value);
+        }
     }
 }
 
 // 从配置中读取设置
 function readGameVarRecord(){
     var name = player.name + "_GAME_VARS";
-    var records = gameEnv.readRecord(name, 15);
+    var records = gameEnv.readRecord(name, 21);
     if(records != null){
         setBoolOptionGameVars("isPatrol", records[0].getBoolean());
         setBoolOptionGameVars("isAllowWall", records[1].getBoolean());
@@ -107,9 +140,19 @@ function readGameVarRecord(){
             // setNumberOptionGameVars("lockType", records[13].getIntValue());
         }
         setNumberOptionGameVars("attackScope", records[14].getIntValue());
+        setNumberOptionGameVars("hpStatusPer", records[15].getIntValue());
+        setNumberOptionGameVars("mpStatusPer", records[16].getIntValue());
+        setBoolOptionGameVars("isCustomizeHangUp", records[17].getBoolean());
+        setBoolOptionGameVars("isUseRedPotion", records[18].getBoolean());
+        setBoolOptionGameVars("isUseBluePotion", records[19].getBoolean());
+        setBoolOptionGameVars("isUsePurplePotion", records[20].getBoolean());
+    }else{
+        // 保存默认值
+        storeGameVarRecord();
     }
 }
 
+// 存储变量值
 function storeGameVarRecord(){
     var name = player.name + "_GAME_VARS";
     var records = [
@@ -127,7 +170,13 @@ function storeGameVarRecord(){
         GAME_VARS.isLockEnemy,        // 是否远距索敌
         GAME_VARS.isMoveCast,         // 是否移动施法
         GAME_VARS.lockType,           // 星号快捷类型
-        GAME_VARS.attackScope         // 攻击范围
+        GAME_VARS.attackScope,        // 攻击范围
+        GAME_VARS.hpStatusPer,        // 挂机等待恢复血量百分比
+        GAME_VARS.mpStatusPer,        // 挂机等待恢复蓝量百分比
+        GAME_VARS.isCustomizeHangUp,    // 是否使用内置挂机
+        GAME_VARS.isUseRedPotion,     // 是否吃红药
+        GAME_VARS.isUseBluePotion,    // 是否吃蓝药
+        GAME_VARS.isUsePurplePotion   // 是否吃紫药
     ];
     gameEnv.saveRecord(name, records);
 }

@@ -109,7 +109,7 @@ function initUIConfig(){
     var rb4 = uiFrame.createUIRadioButton(35, 38 + 3 * 14, 0, 0, "修理间隔", 1);
     rb4.setMinNumber(1);
     rb4.setNumber(GAME_VARS.repartInterval);
-    rb4.setFreePoint(60 - GAME_VARS.repartInterval);
+    rb4.setFreePoint(GAME_VARS_MAXNUM.repartInterval - GAME_VARS.repartInterval);
     // 注册值改变回调函数
     rb4.addNumberCallMethods(function (num) {
         // 改变修理间隔
@@ -119,7 +119,7 @@ function initUIConfig(){
     var rb5 = uiFrame.createUIRadioButton(35, 38 + 4 * 14, 0, 0, "售卖间隔", 1);
     rb5.setMinNumber(1);
     rb5.setNumber(GAME_VARS.saleInterval);
-    rb5.setFreePoint(60 - GAME_VARS.saleInterval);
+    rb5.setFreePoint(GAME_VARS_MAXNUM.saleInterval - GAME_VARS.saleInterval);
     // 注册值改变回调函数
     rb5.addNumberCallMethods(function (num) {
         // 改变售卖间隔
@@ -129,7 +129,7 @@ function initUIConfig(){
     rb6.setMinNumber(1);
     rb6.setNumber(GAME_VARS.moveSpeed);
     // 速度最大调到9
-    rb6.setFreePoint(9 - GAME_VARS.moveSpeed);
+    rb6.setFreePoint(GAME_VARS_MAXNUM.moveSpeed - GAME_VARS.moveSpeed);
     // 注册值改变回调函数
     rb6.addNumberCallMethods(function (num) {
         // 改变移动速度
@@ -175,7 +175,7 @@ function initUIConfig(){
     rb9.setMinNumber(1);
     rb9.setNumber(GAME_VARS.autoStoreInterval);
     // 最大调到60
-    rb9.setFreePoint(60 - GAME_VARS.autoStoreInterval);
+    rb9.setFreePoint(GAME_VARS_MAXNUM.autoStoreInterval - GAME_VARS.autoStoreInterval);
     // 注册值改变回调函数
     rb9.addNumberCallMethods(function (num) {
         // 改变移动速度
@@ -254,15 +254,120 @@ function initUIForm(){
     rb2.setMinNumber(1);
     rb2.setNumber(GAME_VARS.attackScope);
     // 最大调到99
-    rb2.setFreePoint(99 - GAME_VARS.attackScope);
+    rb2.setFreePoint(GAME_VARS_MAXNUM.attackScope - GAME_VARS.attackScope);
     // 注册值改变回调函数
     rb2.addNumberCallMethods(function (num) {
-        // 改变移动速度
+        // 改变攻击范围
         GAME_VARS.attackScope = num;
     });
+    var rb3 = uiFrame.createUIRadioButton(35, 38 + 2 * 14, 0, 0, "血量百分比", 1);
+    rb3.setMinNumber(1);
+    rb3.setNumber(GAME_VARS.hpStatusPer);
+    // 最大调到100
+    rb3.setFreePoint(GAME_VARS_MAXNUM.hpStatusPer - GAME_VARS.hpStatusPer);
+    // 注册值改变回调函数
+    rb3.addNumberCallMethods(function (num) {
+        // 改变血量
+        GAME_VARS.hpStatusPer = num;
+    });
+    var rb4 = uiFrame.createUIRadioButton(35, 38 + 3 * 14, 0, 0, "蓝量百分比", 1);
+    rb4.setMinNumber(1);
+    rb4.setNumber(GAME_VARS.mpStatusPer);
+    // 最大调到100
+    rb4.setFreePoint(GAME_VARS_MAXNUM.mpStatusPer - GAME_VARS.mpStatusPer);
+    // 注册值改变回调函数
+    rb4.addNumberCallMethods(function (num) {
+        // 改变蓝量
+        GAME_VARS.mpStatusPer = num;
+    });
+
+    // 选项 是否内置挂机
+    var rb5 = uiFrame.createUIRadioButton(35, 38 + 4 * 14, 0, 0, "自定义挂机", 0);
+    rb5.addItems("开");
+    rb5.addItems("关");
+    // 获取选项
+    if(GAME_VARS.isCustomizeHangUp){
+        rb5.setChooseItem(0);
+    }else{
+        rb5.setChooseItem(1);
+    }
+    // 按钮值发生改变时回调
+    rb5.addChooseCallMethods(function (value) {
+        if(value == 0){
+            GAME_VARS.isCustomizeHangUp = true;
+        }else{
+            GAME_VARS.isCustomizeHangUp = false;
+        }
+    });
+
+    // 选项 是否吃红药
+    var rb6 = uiFrame.createUIRadioButton(35, 38 + 5 * 14, 0, 0, "吃红药", 0);
+    rb6.addItems("开");
+    rb6.addItems("关");
+    // 获取选项
+    if(GAME_VARS.isUseRedPotion){
+        rb6.setChooseItem(0);
+    }else{
+        rb6.setChooseItem(1);
+    }
+    // 按钮值发生改变时回调
+    rb6.addChooseCallMethods(function (value) {
+        if(value == 0){
+            GAME_VARS.isUseRedPotion = true;
+        }else{
+            GAME_VARS.isUseRedPotion = false;
+        }
+    });
+
+    // 选项 是否吃蓝药
+    var rb7 = uiFrame.createUIRadioButton(35, 38 + 6 * 14, 0, 0, "吃蓝药", 0);
+    rb7.addItems("开");
+    rb7.addItems("关");
+    // 获取选项
+    if(GAME_VARS.isUseBluePotion){
+        rb7.setChooseItem(0);
+    }else{
+        rb7.setChooseItem(1);
+    }
+    // 按钮值发生改变时回调
+    rb7.addChooseCallMethods(function (value) {
+        if(value == 0){
+            GAME_VARS.isUseBluePotion = true;
+        }else{
+            GAME_VARS.isUseBluePotion = false;
+        }
+    });
+
+    // 选项 是否吃紫药
+    var rb8 = uiFrame.createUIRadioButton(35, 38 + 7 * 14, 0, 0, "吃紫药", 0);
+    rb8.addItems("开");
+    rb8.addItems("关");
+    // 获取选项
+    if(GAME_VARS.isUsePurplePotion){
+        rb8.setChooseItem(0);
+    }else{
+        rb8.setChooseItem(1);
+    }
+    // 按钮值发生改变时回调
+    rb8.addChooseCallMethods(function (value) {
+        if(value == 0){
+            GAME_VARS.isUsePurplePotion = true;
+        }else{
+            GAME_VARS.isUsePurplePotion = false;
+        }
+    });
+
     // 持有引用
     keyMap.isPatrol = rb1;
     keyMap.attackScope = rb2;
+    keyMap.hpStatusPer = rb3;
+    keyMap.mpStatusPer = rb4;
+    keyMap.isCustomizeHangUp = rb5;
+    keyMap.isUseRedPotion = rb6;
+    keyMap.isUseBluePotion = rb7;
+    keyMap.isUsePurplePotion = rb8;
+
+
     baseForm.addComponent(rimFrame);
     baseForm.addComponentInCenter(rimTitle, 2);
     baseForm.addComponentInCenter(lblTitle, 2);
@@ -274,8 +379,26 @@ function initUIForm(){
     // 设置上下选项
     rb1.setAroundComponent(rb2, 2);
     rb2.setAroundComponent(rb1, 1);
+    rb2.setAroundComponent(rb3, 2);
+    rb3.setAroundComponent(rb2, 1);
+    rb3.setAroundComponent(rb4, 2);
+    rb4.setAroundComponent(rb3, 1);
+    rb4.setAroundComponent(rb5, 2);
+    rb5.setAroundComponent(rb4, 1);
+    rb5.setAroundComponent(rb6, 2);
+    rb6.setAroundComponent(rb5, 1);
+    rb6.setAroundComponent(rb7, 2);
+    rb7.setAroundComponent(rb6, 1);
+    rb7.setAroundComponent(rb8, 2);
+    rb8.setAroundComponent(rb7, 1);
     baseForm.addComponent(rb1);
     baseForm.addComponent(rb2);
+    baseForm.addComponent(rb3);
+    baseForm.addComponent(rb4);
+    baseForm.addComponent(rb5);
+    baseForm.addComponent(rb6);
+    baseForm.addComponent(rb7);
+    baseForm.addComponent(rb8);
     baseForm.setFocus(true);
     hangUI.baseForm = baseForm;
 }
@@ -441,8 +564,10 @@ function hangHangKey(){
             if(aboutForm != null){
                 aboutForm.addKeyCallMethods(function(){
                     if(gameEnv.isKeyPress(SOFT_OK) || gameEnv.isKeyPress(SOFT_LEFT)){
-                        // 保存参数
+                        // 保存设置参数
                         storeGameVarRecord();
+                        // 更新玩家当前技能快捷键
+                        battle_userDefinedSkills = player.getUserDefinedSkills();
                         // 检测当前玩家是否是会员
                         if(IS_MEMBER || TEMP_MEMBER > 0){
                             // 如果设置了定点挂机，设置挂机点
@@ -450,6 +575,11 @@ function hangHangKey(){
                                 battle_pCol = player.col;
                                 battle_pRow = player.row;
                                 printMessage("[王辅]：挂机类型：定点挂机，当前定点坐标(" + battle_pCol + ", " + battle_pRow + ")。");
+                            }
+                            if(GAME_VARS.isCustomizeHangUp){
+                                printMessage("[王辅]：当前挂机战斗类型：自定义挂机！");
+                            }else{
+                                printMessage("[王辅]：当前挂机战斗类型：内置挂机！");
                             }
                             printMessage("[王辅]：开始执行挂机操作！");
                             setIsHangUp(true);

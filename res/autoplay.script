@@ -143,6 +143,13 @@ function hangUpSecond(){
                     hook_hasCastMdg = false;
                 }
             }
+            if(hook_hasCastLyzj){
+                // 更新灵言真甲计数
+                hook_LyzjCount -= 1;
+                if(hook_LyzjCount == 0){
+                    hook_hasCastLyzj = false;
+                }
+            }
         }else if(player.profession == 4){  // 当前职业是刺客
         }
     }
