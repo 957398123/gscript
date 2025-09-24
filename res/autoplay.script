@@ -121,8 +121,7 @@ function hangUpFrame(){
 function hangUpSecond(){
     // 如果是在战斗状态，每隔一段时间放毒
     if(GAME_VARS.isHangUp){
-        if(player.profession == 1){        // 如果当前职业是剑客
-        }else if(player.profession == 2){  // 如果当前职业是道士
+        if(player.profession == 2){  // 如果当前职业是道士
             if(hook_hasCastJgz){      //减去金刚咒CD
                 hook_JgzCount -= 1;
                 if(hook_JgzCount == 0){
@@ -150,7 +149,6 @@ function hangUpSecond(){
                     hook_hasCastLyzj = false;
                 }
             }
-        }else if(player.profession == 4){  // 当前职业是刺客
         }
     }
 }

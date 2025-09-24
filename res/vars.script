@@ -17,10 +17,10 @@ var GAME_VARS_MAXNUM = {
 GAME_VARS.configName = "GAME_VARS";
 
 // 王辅版本
-GAME_VARS.version = "V3.2";
+GAME_VARS.version = "V3.5";
 
 // 游戏公告
-GAME_VARS.gameNotice = "王辅版本" + GAME_VARS.version + "，增加自定义挂机功能以及吃药。";
+GAME_VARS.gameNotice = "王辅版本" + GAME_VARS.version + "，增加剑客挂机。";
 
 // 是否挂机
 GAME_VARS.isHangUp = false;
