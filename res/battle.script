@@ -30,6 +30,37 @@ function battle(){
 
 //-------------------------------------------  预设战斗模块  -------------------------------------------------
 
+// 是否能释放技能，对于那些0CD的buff技能进行判断，如果buff存在，就不放了
+function canCastBattleSkill(skillIndex){
+    // 获取玩家buff状态
+    var bufferState = player.bufferState;
+    if(bufferState != null){
+        if(player.profession == 3){  // 职业是医生
+            if(skillIndex == 12 && bufferState[10]){  // 如果是放灵言真甲，但是身上有buff
+                return false;
+            }else if(skillIndex == 10 && bufferState[14]){  // 如果是放疾风之翼，但是身上有buff
+                return false;
+            }else if(skillIndex == 14 && bufferState[8]){  // 如果是放愈合之契，但是身上有buff
+                return false;
+            }
+        }else if(player.profession == 2){  // 职业是道士
+            if(skillIndex == 12 && bufferState[12]){  // 如果是放金刚咒，但是身上有buff
+                return false;
+            }else if(skillIndex == 13 && bufferState[9]){  // 如果是放玄灵结界，但是身上有buff
+                return false;
+            }else if(skillIndex == 14 && bufferState[16]){  // 如果是放真元凝聚，但是身上有buff
+                return false;
+            }
+        } else if(player.profession == 1){  // 职业是剑客
+            if(skillIndex == 8 && bufferState[11]){  // 如果是放金刚御体，但是身上有buff
+                return false;
+            }
+        }
+    }
+    // 默认返回玩家是否能放技能
+    return player.canCastSkill(skillIndex);
+}
+
 // 设置内置挂机逻辑
 function updateDefinedSkills(){
     if(GAME_VARS.isCustomizeHangUp){
@@ -53,7 +84,7 @@ function customizeBattle(hpPer, mpPer, target){
         // 如果没有释放中的技能，释放当前技能，并增加计数
         if(player.skillIndex == -1){
             // 如果能释放技能
-            if(player.canCastSkill(skillIndex)){
+            if(canCastBattleSkill(skillIndex)){
                 // 释放技能
                 player.caskSkill(target, skillIndex);
             }

@@ -406,9 +406,9 @@ function initUIForm(){
 // 初始化最强NPC
 function initNpcForm(){
     var hangUI = guiZone.hangUI;
-    var tmpItem = [55, 3, 7, 8, 9, 11];
-    var subMenu = ["进入氏族领地", "修理", "拍卖", "精炼", "仓库", "邮件"];
-    var state = [-1, -1, -1, -1, -1, -1];
+    var tmpItem = [55, 3, 7, 9, 11];
+    var subMenu = ["进入氏族领地", "修理", "拍卖", "仓库", "邮件"];
+    var state = [-1, -1, -1, -1, -1];
     var npcMenu = uiFrame.createUIMenu(5, 48, 164, 142, null, subMenu);
     npcMenu.setMenuItems(tmpItem, subMenu, state);
     npcMenu.setRimStyle(0);
