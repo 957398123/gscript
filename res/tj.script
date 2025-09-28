@@ -28,11 +28,11 @@ function start(){
     regMinuteCall(printAD);
     // 注册临时会员检测
     regMinuteCall(checkTempMember);
-    // 注册仓库存钱
-    regMinuteCall(checkStore);
     // 注册修理装备
     regMinuteCall(checkEquip);
     regFrameCall(repairEquip);
+    // 注册仓库存钱
+    regMinuteCall(checkStore);
     // 注册挂机模块
     regFrameCall(hangUpFrame);
     regSecondCall(hangUpSecond);

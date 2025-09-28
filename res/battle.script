@@ -312,8 +312,6 @@ function battleTaoist(){
             }
         }
     }else {
-        // hook状态置位0
-        hook_status = 0;
         battle_status = 0;
         gameEnv.keyPressed(NUM_11);
     }
@@ -472,8 +470,6 @@ function battleApothecary(){
             }
         }
     }else {
-        // hook状态置位0
-        hook_status = 0;
         battle_status = 0;
         gameEnv.keyPressed(NUM_11);
     }
@@ -607,10 +603,9 @@ function battleAssassin(){
             }
         }
     }else {
-        // hook状态置位0
-        hook_status = 0;
-        battle_status = 0;
         gameEnv.keyPressed(NUM_11);
+        // 战斗状态置位0
+        battle_status = 0;
     }
 }
 

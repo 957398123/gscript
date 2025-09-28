@@ -570,10 +570,14 @@ function hangHangKey(){
                         updateDefinedSkills();
                         // 检测当前玩家是否是会员
                         if(IS_MEMBER || TEMP_MEMBER > 0){
+                            // 设置当前挂机地图
+                            hook_map_name = gameEnv.mapName;
                             // 如果设置了定点挂机，设置挂机点
                             if(GAME_VARS.isPatrol){
                                 battle_pCol = player.col;
                                 battle_pRow = player.row;
+                                // 直接设置挂机状态
+                                hook_status = -1;
                                 printMessage("[王辅]：挂机类型：定点挂机，当前定点坐标(" + battle_pCol + ", " + battle_pRow + ")。");
                             }
                             if(GAME_VARS.isCustomizeHangUp){

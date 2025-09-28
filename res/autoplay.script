@@ -12,9 +12,6 @@ var hook_offset = 0;
 // 步进方式
 var step = 1;
 
-// 当前挂机地图坐标
-var hook_pos = null;
-
 // 挂机地图坐标
 var hook_maps = [
     {"name": "城阳谷林一", "pos":[[66, 27], [53, 6], [35, 10], [26, 21], [14, 10], [12, 37], [40, 56], [64, 33]]},
@@ -22,10 +19,73 @@ var hook_maps = [
     {"name": "火鬼腐宅", "pos":[[10, 54], [13, 67], [23, 67], [38, 72], [52, 72], [69, 72], [75, 65], [62, 53], [50, 53], [36, 51], [28, 48], [17, 37], [7, 7], [21, 9], [32, 7], [40, 5], [47, 5], [57, 7], [68, 10], [69, 21], [75, 33]]}
 ];
 
+// 当前挂机地图名称
+var hook_map_name = null;
+
+// 当前挂机寻地图路径索引
+var hook_map_path = null;
+
+// 当前挂机寻地图名称索引
+var hook_map_path2 = null;
+
+// 当前挂机寻路地图索引
+var hook_map_index = -1;
+
 // 巡逻挂机实现函数
 function patrolBattle(){
     // 首先检测当前状态
-    if(GAME_VARS.isPatrol || hook_status == -1){
+    // 只有在游戏中才进行更新
+    if(hook_map_name != gameEnv.mapName){
+        // 玩家死亡了，先复活
+        if(player.state == 5){
+            gameEnv.keyPressed(NUM_11);
+            // 战斗状态置位0
+            battle_status = 0;
+        }
+        if(gameEnv.isGameRun){
+            // 检测当前是否已经找出寻路路径
+            if(hook_map_path == null){
+                hook_map_path = gameEnv.aStar2WorldByIndex(gameEnv.mapName, hook_map_name);
+                hook_map_path2 = gameEnv.aStar2WorldByString(gameEnv.mapName, hook_map_name);
+                // 为空，结束挂机
+                if(hook_map_path == null){
+                    printMessage("[王辅]：未找到前往挂机图路径，取消挂机！");
+                    // 取消挂机
+                    setIsHangUp(false);
+                }else{
+                    printMessage("[王辅]：检测到当前不在挂机图，开始寻路径！");
+                    hook_map_index = 0;
+                }
+            }else if(!player.isFindPath()){  // 设置寻路位置
+                var index = -1;
+                // 查找当前地图的index
+                for(var i = 0; i < hook_map_path2.length; ++i){
+                    if(hook_map_path2[i] == gameEnv.mapName){
+                        hook_map_index = i;
+                        break;
+                    }
+                }
+                if(hook_map_index != -1){
+                    var map1 = hook_map_path[hook_map_index];
+                    var map2 = hook_map_path[hook_map_index+1];
+                    var pos = gameEnv.getCurrMap2MapPos(map1, map2);
+                    if(pos != null){
+                        // 设置寻路坐标
+                        printMessage("[王辅]：正在前往下一地图：" + hook_map_path2[hook_map_index+1]);
+                        player.setAimColRow(pos[0], pos[1]);
+                    }else{
+                        printMessage("[王辅]：未找到前往下一地图路径，取消挂机！");
+                        // 取消挂机
+                        setIsHangUp(false);
+                    }
+                }else{
+                    printMessage("[王辅]：未找到前往挂机图路径，取消挂机！");
+                    // 取消挂机
+                    setIsHangUp(false);
+                }
+            }
+        }
+    }else if(hook_status == -1){
         // 直接原地挂机
         battle();
     }else if(hook_status == 0){
@@ -160,6 +220,9 @@ function restAutoPlay(){
     hook_offset = 0;
     step = 1;
     hook_pos = null;
+    hook_map_index = -1;
+    hook_map_path = null;
+    hook_map_path2 = null;
 }
 
 // 设置是否挂机

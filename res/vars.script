@@ -17,10 +17,10 @@ var GAME_VARS_MAXNUM = {
 GAME_VARS.configName = "GAME_VARS";
 
 // 王辅版本
-GAME_VARS.version = "V3.5";
+GAME_VARS.version = "V3.7";
 
 // 游戏公告
-GAME_VARS.gameNotice = "王辅版本" + GAME_VARS.version + "，增加剑客挂机。";
+GAME_VARS.gameNotice = "王辅版本" + GAME_VARS.version + "，增加挂机死亡后自动回原点挂机功能，目前仅支持人仙部分地图。";
 
 // 是否挂机
 GAME_VARS.isHangUp = false;
