@@ -322,20 +322,16 @@ function defaultTaoistBattle(hpPer, mpPer, target){
     // 判断是否可以释放技能，这里注意吟唱技能时没有内置CD的
     if (player.canCastSkill(4)) {  // 释放天雷神盾 内置cd42s
         player.caskSkill(player, 4);
-        printMessage("[王辅]：释放天雷神盾！");
     }else if (!hook_hasCastJgz && player.canCastSkill(12)) {  // 释放金刚咒 内置cd0秒，这里120秒放一次
         hook_hasCastJgz = true;
         hook_JgzCount = 120;
         player.caskSkill(player, 12);
-        printMessage("[王辅]：释放金刚咒！");
     }else if (!hook_hasCastXljj && player.canCastSkill(13)) {  // 释放玄灵结界 内置cd4秒，这里40秒放一次
         hook_hasCastXljj = true;
         hook_XljjCount = 40;
         player.caskSkill(player, 13);
-        printMessage("[王辅]：释放玄灵结界！");
     }else if (player.canCastSkill(2)) {  // 释放紫极狂雷 内置cd10秒
         player.caskSkill(target, 2);
-        printMessage("[王辅]：释放紫极狂雷！");
     }else if (player.canCastSkill(1)) {  // 释放雷星击 内置cd0秒
         player.caskSkill(target, 1);
     } else if(player.skillIndex == -1) { // 判断是否可以普通攻击
@@ -485,18 +481,14 @@ function defaultApothecaryBattle(hpPer, mpPer, target){
         hook_hasCastLyzj = true;
         hook_LyzjCount = 480;
         player.caskSkill(target, 12);
-        printMessage("[王辅]：释放灵言真甲！");
     }else if (player.canCastSkill(8)) {  // 释放鬼灵地缚 内置cd是14秒
         player.caskSkill(target, 8);
-        printMessage("[王辅]：释放鬼灵地缚！");
     }else if (!hook_hasCastMdg && player.canCastSkill(7)) {  // 释放猛毒蛊 内置cd是1秒，所以这里cd计时
         hook_hasCastMdg = true;
         hook_MdgCount = 15;
         player.caskSkill(target, 7);
-        printMessage("[王辅]：释放猛毒蛊！");
     }else if (player.canCastSkill(9)) {  // 释放天破龙卷  内置cd10s
         player.caskSkill(target, 9);
-        printMessage("[王辅]：释放天破龙卷！");
     }else if (player.canCastSkill(1)) {  // 释放飓风之牙 cd0
         player.caskSkill(target, 1);
     } else if(player.skillIndex == -1) { // 判断是否可以普通攻击
