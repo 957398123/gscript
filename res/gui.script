@@ -27,7 +27,7 @@ function initHangData(){
 // 初始化子菜单
 function initHangSubMenu(){
     var hangUI = guiZone.hangUI;
-    var subMenu = ["1 挂机", "2 功能", "3 寻路", "4 设置", "5 高级"];
+    var subMenu = ["1 挂机", "2 功能", "3 寻路", "4 设置", "5 高级", "6 巡逻"];
     hangUI.hangMenu = uiFrame.createUIMenu(145, 23, 60, 0, null, subMenu);
 }
 
@@ -358,7 +358,7 @@ function initUIForm(){
     });
     // 施法距离
     var rb9 = uiFrame.createUIRadioButton(35, 38 + 8 * 14, 0, 0, "施法距离", 1);
-    rb9.setMinNumber(30);
+    rb9.setMinNumber(20);
     rb9.setNumber(GAME_VARS.battleScope);
     // 最大调到120
     rb9.setFreePoint(GAME_VARS_MAXNUM.battleScope - GAME_VARS.battleScope);
@@ -461,6 +461,8 @@ function keyInHangMenuOk(){
                 }else{
                     uiFrame.addGameForm("msg", "高级功能仅对超级会员开放！", "确定", null, SCREEN_W - 30, 110);
                 }
+            }else if(index == 5){  // 显示巡逻挂机界面
+                gameEnv.showLoopView();
             }else {
                 uiFrame.addGameForm("msg", "功能正在开发中，敬请期待！", "确定", null, SCREEN_W - 30, 110);
             }

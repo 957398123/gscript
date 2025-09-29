@@ -12,13 +12,6 @@ var hook_offset = 0;
 // 步进方式
 var step = 1;
 
-// 挂机地图坐标
-var hook_maps = [
-    {"name": "城阳谷林一", "pos":[[66, 27], [53, 6], [35, 10], [26, 21], [14, 10], [12, 37], [40, 56], [64, 33]]},
-    {"name": "姬水部落", "pos":[[2, 27], [18, 41], [32, 66], [43, 55], [66, 63], [60, 24], [46, 32], [22, 19]]},
-    {"name": "火鬼腐宅", "pos":[[10, 54], [13, 67], [23, 67], [38, 72], [52, 72], [69, 72], [75, 65], [62, 53], [50, 53], [36, 51], [28, 48], [17, 37], [7, 7], [21, 9], [32, 7], [40, 5], [47, 5], [57, 7], [68, 10], [69, 21], [75, 33]]}
-];
-
 // 当前挂机地图名称
 var hook_map_name = null;
 
@@ -90,14 +83,15 @@ function patrolBattle(){
         battle();
     }else if(hook_status == 0){
         // 初始状态，检测当前地图是否有挂机坐标
-        var index = getMapIndex(gameEnv.mapName);
-        if(index != -1){
-            hook_pos = hook_maps[index].pos;
+        hook_pos = gameEnv.getMapLoopData();
+        if(hook_pos != null){
             hook_status = 1;
             printMessage("[王辅]：检测到该地图有挂机数据，开始巡逻挂机！");
         }else{
-            hook_pos = null;
             hook_status = -1;
+            // 设置当前坐标为默认挂机地点
+            battle_pCol = player.col;
+            battle_pRow = player.row;
             printMessage("[王辅]：当前地图：" + gameEnv.mapName + "不支持巡逻挂机！");
         }
     }else if(hook_status == 1){  // 设置巡逻挂机位置
@@ -144,18 +138,6 @@ function patrolBattle(){
             battle();
         }
     }
-}
-
-// 查找地图挂机坐标数据 -1表示不存在
-function getMapIndex(mapName){
-    var index = -1;
-    for(var i = 0; i < hook_maps.length; ++i){
-        if(hook_maps[i].name == mapName){
-            index = i;
-            break;
-        }
-    }
-    return index;
 }
 
 // 输出信息到控制台
