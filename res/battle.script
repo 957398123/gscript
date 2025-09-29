@@ -15,20 +15,125 @@ var battle_userDefinedSkills = null;
 // 快捷键轮询计数,从1到8，再从1开始
 var battle_shortcut_count = 1;
 
-// 挂机类型
-function battle(){
-    if(player.profession == 1){  //  剑客
-        battleSwordMan();
-    }else if(player.profession == 2){  // 道士
-        battleTaoist();
-    }else if(player.profession == 3){  // 医生
-        battleApothecary();
-    }else if(player.profession == 4){  // 刺客
-        battleAssassin();
+//-------------------------------------------  预设战斗模块  -------------------------------------------------
+
+// 设置内置挂机逻辑
+function updateDefinedSkills(){
+    if(GAME_VARS.isCustomizeHangUp){
+        battle_userDefinedSkills = player.getUserDefinedSkills();
+    }else{
+        // 这里默认的定义键长度为9
+        if(player.profession == 1){  // 剑客
+            battle_userDefinedSkills = [-1, 2, 4, 12, 14, 3, 1, 6, 0];
+        }else if(player.profession == 4){ // 刺客
+            battle_userDefinedSkills = [-1, 12, 13, 4, 11, 10, 2, 8, 0];
+        }else if(player.profession == 2){ // 道士
+            battle_userDefinedSkills = [-1, 4, 12, 13, 7, 2, 1, -1, -1];
+        }else if(player.profession == 3){  // 医生
+            battle_userDefinedSkills = [-1, 12, 8, 7, 9, 1, -1, -1, -1];
+        }
     }
 }
 
-//-------------------------------------------  预设战斗模块  -------------------------------------------------
+// 公共挂机模块
+function battle() {
+    // 获取玩家当前目标
+    var hpPer = getPercentageHp();
+    var mpPer = getPercentageMp();
+    // 如果玩家没有死亡
+    if (player.state != 5) {
+        if (battle_status == 0) {  // 恢复中
+            if (player.isBeAttack || (isHangUpColRow() && ((hpPer >= GAME_VARS.hpStatusPer && mpPer >= GAME_VARS.mpStatusPer)))) {
+                var fightObj = gameEnv.getNearFightObj(GAME_VARS.attackScope);
+                if (fightObj != null) {
+                    // 设置当前对象
+                    gameEnv.setCurrentTarget(fightObj);
+                    // 设置选择寻径目标
+                    player.setAimColRow(fightObj.col, fightObj.row);
+                    // 更新状态
+                    battle_status = 1;
+                }
+            } else if (!isHangUpColRow()) { // 如果不在挂机位置
+                // 如果当前挂机点不是寻径目标，回到挂机点
+                if (!player.isAimColRow(battle_pCol, battle_pRow)) {
+                    player.setAimColRow(battle_pCol, battle_pRow);
+                }
+            } else {  // 恢复
+                // 如果当前职业是医生，给自己加血
+                if (player.profession == 3 && hpPer < GAME_VARS.hpStatusPer && player.canCastSkill(2)) {
+                    player.caskSkill(player, 2);
+                } else {
+                    // 判断当前血量是否需要吃药 优先吃紫药
+                    if (hpPer < GAME_VARS.hpStatusPer) {
+                        if (GAME_VARS.isUsePurplePotion && gameEnv.canUsePurple()) {
+                            printMessage("[王辅]：吃紫药！");
+                            gameEnv.usePurplePotion();
+                        } else if (GAME_VARS.isUseRedPotion && gameEnv.canUseRed()) {
+                            printMessage("[王辅]：吃红药！");
+                            gameEnv.useRedPotion();
+                        }
+                    }
+                    // 判断当前蓝量是否需要吃药 优先吃紫药
+                    if (mpPer < GAME_VARS.mpStatusPer) {
+                        if (GAME_VARS.isUsePurplePotion && gameEnv.canUsePurple()) {
+                            printMessage("[王辅]：吃紫药！");
+                            gameEnv.usePurplePotion();
+                        } else if (GAME_VARS.isUseBluePotion && gameEnv.canUseBlue()) {
+                            printMessage("[王辅]：吃红药！");
+                            gameEnv.useBluePotion();
+                        }
+                    }
+                }
+            }
+        } else if (battle_status == 1) {  // 寻径中
+            var target = player.target;
+            // 目标存在，并且不是玩家
+            if (target != null && target != player) {
+                if (gameEnv.inDistance(player, target, GAME_VARS.battleScope)) {
+                    // 进入战斗
+                    player.resetFindPath();
+                    battle_status = 2;
+                } else {
+                    // 实时更新寻径位置
+                    player.setAimColRow(target.col, target.row);
+                }
+            } else {
+                // 如果丢失目标，回到挂机点
+                battle_status = 0;
+            }
+        } else if (battle_status == 2) {  // 进入战斗
+            var target = player.target;
+            if (player.isSelectEnemy()) {  // 如果选中的是可攻击单位
+                // 如果怪物血量大于0
+                if (target.curHp > 0) {
+                    // 进入施法范围
+                    if (gameEnv.inDistance(player, target, GAME_VARS.battleScope)) {
+                        customizeBattle(hpPer, mpPer, target);
+                    } else {
+                        battle_status = 1;
+                    }
+                } else {
+                    // 打死当前怪物回原点
+                    player.stopBattle();
+                    battle_status = 0;
+                }
+            } else {
+                // 没有怪物，选一个最近的怪物
+                var fightObj = gameEnv.getNearFightObj(GAME_VARS.attackScope);
+                if (fightObj == null) {
+                    // 回原点
+                    player.stopBattle();
+                    battle_status = 0;
+                } else {
+                    gameEnv.setCurrentTarget(fightObj);
+                }
+            }
+        }
+    } else {
+        battle_status = 0;
+        gameEnv.keyPressed(NUM_11);
+    }
+}
 
 // 是否能释放技能，对于那些0CD的buff技能进行判断，如果buff存在，就不放了
 function canCastBattleSkill(skillIndex){
@@ -61,20 +166,6 @@ function canCastBattleSkill(skillIndex){
     return player.canCastSkill(skillIndex);
 }
 
-// 设置内置挂机逻辑
-function updateDefinedSkills(){
-    if(GAME_VARS.isCustomizeHangUp){
-        battle_userDefinedSkills = player.getUserDefinedSkills();
-    }else{
-        // 这里默认的定义键长度为9
-        if(player.profession == 1){  // 剑客
-            battle_userDefinedSkills = [-1, 2, 4, 12, 14, 3, 1, 6, 0];
-        }else if(player.profession == 4){ // 刺客
-            battle_userDefinedSkills = [-1, 12, 13, 4, 11, 10, 2, 8, 0];
-        }
-    }
-}
-
 // 预设战斗逻辑(依次使用技能)
 function customizeBattle(hpPer, mpPer, target){
     // 获取当前计数技能类型
@@ -83,16 +174,22 @@ function customizeBattle(hpPer, mpPer, target){
     if(skillIndex >= 0 && skillIndex <= 14){  // 技能键
         // 如果没有释放中的技能，释放当前技能，并增加计数
         if(player.skillIndex == -1){
-            // 如果能释放技能
-            if(canCastBattleSkill(skillIndex)){
-                // 释放技能
-                player.caskSkill(target, skillIndex);
-            }
-            // 无论是否能释放技能，增加计数
-            ++battle_shortcut_count;
-            if(battle_shortcut_count > 8){
-                // 一轮放完置为1
-                battle_shortcut_count = 1;
+            // 医生优先技能回复
+            if(player.profession == 3 && hpPer < 40 && player.canCastSkill(2)){
+                gameEnv.setCurrentTarget(player);
+                player.caskSkill(player, 2);
+            }else{
+                // 如果能释放技能
+                if(canCastBattleSkill(skillIndex)){
+                    // 释放技能
+                    player.caskSkill(target, skillIndex);
+                }
+                // 无论是否能释放技能，增加计数
+                ++battle_shortcut_count;
+                if(battle_shortcut_count > 8){
+                    // 一轮放完置为1
+                    battle_shortcut_count = 1;
+                }
             }
         }
     }else {  //物品栏也要加一
@@ -121,514 +218,6 @@ function customizeBattle(hpPer, mpPer, target){
             printMessage("[王辅]：吃蓝药！");
             gameEnv.useBluePotion();
         }
-    }
-}
-
-//-------------------------------------------  剑客战斗模块  -------------------------------------------------
-
-function battleSwordMan(){
-    // 获取玩家当前目标
-    var hpPer = getPercentageHp();
-    var mpPer = getPercentageMp();
-    // 如果玩家没有死亡
-    if(player.state != 5){
-        if(battle_status == 0){  // 恢复中
-            if(player.isBeAttack || (isHangUpColRow() && ((hpPer >= GAME_VARS.hpStatusPer && mpPer >= GAME_VARS.mpStatusPer)))){
-                var fightObj = gameEnv.getNearFightObj(GAME_VARS.attackScope);
-                if(fightObj != null){
-                    // 设置当前对象
-                    gameEnv.setCurrentTarget(fightObj);
-                    // 设置选择寻径目标
-                    player.setAimColRow(fightObj.col, fightObj.row);
-                    // 更新状态
-                    battle_status = 1;
-                }
-            }else if(!isHangUpColRow()){ // 如果不在挂机位置
-                // 如果当前挂机点不是寻径目标，回到挂机点
-                if(!player.isAimColRow(battle_pCol, battle_pRow)){
-                    player.setAimColRow(battle_pCol, battle_pRow);
-                }
-            }else {  // 吃药
-                // 判断当前血量是否需要吃药 优先吃紫药
-                if(hpPer < GAME_VARS.hpStatusPer){
-                    if(GAME_VARS.isUsePurplePotion && gameEnv.canUsePurple()){
-                        printMessage("[王辅]：吃紫药！");
-                        gameEnv.usePurplePotion();
-                    }else if(GAME_VARS.isUseRedPotion && gameEnv.canUseRed()){
-                        printMessage("[王辅]：吃红药！");
-                        gameEnv.useRedPotion();
-                    }
-                }
-                // 判断当前蓝量是否需要吃药 优先吃紫药
-                if(mpPer < GAME_VARS.mpStatusPer){
-                    if(GAME_VARS.isUsePurplePotion && gameEnv.canUsePurple()){
-                        printMessage("[王辅]：吃紫药！");
-                        gameEnv.usePurplePotion();
-                    }else if(GAME_VARS.isUseBluePotion && gameEnv.canUseBlue()){
-                        printMessage("[王辅]：吃红药！");
-                        gameEnv.useBluePotion();
-                    }
-                }
-            }
-        }else if(battle_status == 1){  // 寻径中
-            var target = player.target;
-            // 目标存在，并且不是玩家
-            if(target != null && target != player){
-                // 20码
-                if(gameEnv.inDistance(player, target, 20)){
-                    // 进入战斗
-                    player.resetFindPath();
-                    battle_status = 2;
-                }else {
-                    // 实时更新寻径位置
-                    player.setAimColRow(target.col, target.row);
-                }
-            }else {
-                // 如果丢失目标，回到挂机点
-                battle_status = 0;
-            }
-        }else if(battle_status == 2){  // 进入战斗
-            var target = player.target;
-            if(player.isSelectEnemy()){  // 如果选中可攻击单位
-                // 如果怪物血量大于0
-                if(target.curHp > 0){
-                    // 进入施法范围
-                    if(gameEnv.inDistance(player, target, 20)){
-                        customizeBattle(hpPer, mpPer, target);
-                    }else {
-                        battle_status = 1;
-                    }
-                }else{
-                    // 打死当前怪物回原点
-                    player.stopBattle();
-                    battle_status = 0;
-                }
-            }else {
-                // 没有怪物，选一个最近的怪物
-                var fightObj = gameEnv.getNearFightObj(GAME_VARS.attackScope);
-                if(fightObj == null){
-                    // 回原点
-                    player.stopBattle();
-                    battle_status = 0;
-                }else{
-                    gameEnv.setCurrentTarget(fightObj);
-                }
-            }
-        }
-    }else {
-        // hook状态置位0
-        hook_status = 0;
-        battle_status = 0;
-        gameEnv.keyPressed(NUM_11);
-    }
-}
-
-//-------------------------------------------  道士战斗模块  -------------------------------------------------
-
-// 是否已经释放金刚咒
-var hook_hasCastJgz = false;
-
-// 金刚咒时间计数(单位秒)
-var hook_JgzCount = 0;
-
-// 是否已经释放玄灵结界
-var hook_hasCastXljj = false;
-
-// 玄灵结界时间计数(单位秒)
-var hook_XljjCount = 0;
-
-// 置位道士所有计数
-function restTaoist(){
-    hook_hasCastJgz = false;
-    hook_JgzCount = 0;
-    hook_hasCastXljj = false;
-    hook_XljjCount = 0;
-}
-
-function battleTaoist(){
-    // 获取玩家当前目标
-    var hpPer = getPercentageHp();
-    var mpPer = getPercentageMp();
-    // 如果玩家没有死亡
-    if(player.state != 5){
-        if(battle_status == 0){  // 恢复中
-            if(player.isBeAttack || (isHangUpColRow() && ((hpPer >= GAME_VARS.hpStatusPer && mpPer >= GAME_VARS.mpStatusPer)))){
-                var fightObj = gameEnv.getNearFightObj(GAME_VARS.attackScope);
-                if(fightObj != null){
-                    // 设置当前对象
-                    gameEnv.setCurrentTarget(fightObj);
-                    // 设置选择寻径目标
-                    player.setAimColRow(fightObj.col, fightObj.row);
-                    // 更新状态
-                    battle_status = 1;
-                    // 复位计数
-                    restTaoist();
-                }
-            }else if(!isHangUpColRow()){ // 如果不在挂机位置
-                // 如果当前挂机点不是寻径目标，回到挂机点
-                if(!player.isAimColRow(battle_pCol, battle_pRow)){
-                    player.setAimColRow(battle_pCol, battle_pRow);
-                }
-            }else {  // 吃药
-                // 判断当前血量是否需要吃药 优先吃紫药
-                if(hpPer < GAME_VARS.hpStatusPer){
-                    if(GAME_VARS.isUsePurplePotion && gameEnv.canUsePurple()){
-                        printMessage("[王辅]：吃紫药！");
-                        gameEnv.usePurplePotion();
-                    }else if(GAME_VARS.isUseRedPotion && gameEnv.canUseRed()){
-                        printMessage("[王辅]：吃红药！");
-                        gameEnv.useRedPotion();
-                    }
-                }
-                // 判断当前蓝量是否需要吃药 优先吃紫药
-                if(mpPer < GAME_VARS.mpStatusPer){
-                    if(GAME_VARS.isUsePurplePotion && gameEnv.canUsePurple()){
-                        printMessage("[王辅]：吃紫药！");
-                        gameEnv.usePurplePotion();
-                    }else if(GAME_VARS.isUseBluePotion && gameEnv.canUseBlue()){
-                        printMessage("[王辅]：吃红药！");
-                        gameEnv.useBluePotion();
-                    }
-                }
-            }
-        }else if(battle_status == 1){  // 寻径中
-            var target = player.target;
-            // 目标存在，并且不是玩家
-            if(target != null && target != player){
-                if(gameEnv.inDistance(player, target, 60)){
-                    // 进入战斗
-                    player.resetFindPath();
-                    battle_status = 2;
-                }else {
-                    // 实时更新寻径位置
-                    player.setAimColRow(target.col, target.row);
-                }
-            }else {
-                // 如果丢失目标，回到挂机点
-                battle_status = 0;
-            }
-        }else if(battle_status == 2){  // 进入战斗
-            var target = player.target;
-            if(player.isSelectEnemy()){  // 如果选中可攻击单位
-                // 如果怪物血量大于0
-                if(target.curHp > 0){
-                    // 进入施法范围
-                    if(gameEnv.inDistance(player, target, 80)){
-                        // 挂机类型
-                        if(GAME_VARS.isCustomizeHangUp){
-                            // 自定义挂机
-                            customizeBattle(hpPer, mpPer, target);
-                        }else{
-                            // 内置挂机
-                            defaultTaoistBattle(hpPer, mpPer, target);
-                        }
-                    }else {
-                        battle_status = 1;
-                    }
-                }else{
-                    // 打死当前怪物回原点
-                    player.stopBattle();
-                    battle_status = 0;
-                }
-            }else {
-                // 没有怪物，选一个最近的怪物
-                var fightObj = gameEnv.getNearFightObj(GAME_VARS.attackScope);
-                if(fightObj == null){
-                    // 回原点
-                    player.stopBattle();
-                    battle_status = 0;
-                }else{
-                    gameEnv.setCurrentTarget(fightObj);
-                }
-            }
-        }
-    }else {
-        battle_status = 0;
-        gameEnv.keyPressed(NUM_11);
-    }
-}
-
-// 道士内置战斗逻辑
-function defaultTaoistBattle(hpPer, mpPer, target){
-    // 判断是否可以释放技能，这里注意吟唱技能时没有内置CD的
-    if (player.canCastSkill(4)) {  // 释放天雷神盾 内置cd42s
-        player.caskSkill(player, 4);
-    }else if (!hook_hasCastJgz && player.canCastSkill(12)) {  // 释放金刚咒 内置cd0秒，这里120秒放一次
-        hook_hasCastJgz = true;
-        hook_JgzCount = 120;
-        player.caskSkill(player, 12);
-    }else if (!hook_hasCastXljj && player.canCastSkill(13)) {  // 释放玄灵结界 内置cd4秒，这里40秒放一次
-        hook_hasCastXljj = true;
-        hook_XljjCount = 40;
-        player.caskSkill(player, 13);
-    }else if (player.canCastSkill(2)) {  // 释放紫极狂雷 内置cd10秒
-        player.caskSkill(target, 2);
-    }else if (player.canCastSkill(1)) {  // 释放雷星击 内置cd0秒
-        player.caskSkill(target, 1);
-    } else if(player.skillIndex == -1) { // 判断是否可以普通攻击
-        // 判断当前是否能攻击到
-        if (player.canNormalAttack(target)) {
-            if (player.normalAttackCount > 30) {  // 如果普通攻击CD好了
-                // 瞬移进行普通攻击
-                player.setObjPosition(target.col, target.row);
-                player.normalAttck();
-            }
-        }
-    }
-}
-
-//-------------------------------------------  医生战斗模块  -------------------------------------------------
-
-// 是否已经释放猛毒蛊
-var hook_hasCastMdg = false;
-
-// 猛毒蛊时间计数(单位秒)
-var hook_MdgCount = 0;
-
-// 是否已经释放黄帝内径
-var hook_hasCastHdnj = false;
-
-// 黄帝内径时间计数(单位秒)
-var hook_HdnjCount = 0;
-
-// 是否已经释放灵言真甲
-var hook_hasCastLyzj = false;
-
-// 灵言真甲时间计数(单位秒)
-var hook_LyzjCount = 0;
-
-// 置位医生所有计数
-function restApothecary(){
-    hook_hasCastMdg = false;
-    hook_MdgCount = 0;
-    hook_hasCastHdnj = false;
-    hook_HdnjCount = 0;
-}
-
-function battleApothecary(){
-    // 获取玩家当前目标
-    var hpPer = getPercentageHp();
-    var mpPer = getPercentageMp();
-    // 如果玩家没有死亡
-    if(player.state != 5){
-        if(battle_status == 0){  // 恢复中
-            if(player.isBeAttack || (isHangUpColRow() && ((hpPer >= GAME_VARS.hpStatusPer && mpPer >= GAME_VARS.mpStatusPer)))){
-                var fightObj = gameEnv.getNearFightObj(GAME_VARS.attackScope);
-                if(fightObj != null){
-                    // 设置当前对象
-                    gameEnv.setCurrentTarget(fightObj);
-                    // 设置选择寻径目标
-                    player.setAimColRow(fightObj.col, fightObj.row);
-                    // 更新状态
-                    battle_status = 1;
-                    // 复位计数
-                    restApothecary();
-                }
-            }else if(!isHangUpColRow()){ // 如果不在挂机位置
-                // 如果当前挂机点不是寻径目标，回到挂机点
-                if(!player.isAimColRow(battle_pCol, battle_pRow)){
-                    player.setAimColRow(battle_pCol, battle_pRow);
-                }
-            }else if(hpPer < GAME_VARS.hpStatusPer && player.canCastSkill(2)){
-                gameEnv.setCurrentTarget(player);
-                player.caskSkill(player, 2);
-            }else {  // 吃药
-                // 判断当前血量是否需要吃药 优先吃紫药
-                // 判断当前蓝量是否需要吃药 优先吃紫药
-                if(mpPer < GAME_VARS.mpStatusPer){
-                    if(GAME_VARS.isUsePurplePotion && gameEnv.canUsePurple()){
-                        printMessage("[王辅]：吃紫药！");
-                        gameEnv.usePurplePotion();
-                    }else if(GAME_VARS.isUseBluePotion && gameEnv.canUseBlue()){
-                        printMessage("[王辅]：吃红药！");
-                        gameEnv.useBluePotion();
-                    }
-                }
-            }
-        }else if(battle_status == 1){  // 寻径中
-            var target = player.target;
-            // 目标存在，并且不是玩家
-            if(target != null && target != player){
-                if(gameEnv.inDistance(player, target, 60)){
-                    // 进入战斗
-                    player.resetFindPath();
-                    battle_status = 2;
-                }else {
-                    // 实时更新寻径位置
-                    player.setAimColRow(target.col, target.row);
-                }
-            }else {
-                // 如果丢失目标，回到挂机点
-                battle_status = 0;
-            }
-        }else if(battle_status == 2){  // 进入战斗
-            var target = player.target;
-            if(player.isSelectEnemy()){  // 如果选中的是可攻击单位
-                // 如果怪物血量大于0
-                if(target.curHp > 0){
-                    // 进入施法范围
-                    if(gameEnv.inDistance(player, target, 80)){
-                        // 挂机类型
-                        if(GAME_VARS.isCustomizeHangUp){
-                            // 自定义挂机
-                            customizeBattle(hpPer, mpPer, target);
-                        }else{
-                            // 内置挂机
-                            defaultApothecaryBattle(hpPer, mpPer, target);
-                        }
-                    }else {
-                        battle_status = 1;
-                    }
-                }else{
-                    // 打死当前怪物回原点
-                    player.stopBattle();
-                    battle_status = 0;
-                }
-            }else {
-                // 没有怪物，选一个最近的怪物
-                var fightObj = gameEnv.getNearFightObj(GAME_VARS.attackScope);
-                if(fightObj == null){
-                    // 回原点
-                    player.stopBattle();
-                    battle_status = 0;
-                }else{
-                    gameEnv.setCurrentTarget(fightObj);
-                }
-            }
-        }
-    }else {
-        battle_status = 0;
-        gameEnv.keyPressed(NUM_11);
-    }
-}
-
-// 医生内置战斗逻辑
-function defaultApothecaryBattle(hpPer, mpPer, target){
-    // 判断是否可以释放技能，优先释放CD长的技能
-    if (hpPer < 50 && player.canCastSkill(2)) {
-        // 这里必须设置为当前选中对象
-        player.caskSkill(target, 2);
-    }else if (!hook_hasCastLyzj && player.canCastSkill(12)) {  // 释放灵言真甲 内置cd是480秒，所以这里cd计时
-        hook_hasCastLyzj = true;
-        hook_LyzjCount = 480;
-        player.caskSkill(target, 12);
-    }else if (player.canCastSkill(8)) {  // 释放鬼灵地缚 内置cd是14秒
-        player.caskSkill(target, 8);
-    }else if (!hook_hasCastMdg && player.canCastSkill(7)) {  // 释放猛毒蛊 内置cd是1秒，所以这里cd计时
-        hook_hasCastMdg = true;
-        hook_MdgCount = 15;
-        player.caskSkill(target, 7);
-    }else if (player.canCastSkill(9)) {  // 释放天破龙卷  内置cd10s
-        player.caskSkill(target, 9);
-    }else if (player.canCastSkill(1)) {  // 释放飓风之牙 cd0
-        player.caskSkill(target, 1);
-    } else if(player.skillIndex == -1) { // 判断是否可以普通攻击
-        // 判断当前是否能攻击到
-        if (player.canNormalAttack(target)) {
-            if (player.normalAttackCount > 30) {  // 如果普通攻击CD好了
-                // 瞬移进行普通攻击
-                player.setObjPosition(target.col, target.row);
-                player.normalAttck();
-            }
-        }
-    }
-}
-
-//-------------------------------------------  刺客战斗模块  -------------------------------------------------
-
-function battleAssassin(){
-    // 获取玩家当前目标
-    var hpPer = getPercentageHp();
-    var mpPer = getPercentageMp();
-    // 如果玩家没有死亡
-    if(player.state != 5){
-        if(battle_status == 0){  // 恢复中
-            if(player.isBeAttack || (isHangUpColRow() && ((hpPer >= GAME_VARS.hpStatusPer && mpPer >= GAME_VARS.mpStatusPer)))){
-                var fightObj = gameEnv.getNearFightObj(GAME_VARS.attackScope);
-                if(fightObj != null){
-                    // 设置当前对象
-                    gameEnv.setCurrentTarget(fightObj);
-                    // 设置选择寻径目标
-                    player.setAimColRow(fightObj.col, fightObj.row);
-                    // 更新状态
-                    battle_status = 1;
-                }
-            }else if(!isHangUpColRow()){ // 如果不在挂机位置
-                // 如果当前挂机点不是寻径目标，回到挂机点
-                if(!player.isAimColRow(battle_pCol, battle_pRow)){
-                    player.setAimColRow(battle_pCol, battle_pRow);
-                }
-            }else {  // 吃药
-                // 判断当前血量是否需要吃药 优先吃紫药
-                if(hpPer < GAME_VARS.hpStatusPer){
-                    if(GAME_VARS.isUsePurplePotion && gameEnv.canUsePurple()){
-                        printMessage("[王辅]：吃紫药！");
-                        gameEnv.usePurplePotion();
-                    }else if(GAME_VARS.isUseRedPotion && gameEnv.canUseRed()){
-                        printMessage("[王辅]：吃红药！");
-                        gameEnv.useRedPotion();
-                    }
-                }
-                // 判断当前蓝量是否需要吃药 优先吃紫药
-                if(mpPer < GAME_VARS.mpStatusPer){
-                    if(GAME_VARS.isUsePurplePotion && gameEnv.canUsePurple()){
-                        printMessage("[王辅]：吃紫药！");
-                        gameEnv.usePurplePotion();
-                    }else if(GAME_VARS.isUseBluePotion && gameEnv.canUseBlue()){
-                        printMessage("[王辅]：吃红药！");
-                        gameEnv.useBluePotion();
-                    }
-                }
-            }
-        }else if(battle_status == 1){  // 寻径中
-            var target = player.target;
-            // 目标存在，并且不是玩家
-            if(target != null && target != player){
-                // 20码
-                if(gameEnv.inDistance(player, target, 20)){
-                    // 进入战斗
-                    player.resetFindPath();
-                    battle_status = 2;
-                }else {
-                    // 实时更新寻径位置
-                    player.setAimColRow(target.col, target.row);
-                }
-            }else {
-                // 如果丢失目标，回到挂机点
-                battle_status = 0;
-            }
-        }else if(battle_status == 2){  // 进入战斗
-            var target = player.target;
-            if(player.isSelectEnemy()){  // 如果选中可攻击单位
-                // 如果怪物血量大于0
-                if(target.curHp > 0){
-                    // 进入施法范围
-                    if(gameEnv.inDistance(player, target, 20)){
-                        customizeBattle(hpPer, mpPer, target);
-                    }else {
-                        battle_status = 1;
-                    }
-                }else{
-                    // 打死当前怪物回原点
-                    player.stopBattle();
-                    battle_status = 0;
-                }
-            }else {
-                // 没有怪物，选一个最近的怪物
-                var fightObj = gameEnv.getNearFightObj(GAME_VARS.attackScope);
-                if(fightObj == null){
-                    // 回原点
-                    player.stopBattle();
-                    battle_status = 0;
-                }else{
-                    gameEnv.setCurrentTarget(fightObj);
-                }
-            }
-        }
-    }else {
-        gameEnv.keyPressed(NUM_11);
-        // 战斗状态置位0
-        battle_status = 0;
     }
 }
 
@@ -661,10 +250,6 @@ function isHangUpColRow(){
 function restBattle(){
     battle_status = 0;
     battle_shortcut_count = 1;
-    // 复位医生计数
-    restApothecary();
-    // 复位道士计数
-    restTaoist();
     // 停止战斗
     player.stopBattle();
 }

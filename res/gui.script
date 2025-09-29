@@ -250,7 +250,7 @@ function initUIForm(){
             GAME_VARS.isPatrol = false;
         }
     });
-    var rb2 = uiFrame.createUIRadioButton(35, 38 + 1 * 14, 0, 0, "攻击范围", 1);
+    var rb2 = uiFrame.createUIRadioButton(35, 38 + 1 * 14, 0, 0, "挂机范围", 1);
     rb2.setMinNumber(1);
     rb2.setNumber(GAME_VARS.attackScope);
     // 最大调到99
@@ -356,6 +356,17 @@ function initUIForm(){
             GAME_VARS.isUsePurplePotion = false;
         }
     });
+    // 施法距离
+    var rb9 = uiFrame.createUIRadioButton(35, 38 + 8 * 14, 0, 0, "施法距离", 1);
+    rb9.setMinNumber(30);
+    rb9.setNumber(GAME_VARS.battleScope);
+    // 最大调到120
+    rb9.setFreePoint(GAME_VARS_MAXNUM.battleScope - GAME_VARS.battleScope);
+    // 注册值改变回调函数
+    rb9.addNumberCallMethods(function (num) {
+        // 改变攻击范围
+        GAME_VARS.battleScope = num;
+    });
 
     // 持有引用
     keyMap.isPatrol = rb1;
@@ -366,7 +377,7 @@ function initUIForm(){
     keyMap.isUseRedPotion = rb6;
     keyMap.isUseBluePotion = rb7;
     keyMap.isUsePurplePotion = rb8;
-
+    keyMap.battleScope = rb9;
 
     baseForm.addComponent(rimFrame);
     baseForm.addComponentInCenter(rimTitle, 2);
@@ -391,6 +402,8 @@ function initUIForm(){
     rb7.setAroundComponent(rb6, 1);
     rb7.setAroundComponent(rb8, 2);
     rb8.setAroundComponent(rb7, 1);
+    rb8.setAroundComponent(rb9, 2);
+    rb9.setAroundComponent(rb8, 1);
     baseForm.addComponent(rb1);
     baseForm.addComponent(rb2);
     baseForm.addComponent(rb3);
@@ -399,6 +412,7 @@ function initUIForm(){
     baseForm.addComponent(rb6);
     baseForm.addComponent(rb7);
     baseForm.addComponent(rb8);
+    baseForm.addComponent(rb9);
     baseForm.setFocus(true);
     hangUI.baseForm = baseForm;
 }

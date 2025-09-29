@@ -179,38 +179,6 @@ function hangUpFrame(){
 
 // 挂机函数 每一秒执行
 function hangUpSecond(){
-    // 如果是在战斗状态，每隔一段时间放毒
-    if(GAME_VARS.isHangUp){
-        if(player.profession == 2){  // 如果当前职业是道士
-            if(hook_hasCastJgz){      //减去金刚咒CD
-                hook_JgzCount -= 1;
-                if(hook_JgzCount == 0){
-                    hook_hasCastJgz = false;
-                }
-            }
-            if(hook_hasCastXljj){      //减去玄灵结界CD
-                hook_XljjCount -= 1;
-                if(hook_XljjCount == 0){
-                    hook_hasCastXljj = false;
-                }
-            }
-        }else if(player.profession == 3){  // 如果当前职业是医生
-            if(hook_hasCastMdg){
-                // 更新猛毒蛊计数
-                hook_MdgCount -= 1;
-                if(hook_MdgCount == 0){
-                    hook_hasCastMdg = false;
-                }
-            }
-            if(hook_hasCastLyzj){
-                // 更新灵言真甲计数
-                hook_LyzjCount -= 1;
-                if(hook_LyzjCount == 0){
-                    hook_hasCastLyzj = false;
-                }
-            }
-        }
-    }
 }
 
 // 重置autoplay
