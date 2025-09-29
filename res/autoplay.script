@@ -9,8 +9,14 @@ var hook_pos = null;
 // 当前挂机点位置
 var hook_offset = 0;
 
-// 步进方式
-var step = 1;
+// 下一个要改变点
+var hook_next_offset = -1;
+
+// 下一个点步进方向 -1未定义 0是正向 1是逆向
+var hook_direction = -1;
+
+// 下一个步进自定义偏移
+var hook_step = 0;
 
 // 当前挂机地图名称
 var hook_map_name = null;
@@ -78,14 +84,29 @@ function patrolBattle(){
                 }
             }
         }
-    }else if(hook_status == -1){
-        // 直接原地挂机
-        battle();
     }else if(hook_status == 0){
         // 初始状态，检测当前地图是否有挂机坐标
+        // 更新挂机地图数据
+        hook_map_name = gameEnv.mapName;
         hook_pos = gameEnv.getMapLoopData();
         if(hook_pos != null){
             hook_status = 1;
+            // 根据方向设置offset
+            if(hook_direction == 0 || hook_direction == -1){  // 正向或者默认值
+                // 从第2个点开始
+                if(hook_pos.length > 1){
+                    hook_offset = 1;
+                }else{
+                    hook_offset = 0;
+                }
+            }else{  // 逆向
+                // 从倒数第二个点开始
+                if(hook_pos.length > 1){
+                    hook_offset = hook_pos.length - 2;
+                }else{
+                    hook_offset = 0;
+                }
+            }
             printMessage("[王辅]：检测到该地图有挂机数据，开始巡逻挂机！");
         }else{
             hook_status = -1;
@@ -94,7 +115,11 @@ function patrolBattle(){
             battle_pRow = player.row;
             printMessage("[王辅]：当前地图：" + gameEnv.mapName + "不支持巡逻挂机！");
         }
-    }else if(hook_status == 1){  // 设置巡逻挂机位置
+    }else if(hook_status == 1){  // 设置下一个巡逻挂机位置
+        // 更新方向
+        if(hook_pos[hook_offset].length > 2){
+            hook_direction = hook_pos[hook_offset][2];
+        }
         // 获取当前坐标位置
         var pos = hook_pos[hook_offset];
         // 设置当前挂机位置
@@ -111,30 +136,39 @@ function patrolBattle(){
         // 判断是否到达目标位置
         if(pos[0] == player.col && pos[1] == player.row){
             // 更新挂机状态
-            hook_status = 3;
+            hook_status = -1;
             printMessage("[王辅]：抵达挂机点，开始执行挂机操作！");
         }else if(!player.isAimColRow(pos[0], pos[1])){
             // 如果更改了寻径坐标，纠正
             player.setAimColRow(pos[0], pos[1]);
         }
-    }else if(hook_status == 3){  // 挂机状态
-        // 检测周围是否有可攻击敌人，没有前往下一个地点
-        if(!isAttackableUnitSelected() && gameEnv.getNearFightObj(GAME_VARS.attackScope) == null){
-            hook_offset += step;
-            // 边界处理
-            if(hook_offset >= hook_pos.length){
-                hook_offset -= 1;
-                step = -1;
-            }
-            if(hook_offset < 0){
+    }else if(hook_status == -1){
+        // 检测周围是否有可攻击敌人，没有前往下一个地点，这里必须放最后面
+        if(!GAME_VARS.isPatrol && hook_pos != null  && !isAttackableUnitSelected() && gameEnv.getNearFightObj(GAME_VARS.attackScope) == null){
+            if(hook_direction == 0 || hook_direction == -1){ // 正向
                 hook_offset += 1;
-                step = 1;
+            }else if(hook_direction == 1){  // 逆向
+                hook_offset -= 1;
+            }
+            // 处理边界
+            if(hook_offset < 0){
+                if(hook_direction == 0 || hook_direction == -1){ // 正向
+                    hook_offset = 0;
+                }else if(hook_direction == 1){  // 逆向
+                    hook_offset = hook_pos.length - 1;
+                }
+            }else if(hook_offset > hook_pos.length - 1){
+                if(hook_direction == 0){ // 正向
+                    hook_offset = 0;
+                }else if(hook_direction == 1 || hook_direction == -1){  // 逆向
+                    hook_offset -= 1;
+                }
             }
             hook_status = 1;
             // 输出日志
             printMessage("[王辅]：当前位置怪物已清空，前往下一挂机点！");
-        }else {
-            // 开始挂机战斗处理
+        }else{
+            // 直接原地挂机
             battle();
         }
     }
@@ -168,7 +202,6 @@ function restAutoPlay(){
     hook_status = 0;
     hook_pos = null;
     hook_offset = 0;
-    step = 1;
     hook_pos = null;
     hook_map_index = -1;
     hook_map_path = null;

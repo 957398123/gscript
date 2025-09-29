@@ -595,6 +595,10 @@ function hangHangKey(){
                                 // 直接设置挂机状态
                                 hook_status = -1;
                                 printMessage("[王辅]：挂机类型：定点挂机，当前定点坐标(" + battle_pCol + ", " + battle_pRow + ")。");
+                            }else{
+                                // 巡逻挂机初始状态
+                                hook_direction = -1;
+                                hook_status = 0;
                             }
                             if(GAME_VARS.isCustomizeHangUp){
                                 printMessage("[王辅]：当前挂机战斗类型：自定义挂机！");
