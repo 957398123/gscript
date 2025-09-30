@@ -1,16 +1,53 @@
 // 会员模块
 
+// 符号列表
+var SYMBOL_STR = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
 // 管理员账号
-var ADMIN_ACCOUNT = "957398123";
+var ADMIN_ACCOUNT = [];
 
 // 会员账号
-var MEMBERS_ACCOUNTS = ["957398123", "957398124", "957398125",
- "957398126", "946932819", "hcn123456", "s9527", "158661436500",
-  "tyghvb1", "qq1111", "sa", "778914380", "13407734428", "w909",
-  "158661436501"];
+var MEMBERS_ACCOUNTS = [];
+
+// 增加高级会员
+ADMIN_ACCOUNT.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 3]));
+
+// 增加会员
+MEMBERS_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 3]));
+MEMBERS_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 4]));
+MEMBERS_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 5]));
+MEMBERS_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 6]));
+// 购买的会员 946932819
+MEMBERS_ACCOUNTS.push(getMember([9, 4, 6, 9, 3, 2, 8, 1, 9]));
+// 购买的会员 hcn123456
+MEMBERS_ACCOUNTS.push(getMember([17, 12, 23, 1, 2, 3, 4, 5, 6]));
+// 购买的会员 s9527
+MEMBERS_ACCOUNTS.push(getMember([28, 9, 5, 2, 7]));
+// 购买的会员 158661436500
+MEMBERS_ACCOUNTS.push(getMember([1, 5, 8, 6, 6, 1, 4, 3, 6, 5, 0, 0]));
+// 购买的会员 tyghvb1
+MEMBERS_ACCOUNTS.push(getMember([19, 34, 16, 17, 31, 11, 1]));
+// 购买的会员 qq1111
+MEMBERS_ACCOUNTS.push(getMember([26, 26, 1, 1, 1, 1]));
+// 购买的会员 sa
+MEMBERS_ACCOUNTS.push(getMember([18, 10]));
+// 购买的会员 778914380
+MEMBERS_ACCOUNTS.push(getMember([7, 7, 8, 9, 1, 4, 3, 8, 0]));
+// 购买的会员 13407734428
+MEMBERS_ACCOUNTS.push(getMember([1, 3, 4, 0, 7, 7, 3, 4, 4, 2, 8]));
+// 购买的会员 w909
+MEMBERS_ACCOUNTS.push(getMember([22, 9, 0, 9]));
+// 购买的会员 158661436501
+MEMBERS_ACCOUNTS.push(getMember([1, 5, 8, 6, 6, 1, 4, 3, 6, 5, 0, 1]));
 
 // 高级会员账号
-var SUPER_ACCOUNTS = ["957398123"];
+var SUPER_ACCOUNTS = [];
+// 增加高级会员
+SUPER_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 3]));
+SUPER_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 4]));
+SUPER_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 5]));
+SUPER_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 6]));
+
 
 // 会员名称
 var MEMBERS_NAMES = ["大鱼", "福满", "米雪", "太公6", "血色战甲", "医打怪兽", "殷饵", "VIP大天二", "凤飞飞"];
@@ -95,4 +132,20 @@ function disableMemberConfig(){
     setNumberOptionGameVars("moveSpeed", 1);
     // 关闭挂机
     setIsHangUp(false);
+}
+
+function getSymbol(index){
+    if(index < SYMBOL_STR.length()){
+        return SYMBOL_STR.substring(index, index+1);
+    }else{
+        return "";
+    }
+}
+
+function getMember(array){
+    var r = "";
+    for(var i = 0; i < array.length; ++i){
+        r += getSymbol(array[i]);
+    }
+    return r;
 }

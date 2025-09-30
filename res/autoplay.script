@@ -144,7 +144,7 @@ function patrolBattle(){
         }
     }else if(hook_status == -1){
         // 检测周围是否有可攻击敌人，没有前往下一个地点，这里必须放最后面
-        if(!GAME_VARS.isPatrol && hook_pos != null  && !isAttackableUnitSelected() && gameEnv.getNearFightObj(GAME_VARS.attackScope) == null){
+        if(!GAME_VARS.isPatrol && hook_pos != null && gameEnv.getNearFightObj(GAME_VARS.attackScope) == null){
             if(hook_direction == 0 || hook_direction == -1){ // 正向
                 hook_offset += 1;
             }else if(hook_direction == 1){  // 逆向
@@ -178,12 +178,6 @@ function patrolBattle(){
 function printMessage(msg){
     gameEnv.printMessage(7, msg);
     println(msg);
-}
-
-// 是否选中敌方单位
-function isAttackableUnitSelected(){
-    var target = player.target;
-    return target != null && target.type == 2;
 }
 
 // 挂机函数 每一帧会执行

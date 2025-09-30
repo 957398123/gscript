@@ -20,8 +20,9 @@ import java.util.List;
 public class Test {
     public static void main(String[] args) throws IOException {
         String[] list = new String[]{"map", "vars", "chat", "gui", "cons", "tj", "util", "member", "battle", "autoplay"};
+        String[] listMap = new String[]{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j"};
         // String[] list = new String[]{"test"};
-        Test.gen(list);
+        Test.gen(list, listMap);
     }
 
     public static void list2File(ArrayList<String> list, String filePath) throws IOException {
@@ -43,13 +44,14 @@ public class Test {
         }
     }
 
-    public static void gen(String[] files) throws IOException {
+    public static void gen(String[] files, String[] listMap) throws IOException {
         for (int i = 0; i < files.length; i++) {
             URL classUrl = Test.class.getResource("Test.class");
             // 提取 Test.class 的所在目录路径
             File classFile = new File(classUrl.getPath());
             String classDir = classFile.getParent();
             String fileName = files[i];
+            String fileMapName = listMap[i];
             InputStream in = Test.class.getResourceAsStream(fileName + ".script");
             if (in != null) {
                 String content = new String(in.readAllBytes(), StandardCharsets.UTF_8);
@@ -68,7 +70,7 @@ public class Test {
                 Test.list2File(bytecodeGenerator.getByteCode(), classDir + File.separator + "gtxt" + File.separator + fileName + ".gtxt");
                 // 解释执行
                 // System.out.println("GS Engine Start!");
-                ByteCodeSerialize.serialize(bytecodeGenerator.getByteCode(), classDir + File.separator + "gclass" + File.separator + fileName + ".gclass");
+                ByteCodeSerialize.serialize(bytecodeGenerator.getByteCode(), classDir + File.separator + "gclass" + File.separator + fileMapName + ".gclass");
                 if ("test".equals(fileName)) {
                     Interpreter interpreter = new Interpreter();
                     interpreter.eval(bytecodeGenerator.getByteCode());

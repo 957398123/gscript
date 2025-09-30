@@ -1,21 +1,7 @@
-var GAME_VARS = {};
+printMember([9, 5, 7, 3, 9, 8, 1, 2, 3]);
 
-GAME_VARS.isStop = 9;
-
-function ask(){
-    println("ask");
+function printMember(array){
+    for(var i = 0; i < array.length; ++i){
+        println(array[i]);
+    }
 }
-
-var a = {};
-
-a.b = {};
-
-a.b.z = function(){
-    println("ask2");
-};
-
-a.b.c = a.b.z;
-
-a.b.c();
-
-println("GAME_VARS.isStop=" + GAME_VARS.isStop);
