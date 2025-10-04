@@ -18,10 +18,10 @@ var GAME_VARS_MAXNUM = {
 GAME_VARS.configName = "GAME_VARS";
 
 // 王辅版本
-GAME_VARS.version = "V4.8";
+GAME_VARS.version = "V4.9";
 
 // 游戏公告
-GAME_VARS.gameNotice = "王辅版本" + GAME_VARS.version + "，修复挂机会一直锁定敌对玩家以及修复部分问题！";
+GAME_VARS.gameNotice = "王辅版本" + GAME_VARS.version + "，优化移动速度！";
 
 // 是否挂机
 GAME_VARS.isHangUp = false;

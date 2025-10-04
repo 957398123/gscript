@@ -605,7 +605,6 @@ function hangHangKey(){
                             }else{
                                 printMessage("[王辅]：当前挂机战斗类型：内置挂机！");
                             }
-                            printMessage("[王辅]：开始执行挂机操作！");
                             setIsHangUp(true);
                         }else{
                             setIsHangUp(false);

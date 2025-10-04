@@ -1,19 +1,19 @@
 // 天劫hook模块
 
 // 帧函数回调列表
-var FRAME_CALL = [];
+var PLAYER_FRAME_CALL = [];
 
 // 分钟计数
-var MINUTE_COUNT = 0;
+var PLAYER_MINUTE_COUNT = 0;
 
 // 分钟回调列表
-var MINUTE_CALL = [];
+var PLAYER_MINUTE_CALL = [];
 
 // 秒计数器
-var SECOND_COUNT = 0;
+var PLAYER_SECOND_COUNT = 0;
 
 // 秒回调列表
-var SECOND_CALL = [];
+var PLAYER_SECOND_CALL = [];
 
 // 临时会员体验时间(单位分钟)
 var TEMP_MEMBER = 5;
@@ -22,21 +22,25 @@ var TEMP_MEMBER = 5;
 function start(){
     // 更新版本号
     gameEnv.setVersion(100728832);
-    // 注册时间播报
-    regMinuteCall(printRunTime);
-    // 注册公告
-    regMinuteCall(printAD);
-    // 注册临时会员检测
-    regMinuteCall(checkTempMember);
-    // 注册修理装备
-    regMinuteCall(checkEquip);
-    regFrameCall(repairEquip);
-    // 注册仓库存钱
-    regMinuteCall(checkStore);
-    // 注册挂机模块
-    regFrameCall(hangUpFrame);
-    regSecondCall(hangUpSecond);
+    // 这里是全局游戏
 
+    // 以下是游戏中玩家的处理
+    // 注册时间播报
+    regHandleCall(PLAYER_MINUTE_CALL, printRunTime);
+    // 注册公告
+    regHandleCall(PLAYER_MINUTE_CALL, printAD);
+    // 注册临时会员检测
+    regHandleCall(PLAYER_MINUTE_CALL, checkTempMember);
+    // 注册修理装备
+    regHandleCall(PLAYER_MINUTE_CALL, checkEquip);
+    // 帧处理
+    regHandleCall(PLAYER_FRAME_CALL, repairEquip);
+    // 注册仓库存钱
+    regHandleCall(PLAYER_MINUTE_CALL, checkStore);
+    // 注册挂机模块
+    regHandleCall(PLAYER_FRAME_CALL, hangUpFrame);
+    // 秒处理
+    regHandleCall(PLAYER_SECOND_CALL, hangUpSecond);
     // 初始化王辅模块
     initHangModule();
 }
@@ -68,34 +72,27 @@ function entryGame(){
 // 玩家tick之前
 function beforePlayerTick(){
     // 定时模块
-    updateCount();
-}
-
-// tick回调结束时回调
-function endTick(){
-    if(gameEnv.curState == 17){
-        gameEnv.keyPressed(SOFT_OK);
-    }
+    updatePlayerCount();
 }
 
 // 更新运行时间
-function updateCount(){
+function updatePlayerCount(){
     // 获取运行了多少秒
     var currTime = gameEnv.getRuntime();
     var count = currTime / 60;
     // 回调帧的注册函数
-    invokeMethods(FRAME_CALL);
+    invokeMethods(PLAYER_FRAME_CALL);
     // 回调秒计时器
-    if(currTime > SECOND_COUNT){
-        SECOND_COUNT = currTime;
+    if(currTime > PLAYER_SECOND_COUNT){
+        PLAYER_SECOND_COUNT = currTime;
         // 回调注册的函数
-        invokeMethods(SECOND_CALL);
+        invokeMethods(PLAYER_SECOND_CALL);
     }
     // 回调分钟计时器
-    if(count > MINUTE_COUNT){
-        MINUTE_COUNT = count;
+    if(count > PLAYER_MINUTE_COUNT){
+        PLAYER_MINUTE_COUNT = count;
         // 回调注册的函数
-        invokeMethods(MINUTE_CALL);
+        invokeMethods(PLAYER_MINUTE_CALL);
     }
 }
 
@@ -106,17 +103,34 @@ function invokeMethods(methods){
     }
 }
 
-// 注册分钟运行函数
-function regMinuteCall(call){
-    MINUTE_CALL[MINUTE_CALL.length] = call;
+// 注册回调函数
+function regHandleCall(handle, call){
+    handle[handle.length] = call;
 }
 
-// 注册秒运行函数
-function regSecondCall(call){
-    SECOND_CALL[SECOND_CALL.length] = call;
+//-------------------------------------------  选取角色  -------------------------------------------------
+
+// 秒计数器
+var GAME_SECOND_COUNT = 0;
+
+// 秒回调列表
+var GAME_SECOND_CALL = [];
+
+function startTick(){
+    // 获取运行了多少秒
+    var currTime = gameEnv.getRuntime();
+    var count = currTime / 60;
+    // 回调秒计时器
+    if(currTime > GAME_SECOND_COUNT){
+        GAME_SECOND_COUNT = currTime;
+        // 回调注册的函数
+        invokeMethods(GAME_SECOND_CALL);
+    }
 }
 
-// 注册帧运行函数
-function regFrameCall(call){
-    FRAME_CALL[FRAME_CALL.length] = call;
+// tick回调结束时回调
+function endTick(){
+    if(gameEnv.curState == 17){
+        gameEnv.keyPressed(SOFT_OK);
+    }
 }

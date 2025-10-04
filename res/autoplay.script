@@ -233,7 +233,7 @@ function patrolBattle(){
                 updateHookOffset();
                 hook_status = 1;
             }
-        }else if(sign == -4){    // 条件语句 第一个参数0是代表如果方向正，第一个参数1代表如果方向负
+        }else if(sign == -5){    // 登出当前角色，并于一定时间后登入
 
         }else{  // 不支持得默认跳过
             updateHookOffset();
