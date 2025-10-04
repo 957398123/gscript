@@ -10,7 +10,7 @@ var GAME_VARS_MAXNUM = {
     "attackScope": 99,       // 攻击范围最大值
     "repartInterval": 60,    // 自动修装间隔最大值
     "saleInterval": 60,      // 自动售卖间隔最大值
-    "moveSpeed": 9,          // 移动速度最大值
+    "moveSpeed": 99,          // 移动速度最大值
     "autoStoreInterval": 60, // 自动存钱最大值
     "battleScope": 120       // 施法最大范围
 };
@@ -18,10 +18,10 @@ var GAME_VARS_MAXNUM = {
 GAME_VARS.configName = "GAME_VARS";
 
 // 王辅版本
-GAME_VARS.version = "V4.6";
+GAME_VARS.version = "V4.8";
 
 // 游戏公告
-GAME_VARS.gameNotice = "王辅版本" + GAME_VARS.version + "，巡逻挂机增加等待时间！";
+GAME_VARS.gameNotice = "王辅版本" + GAME_VARS.version + "，修复挂机会一直锁定敌对玩家以及修复部分问题！";
 
 // 是否挂机
 GAME_VARS.isHangUp = false;
@@ -69,7 +69,7 @@ GAME_VARS.isAutoSale = false;
 GAME_VARS.saleInterval = 5;
 
 // 移动速度
-GAME_VARS.moveSpeed = 1;
+GAME_VARS.moveSpeed = 0;
 
 // 解除聊天限制
 GAME_VARS.isLimitChat = false;

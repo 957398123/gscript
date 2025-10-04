@@ -110,7 +110,6 @@ function patrolBattle(){
                     hook_offset = 0;
                 }
             }
-            printMessage("[王辅]：检测到该地图有挂机数据，开始巡逻挂机！");
         }else{
             hook_status = -1;
             // 设置当前坐标为默认挂机地点
@@ -152,11 +151,10 @@ function patrolBattle(){
             if(GAME_VARS.attackScope <= 0){
                 updateHookOffset();
                 hook_status = 1;
-                printMessage("[王辅]：抵达坐标点，准备前往下个位置点");
             }else{
                 // 更新挂机状态
-                hook_status = -1;
                 printMessage("[王辅]：抵达挂机点，开始执行挂机操作！");
+                hook_status = -1;
             }
         }else if(!player.isAimColRow(pos[0], pos[1])){
             // 如果更改了寻径坐标，纠正
@@ -235,6 +233,8 @@ function patrolBattle(){
                 updateHookOffset();
                 hook_status = 1;
             }
+        }else if(sign == -4){    // 条件语句 第一个参数0是代表如果方向正，第一个参数1代表如果方向负
+
         }else{  // 不支持得默认跳过
             updateHookOffset();
             hook_status = 1;

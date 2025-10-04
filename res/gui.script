@@ -126,7 +126,7 @@ function initUIConfig(){
         GAME_VARS.saleInterval = num;
     });
     var rb6 = uiFrame.createUIRadioButton(35, 38 + 5 * 14, 0, 0, "移动速度", 1);
-    rb6.setMinNumber(1);
+    rb6.setMinNumber(0);
     rb6.setNumber(GAME_VARS.moveSpeed);
     // 速度最大调到9
     rb6.setFreePoint(GAME_VARS_MAXNUM.moveSpeed - GAME_VARS.moveSpeed);
