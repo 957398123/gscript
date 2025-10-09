@@ -35,6 +35,7 @@ function initHangSubMenu(){
 function initUIConfig(){
     var hangUI = guiZone.hangUI;
     var keyMap = hangUI.keyMap;
+    var space = 13;
     var configForm = uiFrame.createUIForm(0, 0, SCREEN_W, SCREEN_H, "");
     configForm.setStyle(0);
     var rimFrame = uiFrame.createUIRim(0, 0, SCREEN_W - 1, SCREEN_H - 1, 4);
@@ -52,7 +53,7 @@ function initUIConfig(){
     configForm.addComponentInCenter(lblOk, 5);
     configForm.addComponentInCenter(lblCancel, 6);
     // 选项 穿墙功能
-    var rb1 = uiFrame.createUIRadioButton(35, 38 + 0 * 14, 0, 0, "允许穿墙", 0);
+    var rb1 = uiFrame.createUIRadioButton(35, 38 + 0 * space, 0, 0, "允许穿墙", 0);
     rb1.addItems("开");
     rb1.addItems("关");
     // 获取选项
@@ -70,7 +71,7 @@ function initUIConfig(){
         }
     });
     // 选项 自动修理
-    var rb2 = uiFrame.createUIRadioButton(35, 38 + 1 * 14, 0, 0, "自动修理", 0);
+    var rb2 = uiFrame.createUIRadioButton(35, 38 + 1 * space, 0, 0, "自动修理", 0);
     rb2.addItems("开");
     rb2.addItems("关");
     // 获取选项
@@ -88,7 +89,7 @@ function initUIConfig(){
         }
     });
     // 选项 自动售卖
-    var rb3 = uiFrame.createUIRadioButton(35, 38 + 2 * 14, 0, 0, "自动售卖", 0);
+    var rb3 = uiFrame.createUIRadioButton(35, 38 + 2 * space, 0, 0, "自动售卖", 0);
     rb3.addItems("开");
     rb3.addItems("关");
     // 获取选项
@@ -106,7 +107,7 @@ function initUIConfig(){
         }
     });
     // 修理间隔
-    var rb4 = uiFrame.createUIRadioButton(35, 38 + 3 * 14, 0, 0, "修理间隔", 1);
+    var rb4 = uiFrame.createUIRadioButton(35, 38 + 3 * space, 0, 0, "修理间隔", 1);
     rb4.setMinNumber(1);
     rb4.setNumber(GAME_VARS.repartInterval);
     rb4.setFreePoint(GAME_VARS_MAXNUM.repartInterval - GAME_VARS.repartInterval);
@@ -116,7 +117,7 @@ function initUIConfig(){
         GAME_VARS.repartInterval = num;
     });
     // 售卖间隔
-    var rb5 = uiFrame.createUIRadioButton(35, 38 + 4 * 14, 0, 0, "售卖间隔", 1);
+    var rb5 = uiFrame.createUIRadioButton(35, 38 + 4 * space, 0, 0, "售卖间隔", 1);
     rb5.setMinNumber(1);
     rb5.setNumber(GAME_VARS.saleInterval);
     rb5.setFreePoint(GAME_VARS_MAXNUM.saleInterval - GAME_VARS.saleInterval);
@@ -125,7 +126,7 @@ function initUIConfig(){
         // 改变售卖间隔
         GAME_VARS.saleInterval = num;
     });
-    var rb6 = uiFrame.createUIRadioButton(35, 38 + 5 * 14, 0, 0, "移动速度", 1);
+    var rb6 = uiFrame.createUIRadioButton(35, 38 + 5 * space, 0, 0, "移动速度", 1);
     rb6.setMinNumber(0);
     rb6.setNumber(GAME_VARS.moveSpeed);
     // 速度最大调到9
@@ -136,7 +137,7 @@ function initUIConfig(){
         GAME_VARS.moveSpeed = num;
     });
     // 选项 解除聊天限制
-    var rb7 = uiFrame.createUIRadioButton(35, 38 + 6 * 14, 0, 0, "解除聊天限制", 0);
+    var rb7 = uiFrame.createUIRadioButton(35, 38 + 6 * space, 0, 0, "解除聊天限制", 0);
     rb7.addItems("开");
     rb7.addItems("关");
     // 获取选项
@@ -154,7 +155,7 @@ function initUIConfig(){
         }
     });
     // 选项 自动存钱
-    var rb8 = uiFrame.createUIRadioButton(35, 38 + 7 * 14, 0, 0, "自动存钱", 0);
+    var rb8 = uiFrame.createUIRadioButton(35, 38 + 7 * space, 0, 0, "自动存钱", 0);
     rb8.addItems("开");
     rb8.addItems("关");
     // 获取选项
@@ -171,15 +172,34 @@ function initUIConfig(){
             GAME_VARS.isAutoStore = false;
         }
     });
-    var rb9 = uiFrame.createUIRadioButton(35, 38 + 8 * 14, 0, 0, "存钱间隔", 1);
+    var rb9 = uiFrame.createUIRadioButton(35, 38 + 8 * space, 0, 0, "存钱间隔", 1);
     rb9.setMinNumber(1);
     rb9.setNumber(GAME_VARS.autoStoreInterval);
     // 最大调到60
     rb9.setFreePoint(GAME_VARS_MAXNUM.autoStoreInterval - GAME_VARS.autoStoreInterval);
     // 注册值改变回调函数
     rb9.addNumberCallMethods(function (num) {
-        // 改变移动速度
         GAME_VARS.autoStoreInterval = num;
+    });
+    // 减技能CD
+    var rb10 = uiFrame.createUIRadioButton(35, 38 + 9 * space, 0, 0, "减技能CD", 1);
+    rb10.setMinNumber(0);
+    rb10.setNumber(GAME_VARS.subSkillCd);
+    // 最大调到99
+    rb10.setFreePoint(99 - GAME_VARS.subSkillCd);
+    // 注册值改变回调函数
+    rb10.addNumberCallMethods(function (num) {
+        GAME_VARS.subSkillCd = num;
+    });
+    // 减读条时间
+    var rb11 = uiFrame.createUIRadioButton(35, 38 + 10 * space, 0, 0, "减读条CD", 1);
+    rb11.setMinNumber(0);
+    rb11.setNumber(GAME_VARS.subSkillRead);
+    // 最大调到99
+    rb11.setFreePoint(99 - GAME_VARS.subSkillRead);
+    // 注册值改变回调函数
+    rb11.addNumberCallMethods(function (num) {
+        GAME_VARS.subSkillRead = num;
     });
     // 持有引用
     keyMap.isAllowWall = rb1;
@@ -191,6 +211,8 @@ function initUIConfig(){
     keyMap.isLimitChat = rb7;
     keyMap.isAutoStore = rb8;
     keyMap.autoStoreInterval = rb9;
+    keyMap.subSkillCd = rb10;
+    keyMap.subSkillRead = rb11;
     // 设置上下选项
     rb2.setAroundComponent(rb1, 1);
     rb2.setAroundComponent(rb3, 2);
@@ -205,6 +227,10 @@ function initUIConfig(){
     rb8.setAroundComponent(rb7, 1);
     rb8.setAroundComponent(rb9, 2);
     rb9.setAroundComponent(rb8, 1);
+    rb9.setAroundComponent(rb10, 2);
+    rb10.setAroundComponent(rb9, 1);
+    rb10.setAroundComponent(rb11, 2);
+    rb11.setAroundComponent(rb10, 1);
     configForm.addComponent(rb1);
     configForm.addComponent(rb2);
     configForm.addComponent(rb3);
@@ -214,6 +240,8 @@ function initUIConfig(){
     configForm.addComponent(rb7);
     configForm.addComponent(rb8);
     configForm.addComponent(rb9);
+    configForm.addComponent(rb10);
+    configForm.addComponent(rb11);
     configForm.addKeyCallMethods(configKeyPress);
     configForm.setFocus(true);
     hangUI.configForm = configForm;

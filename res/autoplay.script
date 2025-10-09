@@ -33,248 +33,280 @@ var hook_collection_status = 0;
 // 等待时间计数（单位秒）
 var hook_wait_time = 0;
 
+// 退出角色后等待登录时间
+var hook_login_time = -1;
+
+// 要登录的角色名称
+var hook_login_name = "";
+
 // 巡逻挂机实现函数
-function patrolBattle(){
-    // 首先检测当前状态
+function patrolBattle() {
+    // 检测角色是否需要
+    if (hook_status != -1) {
+        drugStatus();
+    }
     // 只有在游戏中才进行更新
-    if(hook_map_name != gameEnv.mapName){
+    if (hook_map_name != gameEnv.mapName) {
         // 玩家死亡了，先复活
-        if(player.state == 5){
+        if (player.state == 5) {
             gameEnv.keyPressed(NUM_11);
             // 战斗状态置位0
             battle_status = 0;
         }
-        if(gameEnv.isGameRun){
+        if (gameEnv.isGameRun) {
             // 检测当前是否已经找出寻路路径
-            if(hook_map_path == null){
+            if (hook_map_path == null) {
                 hook_map_path = gameEnv.aStar2WorldByIndex(gameEnv.mapName, hook_map_name);
                 hook_map_path2 = gameEnv.aStar2WorldByString(gameEnv.mapName, hook_map_name);
                 // 为空，结束挂机
-                if(hook_map_path == null){
+                if (hook_map_path == null) {
                     printMessage("[王辅]：未找到前往挂机图路径，取消挂机！");
                     // 取消挂机
                     setIsHangUp(false);
-                }else{
+                } else {
                     printMessage("[王辅]：检测到当前不在挂机图，开始寻路径！");
                     hook_map_index = 0;
                 }
-            }else if(!player.isFindPath()){  // 设置寻路位置
-                var index = -1;
+            } else if (!player.isFindPath()) {  // 设置寻路位置
                 // 查找当前地图的index
-                for(var i = 0; i < hook_map_path2.length; ++i){
-                    if(hook_map_path2[i] == gameEnv.mapName){
+                for (var i = 0; i < hook_map_path2.length; ++i) {
+                    if (hook_map_path2[i] == gameEnv.mapName) {
                         hook_map_index = i;
                         break;
                     }
                 }
-                if(hook_map_index != -1){
+                if (hook_map_index != -1) {
                     var map1 = hook_map_path[hook_map_index];
-                    var map2 = hook_map_path[hook_map_index+1];
+                    var map2 = hook_map_path[hook_map_index + 1];
                     var pos = gameEnv.getCurrMap2MapPos(map1, map2);
-                    if(pos != null){
+                    if (pos != null) {
                         // 设置寻路坐标
-                        printMessage("[王辅]：正在前往下一地图：" + hook_map_path2[hook_map_index+1]);
+                        printMessage("[王辅]：正在前往下一地图：" + hook_map_path2[hook_map_index + 1]);
                         player.setAimColRow(pos[0], pos[1]);
-                    }else{
+                    } else {
                         printMessage("[王辅]：未找到前往下一地图路径，取消挂机！");
                         // 取消挂机
                         setIsHangUp(false);
                     }
-                }else{
+                } else {
                     printMessage("[王辅]：未找到前往挂机图路径，取消挂机！");
                     // 取消挂机
                     setIsHangUp(false);
                 }
             }
         }
-    }else if(hook_status == 0){
-        // 初始状态，检测当前地图是否有挂机坐标
-        // 更新挂机地图数据
-        hook_map_name = gameEnv.mapName;
-        hook_pos = gameEnv.getMapLoopData();
-        if(hook_pos != null){
-            hook_status = 1;
-            // 根据方向设置offset
-            if(hook_direction == 0){  // 正向或者默认值
-                // 从第2个点开始
-                if(hook_pos.length > 1){
-                    hook_offset = 1;
-                }else{
-                    hook_offset = 0;
-                }
-            }else{  // 逆向
-                // 从倒数第二个点开始
-                if(hook_pos.length > 1){
-                    hook_offset = hook_pos.length - 2;
-                }else{
-                    hook_offset = 0;
-                }
-            }
-        }else{
-            hook_status = -1;
-            // 设置当前坐标为默认挂机地点
-            battle_pCol = player.col;
-            battle_pRow = player.row;
-            printMessage("[王辅]：当前地图：" + gameEnv.mapName + "不支持巡逻挂机！");
+    } else {
+        // 首先检测状态
+        if(hook_status != -1){
+            drugStatus();
         }
-    }else if(hook_status == 1){  // 更新下一个巡逻挂机位置
-        var data = hook_pos[hook_offset];
-        // 这里检查第一个参数是否为负数，负数执行特别操作
-        if(data[0] >= 0){
-            if(data.length > 1){
-                // 设置当前挂机位置
-                gameEnv.setHangupPos(data[0], data[1]);
-                // 前往该位置
-                player.setAimColRow(data[0], data[1]);
-                // 改变方向
-                if(data.length > 2){
-                    var value = data[2];
-                    if(value == 0 || value == 1){
-                        hook_direction = value;
+        //
+        if (hook_status == 0) {
+            // 初始状态，检测当前地图是否有挂机坐标
+            // 更新挂机地图数据
+            hook_map_name = gameEnv.mapName;
+            hook_pos = gameEnv.getMapLoopData();
+            if (hook_pos != null) {
+                hook_status = 1;
+                // 根据方向设置offset
+                if (hook_direction == 0) {  // 正向或者默认值
+                    // 从第2个点开始
+                    if (hook_pos.length > 1) {
+                        hook_offset = 1;
+                    } else {
+                        hook_offset = 0;
+                    }
+                } else {  // 逆向
+                    // 从倒数第二个点开始
+                    if (hook_pos.length > 1) {
+                        hook_offset = hook_pos.length - 2;
+                    } else {
+                        hook_offset = 0;
                     }
                 }
-                // 更新状态
-                hook_status = 2;
-                // 输出日志
-                printMessage("[王辅]：开始前往第" + hook_offset + "个坐标：(" + data[0] + ", " + data[1] + ")");
-            }
-        }else{
-            // 导航至功能代码
-            hook_status = 4;
-        }
-    }else if(hook_status == 2){  // 寻径
-        // 获取目标坐标位置
-        var pos = hook_pos[hook_offset];
-        // 判断是否到达目标位置
-        if(pos[0] == player.col && pos[1] == player.row){
-            // 如果攻击范围为0，直接到下一个点
-            if(GAME_VARS.attackScope <= 0){
-                updateHookOffset();
-                hook_status = 1;
-            }else{
-                // 更新挂机状态
-                printMessage("[王辅]：抵达挂机点，开始执行挂机操作！");
+            } else {
                 hook_status = -1;
-            }
-        }else if(!player.isAimColRow(pos[0], pos[1])){
-            // 如果更改了寻径坐标，纠正
-            player.setAimColRow(pos[0], pos[1]);
-        }
-    }else if(hook_status == -1){
-        // 检测周围是否有可攻击敌人，没有前往下一个地点，这里必须放最后面
-        if(!GAME_VARS.isPatrol && hook_pos != null && !player.isSelectEnemy()){  // 巡逻挂机，并且未选中可攻击单位
-            // 如果附近没有可攻击单位
-            if(gameEnv.getNearFightObj(GAME_VARS.attackScope) == null){
-                updateHookOffset();
-                hook_status = 1;
-                // 输出日志
-                printMessage("[王辅]：当前位置怪物已清空，前往下一挂机点！");
-            }else{
-                // 设置当前挂机坐标
+                // 设置当前坐标为默认挂机地点
                 battle_pCol = player.col;
                 battle_pRow = player.row;
+                printMessage("[王辅]：当前地图：" + gameEnv.mapName + "不支持巡逻挂机！");
+            }
+        } else if (hook_status == 1) {  // 更新下一个巡逻挂机位置
+            var data = hook_pos[hook_offset];
+            // 这里检查第一个参数是否为负数，负数执行特别操作
+            if (data[0] >= 0) {
+                if (data.length > 1) {
+                    // 设置当前挂机位置
+                    gameEnv.setHangupPos(data[0], data[1]);
+                    // 前往该位置
+                    player.setAimColRow(data[0], data[1]);
+                    // 改变方向
+                    if (data.length > 2) {
+                        var value = data[2];
+                        if (value == 0 || value == 1) {
+                            hook_direction = value;
+                        }
+                    }
+                    // 更新状态
+                    hook_status = 2;
+                    // 输出日志
+                    printMessage("[王辅]：开始前往第" + hook_offset + "个坐标：(" + data[0] + ", " + data[1] + ")");
+                }
+            } else {
+                // 导航至功能代码
+                hook_status = 4;
+            }
+        } else if (hook_status == 2) {  // 寻径
+            // 获取目标坐标位置
+            var pos = hook_pos[hook_offset];
+            // 判断是否到达目标位置
+            if (pos[0] == player.col && pos[1] == player.row) {
+                // 如果攻击范围为0，直接到下一个点
+                if (GAME_VARS.attackScope <= 0) {
+                    updateHookOffset();
+                    hook_status = 1;
+                } else {
+                    // 更新挂机状态
+                    printMessage("[王辅]：抵达挂机点，开始执行挂机操作！");
+                    hook_status = -1;
+                }
+            } else if (!player.isAimColRow(pos[0], pos[1])) {
+                // 如果更改了寻径坐标，纠正
+                player.setAimColRow(pos[0], pos[1]);
+            }
+        } else if (hook_status == -1) {
+            // 检测周围是否有可攻击敌人，没有前往下一个地点，这里必须放最后面
+            if (!GAME_VARS.isPatrol && hook_pos != null && !player.isSelectEnemy()) {  // 巡逻挂机，并且未选中可攻击单位
+                // 如果附近没有可攻击单位
+                if (gameEnv.getNearFightObj(GAME_VARS.attackScope) == null) {
+                    updateHookOffset();
+                    hook_status = 1;
+                    // 输出日志
+                    printMessage("[王辅]：当前位置怪物已清空，前往下一挂机点！");
+                } else {
+                    // 设置当前挂机坐标
+                    battle_pCol = player.col;
+                    battle_pRow = player.row;
+                    battle();
+                }
+            } else {
+                // 直接原地挂机
+                if (!GAME_VARS.isPatrol) {
+                    battle_pCol = player.col;
+                    battle_pRow = player.row;
+                }
                 battle();
             }
-        }else{
-            // 直接原地挂机
-            if(!GAME_VARS.isPatrol){
-                battle_pCol = player.col;
-                battle_pRow = player.row;
-            }
-            battle();
-        }
-    }else if(hook_status == 4){  // 执行巡逻功能，执行完了才到下一个巡逻点
-        var data = hook_pos[hook_offset];
-        var sign = data[0];
-        if(sign == -1){  // 更新攻击范围
-            var value = data[1];
-            if(value >= 0){
-                setNumberOptionGameVars("attackScope", value);
-            }
-            updateHookOffset();
-            hook_status = 1;
-        }else if(sign == -2){  // 采集物品
-            if(hook_collection_status == 0){  // 开始采集
-                // 获取该位置的采集物品
-                var obj = gameEnv.getNearCollectionObj();
-                // 开始采集该物品
-                if(obj != null && player.collectItem(obj)){
-                    printMessage("[王辅]：采集物品中！");
-                    hook_collection_status = 1;
-                }else {
-                    printMessage("[王辅]：采集失败，未找到采集对象，前往下个位置！");
+        } else if (hook_status == 4) {  // 执行巡逻功能，执行完了才到下一个巡逻点
+            var data = hook_pos[hook_offset];
+            var sign = data[0];
+            if (sign == -1) {  // 更新攻击范围
+                var value = data[1];
+                if (value >= 0) {
+                    setNumberOptionGameVars("attackScope", value);
+                }
+                updateHookOffset();
+                hook_status = 1;
+            } else if (sign == -2) {  // 采集物品
+                if (hook_collection_status == 0) {  // 开始采集
+                    // 获取该位置的采集物品
+                    var obj = gameEnv.getNearCollectionObj();
+                    // 开始采集该物品
+                    if (obj != null && player.collectItem(obj)) {
+                        printMessage("[王辅]：采集物品中！");
+                        hook_collection_status = 1;
+                    } else {
+                        printMessage("[王辅]：采集失败，未找到采集对象，前往下个位置！");
+                        updateHookOffset();
+                        hook_status = 1;
+                    }
+                } else if (hook_collection_status == 1) {  // 等待中
+                    // 采集完成
+                    if (!gameEnv.isCollection) {
+                        printMessage("[王辅]：采集完成，前往下个位置！");
+                        hook_collection_status = 0;
+                        updateHookOffset();
+                        hook_status = 1;
+                    }
+                }
+            } else if (sign == -3) {  // -3是等待一段时间
+                var value = data[1];
+                if (hook_is_wait == 0) {  // 未等待
+                    if (value > 0) {
+                        printMessage("[王辅]：巡逻当前等待时间：" + value + "秒。");
+                        hook_is_wait = 1;
+                        hook_wait_time = value;
+                    } else {
+                        printMessage("[王辅]：巡逻等待时间参数错误！");
+                        updateHookOffset();
+                        hook_status = 1;
+                    }
+                } else if (hook_is_wait == 2) {  // 等待完成
+                    printMessage("[王辅]：巡逻等待时间完毕，执行下一个操作！");
+                    hook_is_wait = 0;
                     updateHookOffset();
                     hook_status = 1;
                 }
-            }else if(hook_collection_status == 1){  // 等待中
-                // 采集完成
-                if(!gameEnv.isCollection){
-                    printMessage("[王辅]：采集完成，前往下个位置！");
-                    hook_collection_status = 0;
-                    updateHookOffset();
-                    hook_status = 1;
+            } else if (sign == -5) {    // 登出当前角色，并于一定时间后登入
+                hook_login_time = 0;
+                // 设置要选取的角色名字
+                hook_login_name = player.name;
+                if (data.length > 1) {
+                    var value = data[1];
+                    if (value >= 0) {
+                        hook_login_time = value;
+                    }
                 }
-            }
-        }else if(sign == -3){  // -3是等待一段时间
-            var value = data[1];
-            if(hook_is_wait == 0){  // 未等待
-                if(value > 0){
-                    printMessage("[王辅]：巡逻当前等待时间：" + value + "秒。");
-                    hook_is_wait = 1;
-                    hook_wait_time = value;
-                }else{
-                    printMessage("[王辅]：巡逻等待时间参数错误！");
-                    updateHookOffset();
-                    hook_status = 1;
+                if (data.length > 2) {
+                    hook_login_name = data[2];
                 }
-            }else if(hook_is_wait == 2){  // 等待完成
-                printMessage("[王辅]：巡逻等待时间完毕，执行下一个操作！");
-                hook_is_wait = 0;
+                // 重置autoplay
+                restAutoPlay();
+                // 重置战斗模块
+                restBattle();
+                // 退出到选角色界面
+                gameEnv.goRoleView();
+            } else {  // 不支持得默认跳过
                 updateHookOffset();
                 hook_status = 1;
             }
-        }else if(sign == -5){    // 登出当前角色，并于一定时间后登入
-
-        }else{  // 不支持得默认跳过
-            updateHookOffset();
-            hook_status = 1;
         }
     }
 }
 
 // 更新步进
-function updateHookOffset(){
-    if(hook_direction == 0){ // 正向
+function updateHookOffset() {
+    if (hook_direction == 0) { // 正向
         hook_offset += 1;
-    }else if(hook_direction == 1){  // 逆向
+    } else if (hook_direction == 1) {  // 逆向
         hook_offset -= 1;
     }
     // 处理边界
-    if(hook_offset < 0){  // 这个时候肯定是逆向了
+    if (hook_offset < 0) {  // 这个时候肯定是逆向了
         hook_offset = hook_pos.length - 1;
-    }else if(hook_offset > hook_pos.length - 1){  // 这里方向肯定是正向
+    } else if (hook_offset > hook_pos.length - 1) {  // 这里方向肯定是正向
         hook_offset = 0;
     }
 }
 
 // 输出信息到控制台
-function printMessage(msg){
+function printMessage(msg) {
     gameEnv.printMessage(7, msg);
     println(msg);
 }
 
 // 挂机函数 每一帧会执行
-function hangUpFrame(){
-    if(GAME_VARS.isHangUp){
+function hangUpFrame() {
+    if (GAME_VARS.isHangUp) {
         patrolBattle();
     }
 }
 
 // 挂机函数 每一秒执行
-function hangUpSecond(){
-    if(hook_is_wait == 1){
+function hangUpSecond() {
+    if (hook_is_wait == 1) {
         hook_wait_time -= 1;
-        if(hook_wait_time < 0){
+        if (hook_wait_time < 0) {
             hook_wait_time = 0;
             hook_is_wait = 2;
         }
@@ -282,7 +314,7 @@ function hangUpSecond(){
 }
 
 // 重置autoplay
-function restAutoPlay(){
+function restAutoPlay() {
     hook_status = 0;
     hook_pos = null;
     hook_offset = 0;
@@ -296,9 +328,9 @@ function restAutoPlay(){
 }
 
 // 设置是否挂机
-function setIsHangUp(value){
+function setIsHangUp(value) {
     GAME_VARS.isHangUp = value;
-    if(!value){
+    if (!value) {
         // 重置autoplay
         restAutoPlay();
         // 重置战斗模块

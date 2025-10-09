@@ -41,6 +41,10 @@ MEMBERS_ACCOUNTS.push(getMember([32, 9, 0, 9]));
 MEMBERS_ACCOUNTS.push(getMember([1, 5, 8, 6, 6, 1, 4, 3, 6, 5, 0, 1]));
 // 购买的会员 mjtm
 MEMBERS_ACCOUNTS.push(getMember([22, 19, 29, 22]));
+// 购买的会员 wang0315
+MEMBERS_ACCOUNTS.push(getMember([32, 10, 23, 16, 0, 3, 1, 5]));
+// 购买的会员 a1817309
+MEMBERS_ACCOUNTS.push(getMember([10, 1, 8, 1, 7, 3, 0, 9]));
 
 // 高级会员账号
 var SUPER_ACCOUNTS = [];
@@ -52,7 +56,13 @@ SUPER_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 6]));
 
 
 // 会员名称
-var MEMBERS_NAMES = ["大鱼", "福满", "米雪", "太公6", "血色战甲", "医打怪兽", "殷饵", "VIP大天二", "凤飞飞", "清澈", "彼岸花"];
+var MEMBERS_NAMES = ["大鱼", "福满", "米雪", "太公6", "血色战甲", "医打怪兽", "殷饵", "VIP大天二", "凤飞飞", "清澈", "彼岸花", "混沌起源"];
+
+// 购买角色 秦时明月
+MEMBERS_NAMES.push("鼻涕侠");
+MEMBERS_NAMES.push("烤板栗");
+// 赠送角色
+MEMBERS_NAMES.push("烤土豆");
 
 // 高级会员名称
 var SUPER_NAMES= [""];
@@ -134,6 +144,10 @@ function disableMemberConfig(){
     setNumberOptionGameVars("moveSpeed", 0);
     // 关闭挂机
     setIsHangUp(false);
+    // 还原技能CD
+    setNumberOptionGameVars("subSkillCd", 0);
+    // 还原读条CD
+    setNumberOptionGameVars("subSkillRead", 0);
 }
 
 function getSymbol(index){

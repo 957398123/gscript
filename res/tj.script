@@ -23,7 +23,7 @@ function start(){
     // 更新版本号
     gameEnv.setVersion(100728832);
     // 这里是全局游戏
-
+    regHandleCall(GAME_SECOND_CALL, tickRoleView);
     // 以下是游戏中玩家的处理
     // 注册时间播报
     regHandleCall(PLAYER_MINUTE_CALL, printRunTime);
@@ -65,8 +65,15 @@ function entryGame(){
     }
     // 读取配置文件，覆盖默认设置
     readGameVarRecord();
-    // 结束挂机
-    setIsHangUp(false);
+    // 判断是不是会员
+    if(IS_MEMBER){
+        // 关闭定点挂机
+        if(GAME_VARS.isHangUp && GAME_VARS.isPatrol){
+            setIsHangUp(false);
+        }
+    }else{
+        setIsHangUp(false);
+    }
 }
 
 // 玩家tick之前
@@ -128,9 +135,19 @@ function startTick(){
     }
 }
 
-// tick回调结束时回调
-function endTick(){
-    if(gameEnv.curState == 17){
+// 角色选择界面的tick
+function tickRoleView(){
+    // 如果巡逻挂机
+    if(gameEnv.status == 12 && GAME_VARS.isHangUp && !GAME_VARS.isPatrol){
+        // 更新登录计数
+        if(hook_login_time > 0){
+            --hook_login_time;
+        }else{
+            hook_login_time = -1;
+            // 开始登录角色
+            gameEnv.loginRole(hook_login_name);
+        }
+    }else if(gameEnv.status == 17 && GAME_VARS.isHangUp && !GAME_VARS.isPatrol){  // 如果是公告界面，并且巡逻挂机，跳过公告
         gameEnv.keyPressed(SOFT_OK);
     }
 }

@@ -18,10 +18,10 @@ var GAME_VARS_MAXNUM = {
 GAME_VARS.configName = "GAME_VARS";
 
 // 王辅版本
-GAME_VARS.version = "V4.9";
+GAME_VARS.version = "V5.2";
 
 // 游戏公告
-GAME_VARS.gameNotice = "王辅版本" + GAME_VARS.version + "，优化移动速度！";
+GAME_VARS.gameNotice = "王辅版本" + GAME_VARS.version + "，增加减技能CD和减读条CD设置，单位为100毫秒！";
 
 // 是否挂机
 GAME_VARS.isHangUp = false;
@@ -83,6 +83,14 @@ GAME_VARS.autoStoreInterval = 5;
 // 背包保留金钱
 GAME_VARS.RETAIN_MONEY = 1000;
 
+// 减去所有技能CD
+GAME_VARS.subSkillCd = 0;
+
+// 减去所有读条技能时间
+GAME_VARS.subSkillRead = 0;
+
+// ----------------------------------------------------------  高级功能  --------------------------------------------------------------------
+
 // 是否远距锁敌
 GAME_VARS.isLockEnemy = false;
 
@@ -123,7 +131,7 @@ function setNumberOptionGameVars(name, value){
 // 从配置中读取设置
 function readGameVarRecord(){
     var name = player.name + "_GAME_VARS";
-    var records = gameEnv.readRecord(name, 22);
+    var records = gameEnv.readRecord(name, 24);
     if(records != null){
         setBoolOptionGameVars("isPatrol", records[0].getBoolean());
         setBoolOptionGameVars("isAllowWall", records[1].getBoolean());
@@ -151,6 +159,8 @@ function readGameVarRecord(){
         setBoolOptionGameVars("isUseBluePotion", records[19].getBoolean());
         setBoolOptionGameVars("isUsePurplePotion", records[20].getBoolean());
         setNumberOptionGameVars("battleScope", records[21].getIntValue());
+        setNumberOptionGameVars("subSkillCd", records[22].getIntValue());
+        setNumberOptionGameVars("subSkillRead", records[23].getIntValue());
     }else{
         // 保存默认值
         storeGameVarRecord();
@@ -182,7 +192,9 @@ function storeGameVarRecord(){
         GAME_VARS.isUseRedPotion,     // 是否吃红药
         GAME_VARS.isUseBluePotion,    // 是否吃蓝药
         GAME_VARS.isUsePurplePotion,  // 是否吃紫药
-        GAME_VARS.battleScope         // 施法距离
+        GAME_VARS.battleScope,        // 施法距离
+        GAME_VARS.subSkillCd,         // 减技能CD
+        GAME_VARS.subSkillRead        // 减读条时间
     ];
     gameEnv.saveRecord(name, records);
 }

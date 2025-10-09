@@ -59,30 +59,14 @@ function battle() {
                     player.setAimColRow(battle_pCol, battle_pRow);
                 }
             } else {  // 恢复
+                var isNeedReplyHp = hpPer < GAME_VARS.hpStatusPer;
                 // 如果当前职业是医生，给自己加血
-                if (player.profession == 3 && hpPer < GAME_VARS.hpStatusPer && player.canCastSkill(2)) {
+                if (player.profession == 3 && isNeedReplyHp && canCastBattleSkill(14)) {
+                    player.caskSkill(player, 14);
+                }else if (player.profession == 3 && isNeedReplyHp && player.canCastSkill(2)) {
                     player.caskSkill(player, 2);
                 } else {
-                    // 判断当前血量是否需要吃药 优先吃紫药
-                    if (hpPer < GAME_VARS.hpStatusPer) {
-                        if (GAME_VARS.isUsePurplePotion && gameEnv.canUsePurple()) {
-                            printMessage("[王辅]：吃紫药！");
-                            gameEnv.usePurplePotion();
-                        } else if (GAME_VARS.isUseRedPotion && gameEnv.canUseRed()) {
-                            printMessage("[王辅]：吃红药！");
-                            gameEnv.useRedPotion();
-                        }
-                    }
-                    // 判断当前蓝量是否需要吃药 优先吃紫药
-                    if (mpPer < GAME_VARS.mpStatusPer) {
-                        if (GAME_VARS.isUsePurplePotion && gameEnv.canUsePurple()) {
-                            printMessage("[王辅]：吃紫药！");
-                            gameEnv.usePurplePotion();
-                        } else if (GAME_VARS.isUseBluePotion && gameEnv.canUseBlue()) {
-                            printMessage("[王辅]：吃红药！");
-                            gameEnv.useBluePotion();
-                        }
-                    }
+                    drugStatus();
                 }
             }
         } else if (battle_status == 1) {  // 寻径中
@@ -135,6 +119,34 @@ function battle() {
     }
 }
 
+// 药品恢复状态
+function drugStatus(){
+    var hpPer = getPercentageHp();
+    var mpPer = getPercentageMp();
+    if (player.state != 5) {
+        // 判断当前血量是否需要吃药 优先吃紫药
+        if (hpPer < GAME_VARS.hpStatusPer) {
+            if (GAME_VARS.isUsePurplePotion && gameEnv.canUsePurple()) {
+                printMessage("[王辅]：吃紫药！");
+                gameEnv.usePurplePotion();
+            } else if (GAME_VARS.isUseRedPotion && gameEnv.canUseRed()) {
+                printMessage("[王辅]：吃红药！");
+                gameEnv.useRedPotion();
+            }
+        }
+        // 判断当前蓝量是否需要吃药 优先吃紫药
+        if (mpPer < GAME_VARS.mpStatusPer) {
+            if (GAME_VARS.isUsePurplePotion && gameEnv.canUsePurple()) {
+                printMessage("[王辅]：吃紫药！");
+                gameEnv.usePurplePotion();
+            } else if (GAME_VARS.isUseBluePotion && gameEnv.canUseBlue()) {
+                printMessage("[王辅]：吃蓝药！");
+                gameEnv.useBluePotion();
+            }
+        }
+    }
+}
+
 // 是否能释放技能，对于那些0CD的buff技能进行判断，如果buff存在，就不放了
 function canCastBattleSkill(skillIndex){
     // 获取玩家buff状态
@@ -174,10 +186,14 @@ function customizeBattle(hpPer, mpPer, target){
     if(skillIndex >= 0 && skillIndex <= 14){  // 技能键
         // 如果没有释放中的技能，释放当前技能，并增加计数
         if(player.skillIndex == -1){
-            // 医生优先技能回复
-            if(player.profession == 3 && hpPer < 40 && player.canCastSkill(2)){
-                gameEnv.setCurrentTarget(player);
-                player.caskSkill(player, 2);
+            // 如果当前职业是医生，给自己加血
+            var isNeedReplyHp = hpPer < GAME_VARS.hpStatusPer;
+            if(player.profession == 3 && isNeedReplyHp){
+                if(isNeedReplyHp && canCastBattleSkill(14)){
+                    player.caskSkill(player, 14);
+                }else if(isNeedReplyHp && player.canCastSkill(2)){
+                    player.caskSkill(player, 2);
+                }
             }else{
                 // 如果能释放技能
                 if(canCastBattleSkill(skillIndex)){
@@ -199,26 +215,8 @@ function customizeBattle(hpPer, mpPer, target){
             battle_shortcut_count = 1;
         }
     }
-    // 判断当前血量是否需要吃药 优先吃紫药
-    if(hpPer < GAME_VARS.hpStatusPer){
-        if(GAME_VARS.isUsePurplePotion && gameEnv.canUsePurple()){
-            printMessage("[王辅]：吃紫药！");
-            gameEnv.usePurplePotion();
-        }else if(GAME_VARS.isUseRedPotion && gameEnv.canUseRed()){
-            printMessage("[王辅]：吃红药！");
-            gameEnv.useRedPotion();
-        }
-    }
-    // 判断当前蓝量是否需要吃药 优先吃紫药
-    if(mpPer < GAME_VARS.mpStatusPer){
-        if(GAME_VARS.isUsePurplePotion && gameEnv.canUsePurple()){
-            printMessage("[王辅]：吃紫药！");
-            gameEnv.usePurplePotion();
-        }else if(GAME_VARS.isUseBluePotion && gameEnv.canUseBlue()){
-            printMessage("[王辅]：吃蓝药！");
-            gameEnv.useBluePotion();
-        }
-    }
+    // 判断是否吃药
+    drugStatus();
 }
 
 //-------------------------------------------  End  -------------------------------------------------

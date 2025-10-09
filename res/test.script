@@ -1,7 +1,2 @@
-printMember([9, 5, 7, 3, 9, 8, 1, 2, 3]);
-
-function printMember(array){
-    for(var i = 0; i < array.length; ++i){
-        println(array[i]);
-    }
-}
+var a = 1 < 2;
+println("a=" + a);
