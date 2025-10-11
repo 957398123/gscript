@@ -18,10 +18,10 @@ var GAME_VARS_MAXNUM = {
 GAME_VARS.configName = "GAME_VARS";
 
 // 王辅版本
-GAME_VARS.version = "V5.2";
+GAME_VARS.version = "V5.6";
 
 // 游戏公告
-GAME_VARS.gameNotice = "王辅版本" + GAME_VARS.version + "，增加减技能CD和减读条CD设置，单位为100毫秒！";
+GAME_VARS.gameNotice = "王辅版本" + GAME_VARS.version + "，优化挂机！";
 
 // 是否挂机
 GAME_VARS.isHangUp = false;

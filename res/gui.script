@@ -644,6 +644,8 @@ function hangHangKey(){
                     }
                     // 置空弹框
                     guiZone.hangUI.baseForm.clearAboutForm();
+                    // 清除优先攻击
+                    player.clearPriorityAttack();
                     gameEnv.setGameState(0);
                 });
             }

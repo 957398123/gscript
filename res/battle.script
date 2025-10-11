@@ -44,7 +44,7 @@ function battle() {
     if (player.state != 5) {
         if (battle_status == 0) {  // 恢复中
             if (player.isBeAttack || (isHangUpColRow() && ((hpPer >= GAME_VARS.hpStatusPer && mpPer >= GAME_VARS.mpStatusPer)))) {
-                var fightObj = gameEnv.getNearFightObj(GAME_VARS.attackScope);
+                var fightObj = gameEnv.getNearFightObj(battle_pCol, battle_pRow, GAME_VARS.attackScope);
                 if (fightObj != null) {
                     // 设置当前对象
                     gameEnv.setCurrentTarget(fightObj);
@@ -83,9 +83,12 @@ function battle() {
                 }
             } else {
                 // 如果丢失目标，回到挂机点
-                battle_status = 0;
+                resetBattleStatus();
             }
         } else if (battle_status == 2) {  // 进入战斗
+            // 实时更新战斗对象
+            player.updateAttackGameObj();
+            // 获取当前选择目标
             var target = player.target;
             if (player.isSelectEnemy()) {  // 如果选中的是可攻击单位
                 // 如果怪物血量大于0
@@ -98,25 +101,30 @@ function battle() {
                     }
                 } else {
                     // 打死当前怪物回原点
-                    player.stopBattle();
-                    battle_status = 0;
+                    resetBattleStatus();
                 }
             } else {
                 // 没有怪物，选一个最近的怪物
-                var fightObj = gameEnv.getNearFightObj(GAME_VARS.attackScope);
+                var fightObj = gameEnv.getNearFightObj(battle_pCol, battle_pRow, GAME_VARS.attackScope);
                 if (fightObj == null) {
-                    // 回原点
-                    player.stopBattle();
-                    battle_status = 0;
+                    resetBattleStatus();
                 } else {
                     gameEnv.setCurrentTarget(fightObj);
                 }
             }
         }
     } else {
-        battle_status = 0;
+        resetBattleStatus();
         gameEnv.keyPressed(NUM_11);
     }
+}
+
+// 置位战斗状态
+function resetBattleStatus(){
+    // 回原点
+    player.stopBattle();
+    player.clearPriorityAttack();
+    battle_status = 0;
 }
 
 // 药品恢复状态

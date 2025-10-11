@@ -61,8 +61,13 @@ function patrolBattle() {
                 // 为空，结束挂机
                 if (hook_map_path == null) {
                     printMessage("[王辅]：未找到前往挂机图路径，取消挂机！");
-                    // 取消挂机
-                    setIsHangUp(false);
+                    // 如果当前地图没有巡逻挂机,取消挂机
+                    var hook_pos = gameEnv.getMapLoopData();
+                    if(hook_pos == null){
+                        setIsHangUp(false);
+                    }else{
+                        hook_status == 0;
+                    }
                 } else {
                     printMessage("[王辅]：检测到当前不在挂机图，开始寻路径！");
                     hook_map_index = 0;
@@ -96,11 +101,6 @@ function patrolBattle() {
             }
         }
     } else {
-        // 首先检测状态
-        if(hook_status != -1){
-            drugStatus();
-        }
-        //
         if (hook_status == 0) {
             // 初始状态，检测当前地图是否有挂机坐标
             // 更新挂机地图数据
@@ -266,6 +266,17 @@ function patrolBattle() {
                 restBattle();
                 // 退出到选角色界面
                 gameEnv.goRoleView();
+            } else if(sign == -7){    // 瞬移到指定位置
+                if (data.length > 2) {
+                    var col = data[1];
+                    var row = data[2];
+                    if(col >= 0 && row >= 0){
+                        // 更新玩家当前位置
+                        player.setObjPosition(col, row);
+                    }
+                }
+                updateHookOffset();
+                hook_status = 1;
             } else {  // 不支持得默认跳过
                 updateHookOffset();
                 hook_status = 1;

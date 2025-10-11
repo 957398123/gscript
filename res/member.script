@@ -50,10 +50,10 @@ MEMBERS_ACCOUNTS.push(getMember([10, 1, 8, 1, 7, 3, 0, 9]));
 var SUPER_ACCOUNTS = [];
 // 增加高级会员
 SUPER_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 3]));
-SUPER_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 4]));
+//SUPER_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 4]));
 SUPER_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 5]));
 SUPER_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 6]));
-
+SUPER_ACCOUNTS.push(getMember([26, 26, 1, 1, 1, 1]));
 
 // 会员名称
 var MEMBERS_NAMES = ["大鱼", "福满", "米雪", "太公6", "血色战甲", "医打怪兽", "殷饵", "VIP大天二", "凤飞飞", "清澈", "彼岸花", "混沌起源"];
@@ -64,8 +64,14 @@ MEMBERS_NAMES.push("烤板栗");
 // 赠送角色
 MEMBERS_NAMES.push("烤土豆");
 
+// 购买角色
+MEMBERS_NAMES.push("玫红色舞");
+
+// 购买角色
+MEMBERS_NAMES.push("白马王子");
+
 // 高级会员名称
-var SUPER_NAMES= [""];
+var SUPER_NAMES= ["太公6"];
 
 // 是否是会员
 var IS_MEMBER = false;
