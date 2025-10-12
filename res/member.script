@@ -9,6 +9,15 @@ var ADMIN_ACCOUNT = [];
 // 会员账号
 var MEMBERS_ACCOUNTS = [];
 
+// 会员名称
+var MEMBERS_NAMES = ["大鱼", "太公6", "血色战甲", "医打怪兽", "殷饵", "VIP大天二", "凤飞飞", "清澈", "彼岸花", "混沌起源"];
+
+// 高级会员账号
+var SUPER_ACCOUNTS = [];
+
+// 高级会员名称
+var SUPER_NAMES= ["太公6"];
+
 // 增加高级会员
 ADMIN_ACCOUNT.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 3]));
 
@@ -46,8 +55,30 @@ MEMBERS_ACCOUNTS.push(getMember([32, 10, 23, 16, 0, 3, 1, 5]));
 // 购买的会员 a1817309
 MEMBERS_ACCOUNTS.push(getMember([10, 1, 8, 1, 7, 3, 0, 9]));
 
-// 高级会员账号
-var SUPER_ACCOUNTS = [];
+// 购买会员 秦时明月
+// 购买的会员 lv01
+MEMBERS_ACCOUNTS.push(getMember([21, 31, 0, 1]));
+// 购买的会员 lv03
+MEMBERS_ACCOUNTS.push(getMember([21, 31, 0, 3]));
+// 购买的会员 268811
+MEMBERS_ACCOUNTS.push(getMember([2, 6, 8, 8, 1, 1]));
+// 购买的会员 268822
+MEMBERS_ACCOUNTS.push(getMember([2, 6, 8, 8, 2, 2]));
+// 赠送角色
+MEMBERS_NAMES.push("帝厅长");
+MEMBERS_NAMES.push("帝言");
+
+// 购买会员 文子
+// 购买的会员 fang2025
+MEMBERS_ACCOUNTS.push(getMember([15, 10, 23, 16, 2, 0, 2, 5]));
+// 购买的会员 hai2025
+MEMBERS_ACCOUNTS.push(getMember([17, 10, 18, 2, 0, 2, 5]));
+// 赠送角色
+MEMBERS_NAMES.push("装备回收官");
+
+// 购买的会员 12282292
+MEMBERS_ACCOUNTS.push(getMember([1, 2, 2, 8, 2, 2, 9, 2]));
+
 // 增加高级会员
 SUPER_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 3]));
 //SUPER_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 4]));
@@ -55,23 +86,21 @@ SUPER_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 5]));
 SUPER_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 6]));
 SUPER_ACCOUNTS.push(getMember([26, 26, 1, 1, 1, 1]));
 
-// 会员名称
-var MEMBERS_NAMES = ["大鱼", "福满", "米雪", "太公6", "血色战甲", "医打怪兽", "殷饵", "VIP大天二", "凤飞飞", "清澈", "彼岸花", "混沌起源"];
+
 
 // 购买角色 秦时明月
-MEMBERS_NAMES.push("鼻涕侠");
-MEMBERS_NAMES.push("烤板栗");
+// MEMBERS_NAMES.push("米雪");
+// MEMBERS_NAMES.push("鼻涕侠");
+// MEMBERS_NAMES.push("烤板栗");
+// MEMBERS_NAMES.push("福满");
 // 赠送角色
-MEMBERS_NAMES.push("烤土豆");
+// MEMBERS_NAMES.push("烤土豆");
 
 // 购买角色
 MEMBERS_NAMES.push("玫红色舞");
 
 // 购买角色
 MEMBERS_NAMES.push("白马王子");
-
-// 高级会员名称
-var SUPER_NAMES= ["太公6"];
 
 // 是否是会员
 var IS_MEMBER = false;
