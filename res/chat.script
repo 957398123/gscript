@@ -1,4 +1,4 @@
-// 聊天信息回调 channel-频道 id-发送者id name-发送者姓名 msg-消息内容
+// 聊天信息回调 channel-频道 id-发送者id name-发送者姓名 msg-消息内容 （这里只会回调不是自己的）
 // 1-私聊 2-世界频道 3-氏族频道 4-场景频道 5-组队 6-喇叭
 function chatMessageHook(channel, id, name, msg){
 }
@@ -11,5 +11,13 @@ function chatCommandHook(channel, id, name, msg){
         gameEnv.sendCommandMessage(1, id, "001");
     }else if(cmd == "001"){
         printMessage("[王辅]：王辅会员" + name + "向您报道！");
+    }else if(cmd == "002"){  // 设置优先攻击目标
+        // 如果自己当前的优先攻击对象为0，才进行设置
+        if(player.priorityAttack == 0){
+            // 获取id编号
+            var id = msg.substring(3, -1);
+            // 更新优先攻击目标
+            player.setPriorityAttack(id);
+        }
     }
 }

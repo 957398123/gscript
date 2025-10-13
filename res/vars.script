@@ -18,10 +18,10 @@ var GAME_VARS_MAXNUM = {
 GAME_VARS.configName = "GAME_VARS";
 
 // 王辅版本
-GAME_VARS.version = "V5.8";
+GAME_VARS.version = "V6.1";
 
 // 游戏公告
-GAME_VARS.gameNotice = "王辅版本" + GAME_VARS.version + "，寻路可以加速了！";
+GAME_VARS.gameNotice = "王辅版本" + GAME_VARS.version + "，修复巡逻挂机等待失效问题！";
 
 // 是否挂机
 GAME_VARS.isHangUp = false;

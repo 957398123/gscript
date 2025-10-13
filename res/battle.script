@@ -124,6 +124,8 @@ function resetBattleStatus(){
     // 回原点
     player.stopBattle();
     player.clearPriorityAttack();
+    // 设置选中自己
+    gameEnv.setCurrentTarget(player);
     battle_status = 0;
 }
 
@@ -166,6 +168,13 @@ function canCastBattleSkill(skillIndex){
             }else if(skillIndex == 10 && bufferState[14]){  // 如果是放疾风之翼，但是身上有buff
                 return false;
             }else if(skillIndex == 14 && bufferState[8]){  // 如果是放愈合之契，但是身上有buff
+                return false;
+            }else if(skillIndex == 7){  // 如果是猛毒蛊，看看目标身上有没有buff
+                // 如果选中得是敌方单位
+                if(player.isSelectEnemy()){
+                    var buffer = player.target.bufferState;
+                    return !buffer[4] && player.canCastSkill(skillIndex);
+                }
                 return false;
             }
         }else if(player.profession == 2){  // 职业是道士

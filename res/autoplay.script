@@ -230,8 +230,8 @@ function patrolBattle() {
                     }
                 }
             } else if (sign == -3) {  // -3是等待一段时间
-                var value = data[1];
                 if (hook_is_wait == 0) {  // 未等待
+                    var value = parseInt(data[1]);
                     if (value > 0) {
                         printMessage("[王辅]：巡逻当前等待时间：" + value + "秒。");
                         hook_is_wait = 1;
@@ -242,7 +242,7 @@ function patrolBattle() {
                         hook_status = 1;
                     }
                 } else if (hook_is_wait == 2) {  // 等待完成
-                    printMessage("[王辅]：巡逻等待时间完毕，执行下一个操作！");
+                    printMessage("[王辅]：巡逻等待结束。");
                     hook_is_wait = 0;
                     updateHookOffset();
                     hook_status = 1;
@@ -266,7 +266,16 @@ function patrolBattle() {
                 restBattle();
                 // 退出到选角色界面
                 gameEnv.goRoleView();
-            } else if(sign == -7){    // 瞬移到指定位置
+            } else if(sign == -6){    // 选取指定名称的游戏对象
+                if (data.length > 1) {
+                    var r = player.selectNameObj(data[1]);
+                    if(!r){
+                        printMessage("[王辅]：未找到能选取的游戏对象！");
+                    }
+                }
+                updateHookOffset();
+                hook_status = 1;
+            }else if(sign == -7){    // 瞬移到指定位置
                 if (data.length > 2) {
                     var col = data[1];
                     var row = data[2];

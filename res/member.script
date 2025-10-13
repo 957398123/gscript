@@ -76,6 +76,10 @@ MEMBERS_ACCOUNTS.push(getMember([17, 10, 18, 2, 0, 2, 5]));
 // 赠送角色
 MEMBERS_NAMES.push("装备回收官");
 
+// 医打怪兽
+// 赠送角色
+MEMBERS_NAMES.push("110101");
+
 // 购买的会员 12282292
 MEMBERS_ACCOUNTS.push(getMember([1, 2, 2, 8, 2, 2, 9, 2]));
 
