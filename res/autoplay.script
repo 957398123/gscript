@@ -46,7 +46,7 @@ function patrolBattle() {
         drugStatus();
     }
     // 只有在游戏中才进行更新
-    if (hook_map_name != gameEnv.mapName) {
+    if (hook_map_name != null && hook_map_name != gameEnv.mapName) {
         // 玩家死亡了，先复活
         if (player.state == 5) {
             gameEnv.keyPressed(NUM_11);

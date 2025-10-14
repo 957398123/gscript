@@ -556,6 +556,7 @@ function initHighForm(){
             GAME_VARS.isMoveCast = false;
         }
     });
+
     // 持有引用
     keyMap.isLockEnemy = rb1;
     keyMap.isMoveCast = rb2;

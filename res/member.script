@@ -90,21 +90,24 @@ SUPER_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 5]));
 SUPER_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 6]));
 SUPER_ACCOUNTS.push(getMember([26, 26, 1, 1, 1, 1]));
 
-
-
-// 购买角色 秦时明月
-// MEMBERS_NAMES.push("米雪");
-// MEMBERS_NAMES.push("鼻涕侠");
-// MEMBERS_NAMES.push("烤板栗");
-// MEMBERS_NAMES.push("福满");
+// 文子
+// 购买的会员 linlifeng 50标准
+MEMBERS_ACCOUNTS.push(getMember([21, 18, 23, 21, 18, 15, 14, 23, 16]));
+// 购买的会员 linlifengb 50标准
+MEMBERS_ACCOUNTS.push(getMember([21, 18, 23, 21, 18, 15, 14, 23, 16, 11]));
 // 赠送角色
-// MEMBERS_NAMES.push("烤土豆");
+MEMBERS_NAMES.push("奶气侧漏");
 
 // 购买角色
 MEMBERS_NAMES.push("玫红色舞");
 
+// 星星
 // 购买角色
 MEMBERS_NAMES.push("白马王子");
+// 购买角色
+MEMBERS_NAMES.push("关小月");
+// 赠送角色
+MEMBERS_NAMES.push("弑情忠義_帝");
 
 // 是否是会员
 var IS_MEMBER = false;
