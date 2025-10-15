@@ -538,6 +538,7 @@ function initHighForm(){
             GAME_VARS.isLockEnemy = false;
         }
     });
+
     // 选项 移动施法
     var rb2 = uiFrame.createUIRadioButton(35, 38 + 1 * 14, 0, 0, "移动施法", 0);
     rb2.addItems("开");
@@ -557,13 +558,78 @@ function initHighForm(){
         }
     });
 
+    // 快速选择
+    var rb3 = uiFrame.createUIRadioButton(35, 38 + 2 * 14, 0, 0, "快速选择", 2);
+    rb3.addItems("所有敌人");
+    rb3.addItems("敌对玩家");
+    rb3.addItems("敌对怪物");
+    // 获取选项
+    rb3.setChooseItem(GAME_VARS.lockType);
+    // 按钮值发生改变时回调
+    rb3.addChooseCallMethods(function (value) {
+        GAME_VARS.lockType = value;
+    });
+
+    // 选项 自动采集
+    var rb4 = uiFrame.createUIRadioButton(35, 38 + 3 * 14, 0, 0, "自动采集", 0);
+    rb4.addItems("开");
+    rb4.addItems("关");
+    // 获取选项
+    if(GAME_VARS.isAutoCollection){
+        rb4.setChooseItem(0);
+    }else{
+        rb4.setChooseItem(1);
+    }
+    // 按钮值发生改变时回调
+    rb4.addChooseCallMethods(function (value) {
+        if(value == 0){
+            GAME_VARS.isAutoCollection = true;
+        }else{
+            GAME_VARS.isAutoCollection = false;
+        }
+    });
+
+    // 选项 同时施法
+    var rb5 = uiFrame.createUIRadioButton(35, 38 + 4 * 14, 0, 0, "同时施法", 0);
+    rb5.addItems("开");
+    rb5.addItems("关");
+    // 获取选项
+    if(GAME_VARS.isTogetherCast){
+        rb5.setChooseItem(0);
+    }else{
+        rb5.setChooseItem(1);
+    }
+    // 按钮值发生改变时回调
+    rb5.addChooseCallMethods(function (value) {
+        if(value == 0){
+            GAME_VARS.isTogetherCast = true;
+        }else{
+            GAME_VARS.isTogetherCast = false;
+        }
+    });
+
     // 持有引用
     keyMap.isLockEnemy = rb1;
     keyMap.isMoveCast = rb2;
+    keyMap.lockType = rb3;
+    keyMap.isAutoCollection = rb4;
+    keyMap.isTogetherCast = rb5;
+
+    // 设置上下按键
     rb1.setAroundComponent(rb2, 2);
     rb2.setAroundComponent(rb1, 1);
+    rb2.setAroundComponent(rb3, 2);
+    rb3.setAroundComponent(rb2, 1);
+    rb3.setAroundComponent(rb4, 2);
+    rb4.setAroundComponent(rb3, 1);
+    rb4.setAroundComponent(rb5, 2);
+    rb5.setAroundComponent(rb4, 1);
+    // 添加到form
     highForm.addComponent(rb1);
     highForm.addComponent(rb2);
+    highForm.addComponent(rb3);
+    highForm.addComponent(rb4);
+    highForm.addComponent(rb5);
     highForm.addKeyCallMethods(configKeyPress);
     highForm.setFocus(true);
     // 高级功能

@@ -18,10 +18,10 @@ var GAME_VARS_MAXNUM = {
 GAME_VARS.configName = "GAME_VARS";
 
 // 王辅版本
-GAME_VARS.version = "V6.2";
+GAME_VARS.version = "V6.3";
 
 // 游戏公告
-GAME_VARS.gameNotice = "王辅版本" + GAME_VARS.version + "，修复聊天问题！";
+GAME_VARS.gameNotice = "王辅版本" + GAME_VARS.version + "，优化一些问题！";
 
 // 是否挂机
 GAME_VARS.isHangUp = false;
@@ -106,6 +106,16 @@ GAME_VARS.isTogetherCast = false;
 // 星号键类型 0-快速聊天 1-锁定怪物 2-锁定敌对玩家 3-锁定怪物+敌对玩家 4-仅友方
 GAME_VARS.lockType = 0;
 
+// 设置多选按钮索引值
+function setMultipleOptionGameVars(name, value){
+    var keyMap = guiZone.hangUI.keyMap;
+    var rb = keyMap[name];
+    if(rb != null){
+        GAME_VARS[name] = value;
+        rb.setChooseItem(value);
+    }
+}
+
 // 设置单选按钮变量
 function setBoolOptionGameVars(name, value){
     var keyMap = guiZone.hangUI.keyMap;
@@ -137,7 +147,7 @@ function setNumberOptionGameVars(name, value){
 // 从配置中读取设置
 function readGameVarRecord(){
     var name = player.name + "_GAME_VARS";
-    var records = gameEnv.readRecord(name, 24);
+    var records = gameEnv.readRecord(name, 26);
     if(records != null){
         setBoolOptionGameVars("isPatrol", records[0].getBoolean());
         setBoolOptionGameVars("isAllowWall", records[1].getBoolean());
@@ -153,9 +163,16 @@ function readGameVarRecord(){
         // 高级会员设置
         IS_SUPER_MEMBER = isSuperAccount(player.account) || isSuperName(player.name);
         if(IS_SUPER_MEMBER){
+            // 远距索敌
             setBoolOptionGameVars("isLockEnemy", records[11].getBoolean());
+            // 移动施法
             setBoolOptionGameVars("isMoveCast", records[12].getBoolean());
-            // setNumberOptionGameVars("lockType", records[13].getIntValue());
+            // 快速选择
+            setMultipleOptionGameVars("lockType", records[13].getIntValue());
+            // 自动采集
+            setBoolOptionGameVars("isAutoCollection", records[24].getBoolean());
+            // 同时施法
+            setBoolOptionGameVars("isTogetherCast", records[25].getBoolean());
         }
         setNumberOptionGameVars("attackScope", records[14].getIntValue());
         setNumberOptionGameVars("hpStatusPer", records[15].getIntValue());
@@ -200,7 +217,9 @@ function storeGameVarRecord(){
         GAME_VARS.isUsePurplePotion,  // 是否吃紫药
         GAME_VARS.battleScope,        // 施法距离
         GAME_VARS.subSkillCd,         // 减技能CD
-        GAME_VARS.subSkillRead        // 减读条时间
+        GAME_VARS.subSkillRead,       // 减读条时间
+        GAME_VARS.isAutoCollection,   // 自动采集
+        GAME_VARS.isTogetherCast      // 同时施法
     ];
     gameEnv.saveRecord(name, records);
 }
