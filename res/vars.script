@@ -103,7 +103,7 @@ GAME_VARS.isAutoCollection = false;
 // 是否同时释放技能
 GAME_VARS.isTogetherCast = false;
 
-// 星号键类型 0-快速聊天 1-锁定怪物 2-锁定敌对玩家 3-锁定怪物+敌对玩家 4-仅友方
+// 星号键类型 0-快速聊天 1-所有敌人 2-敌对玩家 3-敌对怪物 4-友方玩家
 GAME_VARS.lockType = 0;
 
 // 设置多选按钮索引值

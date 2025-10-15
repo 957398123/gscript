@@ -166,13 +166,6 @@ function enableMemberConfig(){
     setBoolOptionGameVars("isMoveCast", false);
 }
 
-// 初始化超级会员设置
-function enableSuperMemberConfig(){
-    enableMemberConfig();
-    setBoolOptionGameVars("isLockEnemy", true);
-    setBoolOptionGameVars("isMoveCast", true);
-}
-
 // 关闭会员设置
 function disableMemberConfig(){
     setBoolOptionGameVars("isAllowWall", false);
@@ -190,6 +183,15 @@ function disableMemberConfig(){
     setNumberOptionGameVars("subSkillCd", 0);
     // 还原读条CD
     setNumberOptionGameVars("subSkillRead", 0);
+}
+
+// 关闭超级会员设置
+function disableSuperMemberConfig(){
+    setBoolOptionGameVars("isLockEnemy", false);
+    setBoolOptionGameVars("isMoveCast", false);
+    setBoolOptionGameVars("isAutoCollection", false);
+    setBoolOptionGameVars("isTogetherCast", false);
+    setMultipleOptionGameVars("lockType", 0);
 }
 
 function getSymbol(index){

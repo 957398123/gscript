@@ -560,9 +560,11 @@ function initHighForm(){
 
     // 快速选择
     var rb3 = uiFrame.createUIRadioButton(35, 38 + 2 * 14, 0, 0, "快速选择", 2);
+    rb3.addItems("快速聊天");
     rb3.addItems("所有敌人");
     rb3.addItems("敌对玩家");
     rb3.addItems("敌对怪物");
+    rb3.addItems("友方玩家");
     // 获取选项
     rb3.setChooseItem(GAME_VARS.lockType);
     // 按钮值发生改变时回调

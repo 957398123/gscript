@@ -52,7 +52,7 @@ function entryGame(){
     IS_SUPER_MEMBER = isSuperAccount(player.account) || isSuperName(player.name);
     IS_MEMBER = IS_SUPER_MEMBER || isMemberAccount(player.account) || isMemberName(player.name);
     if(IS_SUPER_MEMBER){
-        enableSuperMemberConfig();
+        enableMemberConfig();
         printMessage("[王辅]：欢迎您，尊贵的超级会员！");
     }else if(IS_MEMBER){
         enableMemberConfig();
@@ -73,6 +73,10 @@ function entryGame(){
         }
     }else{
         setIsHangUp(false);
+    }
+    // 判断是不是超级会员
+    if(!IS_SUPER_MEMBER){
+        disableSuperMemberConfig();
     }
 }
 
