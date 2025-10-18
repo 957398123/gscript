@@ -10,7 +10,7 @@ var ADMIN_ACCOUNT = [];
 var MEMBERS_ACCOUNTS = [];
 
 // 会员名称
-var MEMBERS_NAMES = ["大鱼", "太公6", "血色战甲", "医打怪兽", "殷饵", "VIP大天二", "凤飞飞", "清澈", "彼岸花", "混沌起源"];
+var MEMBERS_NAMES = ["太公6", "血色战甲", "医打怪兽", "殷饵", "VIP大天二", "凤飞飞", "清澈", "彼岸花", "混沌起源"];
 
 // 高级会员账号
 var SUPER_ACCOUNTS = [];
@@ -60,6 +60,8 @@ MEMBERS_ACCOUNTS.push(getMember([10, 1, 8, 1, 7, 3, 0, 9]));
 MEMBERS_ACCOUNTS.push(getMember([21, 31, 0, 1]));
 // 购买的会员 lv03
 MEMBERS_ACCOUNTS.push(getMember([21, 31, 0, 3]));
+// 购买的会员 268800
+MEMBERS_ACCOUNTS.push(getMember([2, 6, 8, 8, 0, 0]));
 // 购买的会员 268811
 MEMBERS_ACCOUNTS.push(getMember([2, 6, 8, 8, 1, 1]));
 // 购买的会员 268822
@@ -92,6 +94,8 @@ SUPER_ACCOUNTS.push(getMember([26, 26, 1, 1, 1, 1]));
 
 // 赠送高级会员 linlifengb
 SUPER_ACCOUNTS.push(getMember([21, 18, 23, 21, 18, 15, 14, 23, 16, 11]));
+// 赠送高级会员 268800
+SUPER_ACCOUNTS.push(getMember([2, 6, 8, 8, 0, 0]));
 // 赠送高级会员 268811
 SUPER_ACCOUNTS.push(getMember([2, 6, 8, 8, 1, 1]));
 // 赠送高级会员 lv01
