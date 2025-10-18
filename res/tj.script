@@ -15,13 +15,13 @@ var PLAYER_SECOND_COUNT = 0;
 // 秒回调列表
 var PLAYER_SECOND_CALL = [];
 
-// 临时会员体验时间(单位分钟)
-var TEMP_MEMBER = 5;
+// 临时会员体验时间(单位分钟) 禁用临时会员
+var TEMP_MEMBER = 0;
 
 // 游戏初始化时调用(只会调用一次)
 function start(){
     // 更新版本号
-    gameEnv.setVersion(100728832);
+    gameEnv.setVersion(100741993);
     // 这里是全局游戏
     regHandleCall(GAME_SECOND_CALL, tickRoleView);
     // 以下是游戏中玩家的处理

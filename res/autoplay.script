@@ -46,7 +46,7 @@ function patrolBattle() {
         drugStatus();
     }
     // 只有在游戏中才进行更新
-    if (hook_map_name != null && hook_map_name != gameEnv.mapName) {
+    if (hook_map_name != null && gameEnv.status == 5 && hook_map_name != gameEnv.mapName) {
         // 玩家死亡了，先复活
         if (player.state == 5) {
             gameEnv.keyPressed(NUM_11);
@@ -179,14 +179,16 @@ function patrolBattle() {
             }
         } else if (hook_status == -1) {
             // 检测周围是否有可攻击敌人，没有前往下一个地点，这里必须放最后面
-            if (!GAME_VARS.isPatrol && hook_pos != null && gameEnv.getNearFightObj(GAME_VARS.attackScope) == null) {  // 巡逻挂机，并且附近没有可攻击单位
-                // 如果附近没有可攻击单位
-                updateHookOffset();
-                hook_status = 1;
-                // 输出日志
-                printMessage("[王辅]：当前位置怪物已清空，前往下一挂机点！");
-            } else {
-                battle();
+            if(gameEnv.status == 5){
+                if (!GAME_VARS.isPatrol && hook_pos != null && gameEnv.getNearFightObj(GAME_VARS.attackScope) == null) {  // 巡逻挂机，并且附近没有可攻击单位
+                    // 如果附近没有可攻击单位
+                    updateHookOffset();
+                    hook_status = 1;
+                    // 输出日志
+                    printMessage("[王辅]：当前位置怪物已清空，前往下一挂机点！");
+                } else {
+                    battle();
+                }
             }
         } else if (hook_status == 4) {  // 执行巡逻功能，执行完了才到下一个巡逻点
             var data = hook_pos[hook_offset];

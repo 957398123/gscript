@@ -85,16 +85,25 @@ MEMBERS_ACCOUNTS.push(getMember([1, 2, 2, 8, 2, 2, 9, 2]));
 
 // 增加高级会员
 SUPER_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 3]));
-//SUPER_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 4]));
+SUPER_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 4]));
 SUPER_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 5]));
 SUPER_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 6]));
 SUPER_ACCOUNTS.push(getMember([26, 26, 1, 1, 1, 1]));
+
+// 赠送高级会员 linlifengb
+SUPER_ACCOUNTS.push(getMember([21, 18, 23, 21, 18, 15, 14, 23, 16, 11]));
+// 赠送高级会员 268811
+SUPER_ACCOUNTS.push(getMember([2, 6, 8, 8, 1, 1]));
+// 赠送高级会员 lv01
+SUPER_ACCOUNTS.push(getMember([21, 31, 0, 1]));
 
 // 文子
 // 购买的会员 linlifeng 50标准
 MEMBERS_ACCOUNTS.push(getMember([21, 18, 23, 21, 18, 15, 14, 23, 16]));
 // 购买的会员 linlifengb 50标准
 MEMBERS_ACCOUNTS.push(getMember([21, 18, 23, 21, 18, 15, 14, 23, 16, 11]));
+// 购买的会员 linlifenga 50标准
+MEMBERS_ACCOUNTS.push(getMember([21, 18, 23, 21, 18, 15, 14, 23, 16, 10]));
 // 赠送角色
 MEMBERS_NAMES.push("奶气侧漏");
 
