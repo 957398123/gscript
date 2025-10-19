@@ -28,7 +28,8 @@ function updateDefinedSkills(){
         }else if(player.profession == 4){ // 刺客
             battle_userDefinedSkills = [-1, 12, 13, 4, 11, 10, 2, 8, 0];
         }else if(player.profession == 2){ // 道士
-            battle_userDefinedSkills = [-1, 4, 12, 13, 14, 9, 6, 1, 7, 3, 8, 2];
+            // 原技能[-1, 4, 12, 13, 14, 9, 6, 1, 7, 3, 8, 2];
+            battle_userDefinedSkills = [-1, 4, 12, 13, 14, 9, 6, 1, 7, 8, 2];
         }else if(player.profession == 3){  // 医生
             battle_userDefinedSkills = [-1, 12, 8, 7, 9, 1, -1, -1, -1];
         }
