@@ -18,6 +18,9 @@ var SUPER_ACCOUNTS = [];
 // 高级会员名称
 var SUPER_NAMES= ["太公6"];
 
+// 购买高级会员 医打怪兽
+SUPER_NAMES.push("凤飞飞");
+
 // 增加高级会员
 ADMIN_ACCOUNT.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 3]));
 
@@ -92,6 +95,9 @@ SUPER_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 5]));
 SUPER_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 6]));
 SUPER_ACCOUNTS.push(getMember([26, 26, 1, 1, 1, 1]));
 
+// 测试用高级会员 s9527
+SUPER_ACCOUNTS.push(getMember([28, 9, 5, 2, 7]));
+
 // 赠送高级会员 linlifengb
 SUPER_ACCOUNTS.push(getMember([21, 18, 23, 21, 18, 15, 14, 23, 16, 11]));
 // 赠送高级会员 268800
@@ -108,6 +114,8 @@ MEMBERS_ACCOUNTS.push(getMember([21, 18, 23, 21, 18, 15, 14, 23, 16]));
 MEMBERS_ACCOUNTS.push(getMember([21, 18, 23, 21, 18, 15, 14, 23, 16, 11]));
 // 购买的会员 linlifenga 50标准
 MEMBERS_ACCOUNTS.push(getMember([21, 18, 23, 21, 18, 15, 14, 23, 16, 10]));
+// 购买的会员 agm123 50标准
+MEMBERS_ACCOUNTS.push(getMember([10, 16, 22, 1, 2, 3]));
 // 赠送角色
 MEMBERS_NAMES.push("奶气侧漏");
 

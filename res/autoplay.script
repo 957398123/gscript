@@ -52,8 +52,7 @@ function patrolBattle() {
             gameEnv.keyPressed(NUM_11);
             // 战斗状态置位0
             battle_status = 0;
-        }
-        if (gameEnv.isGameRun) {
+        }else if (gameEnv.isGameRun) {
             // 检测当前是否已经找出寻路路径
             if (hook_map_path == null) {
                 hook_map_path = gameEnv.aStar2WorldByIndex(gameEnv.mapName, hook_map_name);
@@ -164,7 +163,6 @@ function patrolBattle() {
                 // 如果攻击范围为0，直接到下一个点
                 if (GAME_VARS.attackScope <= 0) {
                     updateHookOffset();
-                    hook_status = 1;
                 } else {
                     // 更新挂机状态
                     printMessage("[王辅]：抵达挂机点，开始执行挂机操作！");
@@ -183,7 +181,6 @@ function patrolBattle() {
                 if (!GAME_VARS.isPatrol && hook_pos != null && gameEnv.getNearFightObj(GAME_VARS.attackScope) == null) {  // 巡逻挂机，并且附近没有可攻击单位
                     // 如果附近没有可攻击单位
                     updateHookOffset();
-                    hook_status = 1;
                     // 输出日志
                     printMessage("[王辅]：当前位置怪物已清空，前往下一挂机点！");
                 } else {
@@ -199,7 +196,6 @@ function patrolBattle() {
                     setNumberOptionGameVars("attackScope", value);
                 }
                 updateHookOffset();
-                hook_status = 1;
             } else if (sign == -2) {  // 采集物品
                 if (hook_collection_status == 0) {  // 开始采集
                     // 获取该位置的采集物品
@@ -211,7 +207,6 @@ function patrolBattle() {
                     } else {
                         printMessage("[王辅]：采集失败，未找到采集对象，前往下个位置！");
                         updateHookOffset();
-                        hook_status = 1;
                     }
                 } else if (hook_collection_status == 1) {  // 等待中
                     // 采集完成
@@ -219,7 +214,6 @@ function patrolBattle() {
                         printMessage("[王辅]：采集完成，前往下个位置！");
                         hook_collection_status = 0;
                         updateHookOffset();
-                        hook_status = 1;
                     }
                 }
             } else if (sign == -3) {  // -3是等待一段时间
@@ -232,13 +226,11 @@ function patrolBattle() {
                     } else {
                         printMessage("[王辅]：巡逻等待时间参数错误！");
                         updateHookOffset();
-                        hook_status = 1;
                     }
                 } else if (hook_is_wait == 2) {  // 等待完成
                     printMessage("[王辅]：巡逻等待结束。");
                     hook_is_wait = 0;
                     updateHookOffset();
-                    hook_status = 1;
                 }
             } else if (sign == -5) {    // 登出当前角色，并于一定时间后登入
                 hook_login_time = 0;
@@ -267,7 +259,6 @@ function patrolBattle() {
                     }
                 }
                 updateHookOffset();
-                hook_status = 1;
             }else if(sign == -7){    // 瞬移到指定位置
                 if (data.length > 2) {
                     var col = data[1];
@@ -278,10 +269,8 @@ function patrolBattle() {
                     }
                 }
                 updateHookOffset();
-                hook_status = 1;
             } else {  // 不支持得默认跳过
                 updateHookOffset();
-                hook_status = 1;
             }
         }
     }
@@ -289,6 +278,7 @@ function patrolBattle() {
 
 // 更新步进
 function updateHookOffset() {
+    hook_status = 1;
     if (hook_direction == 0) { // 正向
         hook_offset += 1;
     } else if (hook_direction == 1) {  // 逆向
