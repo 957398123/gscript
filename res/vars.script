@@ -18,10 +18,10 @@ var GAME_VARS_MAXNUM = {
 GAME_VARS.configName = "GAME_VARS";
 
 // 王辅版本
-GAME_VARS.version = "V6.7";
+GAME_VARS.version = "V6.8";
 
 // 游戏公告
-GAME_VARS.gameNotice = "王辅版本" + GAME_VARS.version + "，优化施法功能。";
+GAME_VARS.gameNotice = "王辅版本" + GAME_VARS.version + "，巡逻挂机增加释放技能。";
 
 // 是否挂机
 GAME_VARS.isHangUp = false;

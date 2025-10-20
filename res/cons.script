@@ -64,3 +64,100 @@ var SCREEN_W = 240;
 
 // 屏幕高度
 var SCREEN_H = 320;
+
+// 职业技能映射  剑客
+var SKILL_SWORDMAN_MAP = [
+    "近身攻击",
+    "天翔剑",
+    "致命打击",
+    "雷霆重击",
+    "嗜血咆哮",
+    "战神怒吼",
+    "雷动九天",
+    "战系精通",
+    "金刚御体",
+    "强化战甲",
+    "灵魔护体",
+    "明镜芷水",
+    "狂牙剑气",
+    "强化眩晕",
+    "旋风霸斩"
+];
+
+// 职业技能映射  道士
+var SKILL_TAOIST_MAP = [
+    "近身攻击",
+    "雷星击",
+    "紫极狂雷",
+    "电光石火",
+    "天雷神盾",
+    "强化法暴",
+    "炎暴术",
+    "炙炎破",
+    "狱炎之地",
+    "焰舞火球",
+    "法术增效",
+    "轮回之门",
+    "金刚咒",
+    "玄灵结界",
+    "真元凝聚"
+];
+
+// 职业技能映射  医生
+var SKILL_APOTHECARY_MAP = [
+    "近身攻击",
+    "飓风之牙",
+    "心疗术",
+    "清心灵咒",
+    "回春术",
+    "天降甘霖",
+    "神农心法",
+    "猛毒蛊",
+    "鬼灵地缚",
+    "天破龙卷",
+    "疾风之翼",
+    "黄帝内经",
+    "灵甲真言",
+    "起死回生",
+    "愈合之契"
+];
+
+// 职业技能映射  刺客
+var SKILL_ASSASSIN_MAP = [
+    "近身攻击",
+    "涂毒武器",
+    "蚀骨刺心",
+    "强化蚀骨",
+    "漫天花雨",
+    "精速利刃",
+    "猛毒传染",
+    "强化致命",
+    "疾风震波",
+    "刀剑精通",
+    "腐骨缠身",
+    "黑暗偷袭",
+    "妖影魔心",
+    "迷踪幻影",
+    "轻功瞬步"
+];
+
+// 获取当前角色技能名对应索引号
+function getSkillMapIndex(skillName){
+    var profession = player.profession;
+    var skillData = null;
+    if(profession == 1){
+        skillData = SKILL_SWORDMAN_MAP;
+    }else if(profession == 2){
+        skillData = SKILL_TAOIST_MAP;
+    }else if(profession == 3){
+        skillData = SKILL_APOTHECARY_MAP;
+    }else if(profession == 4){
+        skillData = SKILL_ASSASSIN_MAP;
+    }
+    for(var i = 0; i < skillData.length; ++i){
+        if(skillData[i] == skillName){
+            return i;
+        }
+    }
+    return -1;
+}

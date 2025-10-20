@@ -39,6 +39,9 @@ var hook_login_time = -1;
 // 要登录的角色名称
 var hook_login_name = "";
 
+// 等待释放技能 0-等待释放技能 1-释放技能中 2-技能释放完毕
+var hook_skill_wait = 0;
+
 // 巡逻挂机实现函数
 function patrolBattle() {
     // 检测角色是否需要
@@ -269,7 +272,31 @@ function patrolBattle() {
                     }
                 }
                 updateHookOffset();
-            } else {  // 不支持得默认跳过
+            }else if(sign == -8){    // 对当前选中目标释放技能
+                if (data.length > 1) {
+                    if(hook_skill_wait == 0){
+                        // 获取当前要释放的技能
+                        var skillName = data[1];
+                        var index = getSkillMapIndex(skillName);
+                        // 如果是正确的技能名称
+                        if(index >= 0 && player.canCastSkill(index)){
+                            // 对玩家当前选中目标释放技能
+                            player.caskSkill(player.target, index);
+                            hook_skill_wait = 1;
+                        }else{
+                            printMessage("[王辅]：无法对当前目标使用技能：" + skillName + "!");
+                        }
+                    } else if(hook_skill_wait == 1){
+                        // 获取当前玩家状态，不是7或者8，就是施法完成
+                        if(player.state != 7 && player.state != 8){
+                            hook_skill_wait = 2;
+                        }
+                    } else if(hook_skill_wait == 2){
+                        hook_skill_wait = 0;
+                        updateHookOffset();
+                    }
+                }
+            }else {  // 不支持得默认跳过
                 updateHookOffset();
             }
         }

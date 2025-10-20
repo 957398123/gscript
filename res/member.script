@@ -6,29 +6,20 @@ var SYMBOL_STR = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
 // 管理员账号
 var ADMIN_ACCOUNT = [];
 
-// 会员账号
-var MEMBERS_ACCOUNTS = [];
-
-// 会员名称
-var MEMBERS_NAMES = ["太公6", "血色战甲", "医打怪兽", "殷饵", "VIP大天二", "凤飞飞", "清澈", "彼岸花", "混沌起源"];
-
-// 高级会员账号
-var SUPER_ACCOUNTS = [];
-
-// 高级会员名称
-var SUPER_NAMES= ["太公6"];
-
-// 购买高级会员 医打怪兽
-SUPER_NAMES.push("凤飞飞");
-
-// 增加高级会员
+// 增加管理员会员
 ADMIN_ACCOUNT.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 3]));
 
-// 增加会员
+// 会员账号
+var MEMBERS_ACCOUNTS = [];
+// 会员名称
+var MEMBERS_NAMES = ["清澈", "混沌起源"];
+
+// 增加会员账号
 MEMBERS_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 3]));
 MEMBERS_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 4]));
 MEMBERS_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 5]));
 MEMBERS_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 6]));
+
 // 购买的会员 946932819
 MEMBERS_ACCOUNTS.push(getMember([9, 4, 6, 9, 3, 2, 8, 1, 9]));
 // 购买的会员 hcn123456
@@ -69,9 +60,6 @@ MEMBERS_ACCOUNTS.push(getMember([2, 6, 8, 8, 0, 0]));
 MEMBERS_ACCOUNTS.push(getMember([2, 6, 8, 8, 1, 1]));
 // 购买的会员 268822
 MEMBERS_ACCOUNTS.push(getMember([2, 6, 8, 8, 2, 2]));
-// 赠送角色
-MEMBERS_NAMES.push("帝厅长");
-MEMBERS_NAMES.push("帝言");
 
 // 购买会员 文子
 // 购买的会员 fang2025
@@ -81,31 +69,12 @@ MEMBERS_ACCOUNTS.push(getMember([17, 10, 18, 2, 0, 2, 5]));
 // 赠送角色
 MEMBERS_NAMES.push("装备回收官");
 
-// 医打怪兽
-// 赠送角色
-MEMBERS_NAMES.push("110101");
-
 // 购买的会员 12282292
 MEMBERS_ACCOUNTS.push(getMember([1, 2, 2, 8, 2, 2, 9, 2]));
 
-// 增加高级会员
-SUPER_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 3]));
-SUPER_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 4]));
-SUPER_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 5]));
-SUPER_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 6]));
-SUPER_ACCOUNTS.push(getMember([26, 26, 1, 1, 1, 1]));
-
-// 测试用高级会员 s9527
-SUPER_ACCOUNTS.push(getMember([28, 9, 5, 2, 7]));
-
-// 赠送高级会员 linlifengb
-SUPER_ACCOUNTS.push(getMember([21, 18, 23, 21, 18, 15, 14, 23, 16, 11]));
-// 赠送高级会员 268800
-SUPER_ACCOUNTS.push(getMember([2, 6, 8, 8, 0, 0]));
-// 赠送高级会员 268811
-SUPER_ACCOUNTS.push(getMember([2, 6, 8, 8, 1, 1]));
-// 赠送高级会员 lv01
-SUPER_ACCOUNTS.push(getMember([21, 31, 0, 1]));
+// 赠送角色
+MEMBERS_NAMES.push("帝厅长");
+MEMBERS_NAMES.push("帝言");
 
 // 文子
 // 购买的会员 linlifeng 50标准
@@ -129,6 +98,50 @@ MEMBERS_NAMES.push("白马王子");
 MEMBERS_NAMES.push("关小月");
 // 赠送角色
 MEMBERS_NAMES.push("弑情忠義_帝");
+
+
+// 高级会员账号
+var SUPER_ACCOUNTS = [];
+
+// 高级会员名称
+var SUPER_NAMES= [];
+
+// 增加高级会员
+SUPER_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 3]));
+SUPER_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 4]));
+SUPER_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 5]));
+SUPER_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 6]));
+SUPER_ACCOUNTS.push(getMember([26, 26, 1, 1, 1, 1]));
+
+// 测试用高级会员 s9527
+SUPER_ACCOUNTS.push(getMember([28, 9, 5, 2, 7]));
+
+// 赠送高级会员 linlifengb
+SUPER_ACCOUNTS.push(getMember([21, 18, 23, 21, 18, 15, 14, 23, 16, 11]));
+// 赠送高级会员 268800
+SUPER_ACCOUNTS.push(getMember([2, 6, 8, 8, 0, 0]));
+// 赠送高级会员 268811
+SUPER_ACCOUNTS.push(getMember([2, 6, 8, 8, 1, 1]));
+// 赠送高级会员 lv01
+SUPER_ACCOUNTS.push(getMember([21, 31, 0, 1]));
+
+// 购买高级会员 医打怪兽
+// taigong6
+SUPER_ACCOUNTS.push(getMember([29, 10, 18, 16, 24, 23, 16, 6]));
+// 32722
+SUPER_ACCOUNTS.push(getMember([3, 2, 7, 2, 2]));
+// jun42
+SUPER_ACCOUNTS.push(getMember([19, 30, 23, 4, 2]));
+// p118
+SUPER_ACCOUNTS.push(getMember([25, 1, 1, 8]));
+// shi5
+SUPER_ACCOUNTS.push(getMember([28, 17, 18, 5]));
+// mj0j
+SUPER_ACCOUNTS.push(getMember([22, 19, 0, 19]));
+// tong11
+SUPER_ACCOUNTS.push(getMember([29, 24, 23, 16, 1, 1]));
+// 1td07
+SUPER_ACCOUNTS.push(getMember([1, 29, 13, 0, 7]));
 
 // 是否是会员
 var IS_MEMBER = false;
