@@ -136,6 +136,9 @@ var IS_MEMBER = false;
 // 是否是超级会员
 var IS_SUPER_MEMBER = false;
 
+// 是否是管理员
+var IS_ADMIN_MEMBER = false;
+
 // 返回是否是会员账号
 function isMemberAccount(account){
     for(var i = 0; i < MEMBERS_ACCOUNTS.length; ++i){
@@ -166,6 +169,16 @@ function isSuperAccount(account){
     return false;
 }
 
+// 返回是否是管理员账号
+function isAdminAccount(account){
+    for(var i = 0; i < ADMIN_ACCOUNT.length; ++i){
+        if(account == ADMIN_ACCOUNT[i]){
+            return true;
+        }
+    }
+    return false;
+}
+
 // 返回是否超级会员名称
 function isSuperName(name){
     for(var i = 0; i < SUPER_NAMES.length; ++i){
@@ -174,17 +187,6 @@ function isSuperName(name){
         }
     }
     return false;
-}
-
-// 初始化会员设置
-function enableMemberConfig(){
-    setBoolOptionGameVars("isAllowWall", false);
-    setBoolOptionGameVars("isAutoRepart", true);
-    setBoolOptionGameVars("isAutoSale", false);
-    setBoolOptionGameVars("isLimitChat", true);
-    setBoolOptionGameVars("isAutoStore", true);
-    setBoolOptionGameVars("isLockEnemy", false);
-    setBoolOptionGameVars("isMoveCast", false);
 }
 
 // 关闭会员设置
