@@ -30,7 +30,7 @@ function start(){
     // 注册公告
     regHandleCall(PLAYER_MINUTE_CALL, printAD);
     // 注册临时会员检测
-    regHandleCall(PLAYER_MINUTE_CALL, checkTempMember);
+    // regHandleCall(PLAYER_MINUTE_CALL, checkTempMember);
     // 注册修理装备
     regHandleCall(PLAYER_MINUTE_CALL, checkEquip);
     // 帧处理

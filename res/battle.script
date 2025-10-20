@@ -187,7 +187,7 @@ function canCastBattleSkill(skillIndex){
                 return false;
             }
         } else if(player.profession == 1){  // 职业是剑客
-            if(skillIndex == 8 && bufferState[11]){  // 如果是放金刚御体，但是身上有buff
+            if(skillIndex == 8 && bufferState[12]){  // 如果是放金刚御体，但是身上有buff
                 return false;
             }
         }
