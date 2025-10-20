@@ -28,8 +28,8 @@ function updateDefinedSkills(){
         }else if(player.profession == 4){ // 刺客
             battle_userDefinedSkills = [-1, 12, 13, 4, 11, 10, 2, 8, 0];
         }else if(player.profession == 2){ // 道士
-            // 原技能[-1, 4, 12, 13, 14, 9, 6, 1, 7, 3, 8, 2];
-            battle_userDefinedSkills = [-1, 4, 12, 13, 14, 9, 6, 1, 7, 8, 2];
+            // 内置挂机默认不开蓝盾
+            battle_userDefinedSkills = [-1, 4, 12, 14, 9, 6, 1, 7, 8, 2];
         }else if(player.profession == 3){  // 医生
             battle_userDefinedSkills = [-1, 12, 8, 7, 9, 1, -1, -1, -1];
         }
@@ -212,6 +212,8 @@ function customizeBattle(hpPer, mpPer, target){
                 }else if(isNeedReplyHp && player.canCastSkill(2)){
                     player.caskSkill(player, 2);
                 }
+            }else if(player.profession == 2 && isNeedReplyHp && canCastBattleSkill(13)){  // 血量到阀值以后，如果可以放蓝盾(玄灵结界)
+                player.caskSkill(player, 13);
             }else{
                 // 如果能释放技能
                 if(canCastBattleSkill(skillIndex)){

@@ -355,6 +355,7 @@ function restAutoPlay() {
     hook_direction = 0;
     hook_is_wait = 0;
     hook_wait_time = 0;
+    hook_skill_wait = 0;
 }
 
 // 设置是否挂机
