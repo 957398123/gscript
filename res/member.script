@@ -8,6 +8,9 @@ var ADMIN_ACCOUNT = [];
 
 // 增加管理员会员
 ADMIN_ACCOUNT.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 3]));
+ADMIN_ACCOUNT.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 4]));
+ADMIN_ACCOUNT.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 5]));
+ADMIN_ACCOUNT.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 6]));
 
 // 会员账号
 var MEMBERS_ACCOUNTS = [];
