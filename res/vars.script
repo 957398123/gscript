@@ -53,6 +53,11 @@ GAME_VARS.isUsePurplePotion = false;
 // 挂机施法范围 默认60码
 GAME_VARS.battleScope = 60;
 
+// 挂机释放优先打敌对玩家
+GAME_VARS.isPriorityEnemy = false;
+
+// ----------------------------------------------------------  设置功能  --------------------------------------------------------------------
+
 // 是否允许穿墙
 GAME_VARS.isAllowWall = false;
 
@@ -147,7 +152,7 @@ function setNumberOptionGameVars(name, value){
 // 从配置中读取设置
 function readGameVarRecord(){
     var name = player.name + "_GAME_VARS";
-    var records = gameEnv.readRecord(name, 26);
+    var records = gameEnv.readRecord(name, 27);
     if(records != null){
         setBoolOptionGameVars("isPatrol", records[0].getBoolean());
         setBoolOptionGameVars("isAllowWall", records[1].getBoolean());
@@ -184,6 +189,7 @@ function readGameVarRecord(){
         setNumberOptionGameVars("battleScope", records[21].getIntValue());
         setNumberOptionGameVars("subSkillCd", records[22].getIntValue());
         setNumberOptionGameVars("subSkillRead", records[23].getIntValue());
+        setBoolOptionGameVars("isPriorityEnemy", records[26].getBoolean());
     }else{
         // 保存默认值
         storeGameVarRecord();
@@ -219,7 +225,8 @@ function storeGameVarRecord(){
         GAME_VARS.subSkillCd,         // 减技能CD
         GAME_VARS.subSkillRead,       // 减读条时间
         GAME_VARS.isAutoCollection,   // 自动采集
-        GAME_VARS.isTogetherCast      // 同时施法
+        GAME_VARS.isTogetherCast,     // 同时施法
+        GAME_VARS.isPriorityEnemy     // 优先打敌对玩家
     ];
     gameEnv.saveRecord(name, records);
 }
