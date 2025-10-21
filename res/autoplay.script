@@ -39,7 +39,7 @@ var hook_login_time = -1;
 // 要登录的角色名称
 var hook_login_name = "";
 
-// 等待释放技能 0-等待释放技能 1-释放技能中 2-技能释放完毕
+// 等待释放技能 0-初始状态 1-等待释放技能 2-释放技能中 3-技能释放完毕
 var hook_skill_wait = 0;
 
 // 巡逻挂机实现函数
@@ -274,24 +274,38 @@ function patrolBattle() {
                 updateHookOffset();
             }else if(sign == -8){    // 对当前选中目标释放技能
                 if (data.length > 1) {
+                    // 获取当前要释放的技能
+                    var skillName = data[1];
+                    var index = getSkillMapIndex(skillName);
                     if(hook_skill_wait == 0){
-                        // 获取当前要释放的技能
-                        var skillName = data[1];
-                        var index = getSkillMapIndex(skillName);
                         // 如果是正确的技能名称
                         if(index >= 0 && player.canCastSkill(index)){
+                            // 到释放技能
+                            player.caskSkill(player.target, index);
+                            hook_skill_wait = 2;
+                        }else{
+                            // 如果是等待技能释放完成
+                            if(index >= 0 && data.length > 2 && parseInt(data[2]) == 1){
+                                hook_skill_wait == 1;
+                                printMessage("[王辅]：无法对当前目标使用技能：" + skillName + "，继续等待释放!");
+                            }else{
+                                hook_skill_wait == 3;
+                                printMessage("[王辅]：无法对当前目标使用技能：" + skillName + "，前往下个位置!");
+                            }
+                        }
+                    }else if(hook_skill_wait == 1){
+                        // 一直等待放技能
+                        if(player.canCastSkill(index)){
                             // 对玩家当前选中目标释放技能
                             player.caskSkill(player.target, index);
-                            hook_skill_wait = 1;
-                        }else{
-                            printMessage("[王辅]：无法对当前目标使用技能：" + skillName + "!");
-                        }
-                    } else if(hook_skill_wait == 1){
-                        // 获取当前玩家状态，不是7或者8，就是施法完成
-                        if(player.state != 7 && player.state != 8){
                             hook_skill_wait = 2;
                         }
                     } else if(hook_skill_wait == 2){
+                        // 获取当前玩家状态，不是7或者8，就是施法完成
+                        if(player.state != 7 && player.state != 8){
+                            hook_skill_wait = 3;
+                        }
+                    } else if(hook_skill_wait == 3){
                         hook_skill_wait = 0;
                         updateHookOffset();
                     }
