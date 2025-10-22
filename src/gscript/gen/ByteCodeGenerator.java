@@ -546,6 +546,7 @@ public class ByteCodeGenerator implements Visitor {
         if (node.elseBranch != null) {
             node.elseBranch.accept(this);
         }
+        // 这里是跳转到结尾
         emit(thenEnd, "jump %d".formatted((size() - thenEnd)));
     }
 
@@ -846,8 +847,19 @@ public class ByteCodeGenerator implements Visitor {
     @Override
     public void visit(LogicalORExpression node) {
         node.left.accept(this);
+        // 对当前结果取反，再判断是否跳转
+        emit("rela_op l_not");
+        int start = size();
+        emit("");
         node.right.accept(this);
-        emit("rela_op l_or");
+        // 最后一个表达式，前面肯定都是false，所以直接使用它的结果
+        int start2 = size();
+        emit("");
+        // 这里要做兼容处理，因为有可能是表达式，有可能下一句是跳转语句。这里应该放一个值
+        emit("const b true");
+        // 只要true，就放跳转到上一行，放一个true
+        emit(start, "false_jump %d".formatted((size() - start) - 1));
+        emit(start2, "jump %d".formatted((size() - start2)));
     }
 
     /**
@@ -858,8 +870,17 @@ public class ByteCodeGenerator implements Visitor {
     @Override
     public void visit(LogicalANDExpression node) {
         node.left.accept(this);
+        int start = size();
+        emit("");
         node.right.accept(this);
-        emit("rela_op l_and");
+        // 最后一个表达式，前面肯定都是true，所以直接使用它的结果
+        int start2 = size();
+        emit("");
+        // 这里要做兼容处理，因为有可能是表达式，有可能下一句是跳转语句。这里应该放一个值
+        emit("const b false");
+        // 只要false，就放跳转到上一行，放一个false
+        emit(start, "false_jump %d".formatted((size() - start) - 1));
+        emit(start2, "jump %d".formatted((size() - start2)));
     }
 
     /**
