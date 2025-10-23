@@ -15,7 +15,13 @@ ADMIN_ACCOUNT.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 6]));
 // 会员账号
 var MEMBERS_ACCOUNTS = [];
 // 会员名称
-var MEMBERS_NAMES = ["清澈", "混沌起源"];
+var MEMBERS_NAMES = ["清澈"];
+
+// 高级会员账号
+var SUPER_ACCOUNTS = [];
+
+// 高级会员名称
+var SUPER_NAMES= [];
 
 // 增加会员账号
 MEMBERS_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 3]));
@@ -29,8 +35,6 @@ MEMBERS_ACCOUNTS.push(getMember([9, 4, 6, 9, 3, 2, 8, 1, 9]));
 MEMBERS_ACCOUNTS.push(getMember([17, 12, 23, 1, 2, 3, 4, 5, 6]));
 // 购买的会员 s9527
 MEMBERS_ACCOUNTS.push(getMember([28, 9, 5, 2, 7]));
-// 购买的会员 158661436500
-MEMBERS_ACCOUNTS.push(getMember([1, 5, 8, 6, 6, 1, 4, 3, 6, 5, 0, 0]));
 // 购买的会员 tyghvb1
 MEMBERS_ACCOUNTS.push(getMember([29, 34, 16, 17, 31, 11, 1]));
 // 购买的会员 qq1111
@@ -41,16 +45,33 @@ MEMBERS_ACCOUNTS.push(getMember([28, 10]));
 MEMBERS_ACCOUNTS.push(getMember([7, 7, 8, 9, 1, 4, 3, 8, 0]));
 // 购买的会员 13407734428
 MEMBERS_ACCOUNTS.push(getMember([1, 3, 4, 0, 7, 7, 3, 4, 4, 2, 8]));
-// 购买的会员 w909
-MEMBERS_ACCOUNTS.push(getMember([32, 9, 0, 9]));
-// 购买的会员 158661436501
-MEMBERS_ACCOUNTS.push(getMember([1, 5, 8, 6, 6, 1, 4, 3, 6, 5, 0, 1]));
 // 购买的会员 mjtm
 MEMBERS_ACCOUNTS.push(getMember([22, 19, 29, 22]));
 // 购买的会员 wang0315
 MEMBERS_ACCOUNTS.push(getMember([32, 10, 23, 16, 0, 3, 1, 5]));
 // 购买的会员 a1817309
 MEMBERS_ACCOUNTS.push(getMember([10, 1, 8, 1, 7, 3, 0, 9]));
+
+// 购买的会员 158661436500(已赠送高级会员)
+MEMBERS_ACCOUNTS.push(getMember([1, 5, 8, 6, 6, 1, 4, 3, 6, 5, 0, 0]));
+// 购买的会员 158661436501(已赠送高级会员)
+MEMBERS_ACCOUNTS.push(getMember([1, 5, 8, 6, 6, 1, 4, 3, 6, 5, 0, 1]));
+// 购买的会员 158661436502(已赠送高级会员)
+MEMBERS_ACCOUNTS.push(getMember([1, 5, 8, 6, 6, 1, 4, 3, 6, 5, 0, 2]));
+// 升级高级会员 158661436500
+SUPER_ACCOUNTS.push(getMember([1, 5, 8, 6, 6, 1, 4, 3, 6, 5, 0, 0]));
+
+// 阿兵
+// 购买的会员 w909(已赠送高级会员)
+MEMBERS_ACCOUNTS.push(getMember([32, 9, 0, 9]));
+// 购买的会员 c1817309(已赠送高级会员)
+MEMBERS_ACCOUNTS.push(getMember([12, 1, 8, 1, 7, 3, 0, 9]));
+// 购买的会员 b1817309(已赠送高级会员)
+MEMBERS_ACCOUNTS.push(getMember([11, 1, 8, 1, 7, 3, 0, 9]));
+// 购买的角色
+MEMBERS_NAMES.push("逍遥狂魔");
+// 升级高级会员w909
+SUPER_ACCOUNTS.push(getMember([32, 9, 0, 9]));
 
 // 购买会员 秦时明月
 // 购买的会员 lv01
@@ -102,12 +123,20 @@ MEMBERS_NAMES.push("关小月");
 // 赠送角色
 MEMBERS_NAMES.push("弑情忠義_帝");
 
+// 购买得角色 混沌起源 已赠送
+MEMBERS_NAMES.push("混沌起源");
+// 购买的角色 夕阳红 已赠送
+MEMBERS_NAMES.push("夕阳红");
+// 赠送角色 VIP孙权
+MEMBERS_NAMES.push("VIP孙权");
 
-// 高级会员账号
-var SUPER_ACCOUNTS = [];
-
-// 高级会员名称
-var SUPER_NAMES= [];
+// 汕头肠粉
+// 购买角色 喜欢刺(已赠送角色)
+MEMBERS_NAMES.push("喜欢刺");
+// 购买角色 江山(已赠送角色)
+MEMBERS_NAMES.push("江山");
+// 赠送角色 肠粉2
+MEMBERS_NAMES.push("肠粉2");
 
 // 增加高级会员
 SUPER_ACCOUNTS.push(getMember([9, 5, 7, 3, 9, 8, 1, 2, 3]));

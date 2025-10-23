@@ -1,2 +1,18 @@
-var a = 1 < 2;
-println("a=" + a);
+function a(){
+    println("a");
+    return false;
+}
+
+function b(){
+    println("b");
+    return true;
+}
+
+function c(){
+    println("c");
+    return true;
+}
+
+if(a() || b() || c()){
+    println("end");
+}
