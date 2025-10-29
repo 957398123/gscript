@@ -15,13 +15,10 @@ var PLAYER_SECOND_COUNT = 0;
 // 秒回调列表
 var PLAYER_SECOND_CALL = [];
 
-// 临时会员体验时间(单位分钟) 禁用临时会员
-var TEMP_MEMBER = 0;
-
 // 游戏初始化时调用(只会调用一次)
 function start(){
     // 更新版本号
-    gameEnv.setVersion(100741993);
+    gameEnv.setVersion(100742552);
     // 这里是全局游戏
     regHandleCall(GAME_SECOND_CALL, tickRoleView);
     // 以下是游戏中玩家的处理
@@ -29,8 +26,6 @@ function start(){
     regHandleCall(PLAYER_MINUTE_CALL, printRunTime);
     // 注册公告
     regHandleCall(PLAYER_MINUTE_CALL, printAD);
-    // 注册临时会员检测
-    // regHandleCall(PLAYER_MINUTE_CALL, checkTempMember);
     // 注册修理装备
     regHandleCall(PLAYER_MINUTE_CALL, checkEquip);
     // 帧处理
@@ -51,19 +46,16 @@ function entryGame(){
     var name = player.name;
     // 输出hello
     printMessage("[王辅]：欢迎使用王牌辅助" + GAME_VARS.version + "！");
-    IS_ADMIN_MEMBER = isAdminAccount(account);
-    IS_SUPER_MEMBER = IS_ADMIN_MEMBER || isSuperAccount(account) || isSuperName(name);
-    IS_MEMBER = IS_SUPER_MEMBER || isMemberAccount(account) || isMemberName(name);
+    // 检查会员
+    checkMember();
     if(IS_ADMIN_MEMBER){
         printMessage("[王辅]：欢迎您，尊贵的管理员！");
     }else if(IS_SUPER_MEMBER){
         printMessage("[王辅]：欢迎您，尊贵的超级会员！");
     }else if(IS_MEMBER){
         printMessage("[王辅]：欢迎您，尊贵的会员！");
-    }else if(TEMP_MEMBER > 0){
-        printMessage("[王辅]：您不是王辅会员，会员体验还剩余" + TEMP_MEMBER + "分钟！");
     }else{
-        printMessage("[王辅]：您不是王辅会员，体验功能结束，请注册会员！");
+        printMessage("[王辅]：您不是王辅会员，请注册会员！");
     }
     // 读取配置文件，覆盖默认设置
     readGameVarRecord();

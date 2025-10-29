@@ -163,28 +163,6 @@ function printAD(){
     }
 }
 
-// 是否已经弹窗提醒
-var IS_TEMP_MEMBER_DIALOG = false;
-
-// 检测临时会员
-function checkTempMember(){
-    if(!IS_MEMBER){
-        if(TEMP_MEMBER > 0){
-            --TEMP_MEMBER;
-            printMessage("[王辅]：您不是王辅会员，会员体验还剩余" + TEMP_MEMBER + "分钟！");
-        }
-        // 会员到期
-        if(TEMP_MEMBER == 0){
-            // 关闭会员功能
-            disableMemberConfig();
-        }
-        if(TEMP_MEMBER == 0 && !IS_TEMP_MEMBER_DIALOG){
-            IS_TEMP_MEMBER_DIALOG = true;
-            uiFrame.addGameForm("msg", "您的体验会员已到期，请注册会员！", "确定", null, SCREEN_W - 30, 110);
-        }
-    }
-}
-
 // 格式化时间
 function formatTime(time){
     var day = time / 86400;

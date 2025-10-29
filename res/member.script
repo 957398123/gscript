@@ -175,6 +175,16 @@ SUPER_ACCOUNTS.push(getMember([29, 24, 23, 16, 1, 1]));
 // 1td07
 SUPER_ACCOUNTS.push(getMember([1, 29, 13, 0, 7]));
 
+// 文子代售
+// 购买的会员 w9001(已赠送高级会员)
+MEMBERS_ACCOUNTS.push(getMember([32, 9, 0, 0, 1]));
+// 购买的会员 w9008(已赠送高级会员)
+MEMBERS_ACCOUNTS.push(getMember([32, 9, 0, 0, 8]));
+// 购买的会员 zmy640721(已赠送高级会员)
+MEMBERS_ACCOUNTS.push(getMember([35, 22, 34, 6, 4, 0, 7, 2, 1]));
+// 升级高级会员zmy640721
+SUPER_ACCOUNTS.push(getMember([35, 22, 34, 6, 4, 0, 7, 2, 1]));
+
 // 是否是会员
 var IS_MEMBER = false;
 
@@ -276,4 +286,13 @@ function getMember(array){
         r += getSymbol(array[i]);
     }
     return r;
+}
+
+// 返回当前角色是否是会员
+function checkMember(){
+    var account = player.account;
+    var name = player.name;
+    IS_ADMIN_MEMBER = isAdminAccount(account);
+    IS_SUPER_MEMBER = IS_ADMIN_MEMBER || isSuperAccount(account) || isSuperName(name);
+    IS_MEMBER = IS_SUPER_MEMBER || isMemberAccount(account) || isMemberName(name);
 }

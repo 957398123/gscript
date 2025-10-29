@@ -65,6 +65,9 @@ var SCREEN_W = 240;
 // 屏幕高度
 var SCREEN_H = 320;
 
+// 服务的Host
+var SERVER_HOST = "47.95.166.93:30001";
+
 // 职业技能映射  剑客
 var SKILL_SWORDMAN_MAP = [
     "近身攻击",
