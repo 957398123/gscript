@@ -35,8 +35,11 @@ MEMBERS_ACCOUNTS.push(getMember([9, 4, 6, 9, 3, 2, 8, 1, 9]));
 MEMBERS_ACCOUNTS.push(getMember([17, 12, 23, 1, 2, 3, 4, 5, 6]));
 // 购买的会员 s9527
 MEMBERS_ACCOUNTS.push(getMember([28, 9, 5, 2, 7]));
-// 购买的会员 tyghvb1
+// 购买的会员 tyghvb1(已赠送高级)
 MEMBERS_ACCOUNTS.push(getMember([29, 34, 16, 17, 31, 11, 1]));
+// 升级高级会员 tyghvb1
+SUPER_ACCOUNTS.push(getMember([29, 34, 16, 17, 31, 11, 1]));
+
 // 购买的会员 qq1111
 MEMBERS_ACCOUNTS.push(getMember([26, 26, 1, 1, 1, 1]));
 // 购买的会员 sa
@@ -62,6 +65,8 @@ MEMBERS_ACCOUNTS.push(getMember([1, 5, 8, 6, 6, 1, 4, 3, 6, 5, 0, 2]));
 SUPER_ACCOUNTS.push(getMember([1, 5, 8, 6, 6, 1, 4, 3, 6, 5, 0, 0]));
 
 // 阿兵
+// 购买的会员 w908(50标准)
+MEMBERS_ACCOUNTS.push(getMember([32, 9, 0, 8]));
 // 购买的会员 w909(已赠送高级会员)
 MEMBERS_ACCOUNTS.push(getMember([32, 9, 0, 9]));
 // 购买的会员 c1817309(已赠送高级会员)
@@ -184,6 +189,10 @@ MEMBERS_ACCOUNTS.push(getMember([32, 9, 0, 0, 8]));
 MEMBERS_ACCOUNTS.push(getMember([35, 22, 34, 6, 4, 0, 7, 2, 1]));
 // 升级高级会员zmy640721
 SUPER_ACCOUNTS.push(getMember([35, 22, 34, 6, 4, 0, 7, 2, 1]));
+
+// 文子代售 2025/10/30
+// 购买的会员 wang0314(50标准)
+MEMBERS_ACCOUNTS.push(getMember([32, 10, 23, 16, 0, 3, 1, 4]));
 
 // 是否是会员
 var IS_MEMBER = false;
