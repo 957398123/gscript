@@ -66,12 +66,16 @@ var isRepartEquip = false;
 
 // 检查装备
 function checkEquip(){
-    if(GAME_VARS.isAutoRepart && !isQueryRepart){
+    // 如果不在修装备
+    if(GAME_VARS.isAutoRepart && !isRepartEquip){
         ++equipTimer;
         if(equipTimer >= GAME_VARS.repartInterval){
-            // 更新修理信息
-            gameEnv.printMessage(7, "[王辅]：开始更新装备修理信息！");
+            equipTimer = 0;
+            // 设置正在修装备
+            isRepartEquip = true;
+            // 设置正在更新装备信息
             isQueryRepart = true;
+            // 更新装备信息
             gameEnv.updateRepair();
         }
     }
@@ -81,32 +85,33 @@ function checkEquip(){
 function repairEquip(){
     if(GAME_VARS.isAutoRepart){
         // 如果更新了装备状态，并且装备修理查询完成
-        if(isQueryRepart && gameEnv.isQueryRepart){
-            isQueryRepart = false;
-            var fixAllPrice = gameEnv.fixAllPrice;
-            var money = player.money;
-            gameEnv.printMessage(7, "[王辅]：修装查询完成，当前修装总需金钱：" + fixAllPrice);
-            gameEnv.printMessage(7, "[王辅]：玩家背包当前金钱：" + money);
-            if(fixAllPrice > 0){
-                // 优先从玩家背包扣除，不够从仓库取钱
-                if(money >= fixAllPrice){
-                    // 修理全部装备
-                    isRepartEquip = true;
-                    gameEnv.repairItem();
-                    gameEnv.printMessage(7, "[王辅]：开始修理装备！");
-                }else {
-                    // 从仓库取钱
-                    gameEnv.printMessage(7, "[王辅]：修理装备所需金钱不够！");
+        if(isQueryRepart){
+            // 查询装备信息完成
+            if(gameEnv.isQueryRepart){
+                isQueryRepart = false;
+                var fixAllPrice = gameEnv.fixAllPrice;
+                var money = player.money;
+                gameEnv.printMessage(7, "[王辅]：修装查询完成，当前修装总需金钱：" + fixAllPrice);
+                if(fixAllPrice > 0){
+                    // 优先从玩家背包扣除，不够从仓库取钱
+                    if(money >= fixAllPrice){
+                        gameEnv.printMessage(7, "[王辅]：开始修理装备！");
+                        // 修理全部装备
+                        gameEnv.repairItem();
+                    }else{
+                        gameEnv.printMessage(7, "[王辅]：修理装备所需金钱不够！");
+                        // gameEnv.takeMoney(diff);
+                        // gameEnv.printMessage(7, "[王辅]：修理装备所需金钱不够！从仓库取钱：" + diff);
+                    }
+                    // 提示装备修理完成
+                    gameEnv.printMessage(7, "[王辅]：装备修理操作完成！");
+                }else{
+                    // 提示装备修理完成
+                    gameEnv.printMessage(7, "[王辅]：装备无需修理！");
                 }
-            }else{
-                gameEnv.printMessage(7, "[王辅]：装备无需修理！");
+                // 设置装备修理完成
+                isRepartEquip = false;
             }
-        }
-        // 装备修理完成
-        if(isRepartEquip && gameEnv.isRepartEquip){
-            isRepartEquip = false;
-            equipTimer = 0;
-            gameEnv.printMessage(7, "[王辅]：修理装备完成！");
         }
     }
 }
