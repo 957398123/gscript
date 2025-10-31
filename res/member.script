@@ -77,6 +77,8 @@ MEMBERS_ACCOUNTS.push(getMember([11, 1, 8, 1, 7, 3, 0, 9]));
 MEMBERS_NAMES.push("逍遥狂魔");
 // 升级高级会员w909
 SUPER_ACCOUNTS.push(getMember([32, 9, 0, 9]));
+// 升级高级会员b1817309
+SUPER_ACCOUNTS.push(getMember([11, 1, 8, 1, 7, 3, 0, 9]));
 
 // 购买会员 秦时明月
 // 购买的会员 lv01
@@ -193,6 +195,10 @@ SUPER_ACCOUNTS.push(getMember([35, 22, 34, 6, 4, 0, 7, 2, 1]));
 // 文子代售 2025/10/30
 // 购买的会员 wang0314(50标准)
 MEMBERS_ACCOUNTS.push(getMember([32, 10, 23, 16, 0, 3, 1, 4]));
+
+// 文子代售 2025/10/30
+// 购买的会员 jta191(50标准)
+MEMBERS_ACCOUNTS.push(getMember([19, 29, 10, 1, 9, 1]));
 
 // 是否是会员
 var IS_MEMBER = false;
