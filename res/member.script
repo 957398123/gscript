@@ -107,13 +107,17 @@ MEMBERS_ACCOUNTS.push(getMember([1, 2, 2, 8, 2, 2, 9, 2]));
 MEMBERS_NAMES.push("帝厅长");
 MEMBERS_NAMES.push("帝言");
 
-// 文子
+// 文子 代售
 // 购买的会员 linlifeng 50标准
 MEMBERS_ACCOUNTS.push(getMember([21, 18, 23, 21, 18, 15, 14, 23, 16]));
+// 升级高级会员 linlifeng 30
+SUPER_ACCOUNTS.push(getMember([21, 18, 23, 21, 18, 15, 14, 23, 16]));
 // 购买的会员 linlifengb 50标准
 MEMBERS_ACCOUNTS.push(getMember([21, 18, 23, 21, 18, 15, 14, 23, 16, 11]));
 // 购买的会员 linlifenga 50标准
 MEMBERS_ACCOUNTS.push(getMember([21, 18, 23, 21, 18, 15, 14, 23, 16, 10]));
+// 赠送高级会员 linlifengb
+SUPER_ACCOUNTS.push(getMember([21, 18, 23, 21, 18, 15, 14, 23, 16, 11]));
 // 购买的会员 agm123 50标准
 MEMBERS_ACCOUNTS.push(getMember([10, 16, 22, 1, 2, 3]));
 // 赠送角色
@@ -155,8 +159,6 @@ SUPER_ACCOUNTS.push(getMember([26, 26, 1, 1, 1, 1]));
 // 测试用高级会员 s9527
 SUPER_ACCOUNTS.push(getMember([28, 9, 5, 2, 7]));
 
-// 赠送高级会员 linlifengb
-SUPER_ACCOUNTS.push(getMember([21, 18, 23, 21, 18, 15, 14, 23, 16, 11]));
 // 赠送高级会员 268800
 SUPER_ACCOUNTS.push(getMember([2, 6, 8, 8, 0, 0]));
 // 赠送高级会员 268811
