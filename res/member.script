@@ -93,10 +93,6 @@ MEMBERS_ACCOUNTS.push(getMember([2, 6, 8, 8, 1, 1]));
 MEMBERS_ACCOUNTS.push(getMember([2, 6, 8, 8, 2, 2]));
 
 // 购买会员 文子
-// 购买的会员 fang2025
-MEMBERS_ACCOUNTS.push(getMember([15, 10, 23, 16, 2, 0, 2, 5]));
-// 购买的会员 hai2025
-MEMBERS_ACCOUNTS.push(getMember([17, 10, 18, 2, 0, 2, 5]));
 // 赠送角色
 MEMBERS_NAMES.push("装备回收官");
 
@@ -201,6 +197,26 @@ MEMBERS_ACCOUNTS.push(getMember([32, 10, 23, 16, 0, 3, 1, 4]));
 // 文子代售 2025/10/30
 // 购买的会员 jta191(50标准)
 MEMBERS_ACCOUNTS.push(getMember([19, 29, 10, 1, 9, 1]));
+
+// 文子代售 2025/11/02
+// 购买的会员 fang2025(50标准)(已赠送高级会员)
+MEMBERS_ACCOUNTS.push(getMember([15, 10, 23, 16, 2, 0, 2, 5]));
+// 购买的会员 hai2025(50标准)(已赠送高级会员)
+MEMBERS_ACCOUNTS.push(getMember([17, 10, 18, 2, 0, 2, 5]));
+// 购买的会员 jinhai123(50标准)(已赠送高级会员)
+MEMBERS_ACCOUNTS.push(getMember([19, 18, 23, 17, 10, 18, 1, 2, 3]));
+// 升级高级会员jinhai123
+SUPER_ACCOUNTS.push(getMember([19, 18, 23, 17, 10, 18, 1, 2, 3]));
+
+// 直售2025/11/02
+// 购买的会员 ll123456(50标准)
+MEMBERS_ACCOUNTS.push(getMember([21, 21, 1, 2, 3, 4, 5, 6]));
+
+// 直售2025/11/02
+MEMBERS_ACCOUNTS.push(getMember([32, 9, 0, 0, 2]));
+
+// 赠送文子 hh16
+MEMBERS_ACCOUNTS.push(getMember([17, 17, 1, 6]));
 
 // 是否是会员
 var IS_MEMBER = false;
