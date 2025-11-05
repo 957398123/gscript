@@ -138,20 +138,20 @@ function drugStatus(){
         // 判断当前血量是否需要吃药 优先吃紫药
         if (hpPer < GAME_VARS.hpStatusPer) {
             if (GAME_VARS.isUsePurplePotion && gameEnv.canUsePurple()) {
-                printMessage("[王辅]：吃紫药！");
+                printMessage(":吃紫药！");
                 gameEnv.usePurplePotion();
             } else if (GAME_VARS.isUseRedPotion && gameEnv.canUseRed()) {
-                printMessage("[王辅]：吃红药！");
+                printMessage(":吃红药！");
                 gameEnv.useRedPotion();
             }
         }
         // 判断当前蓝量是否需要吃药 优先吃紫药
         if (mpPer < GAME_VARS.mpStatusPer) {
             if (GAME_VARS.isUsePurplePotion && gameEnv.canUsePurple()) {
-                printMessage("[王辅]：吃紫药！");
+                printMessage(":吃紫药！");
                 gameEnv.usePurplePotion();
             } else if (GAME_VARS.isUseBluePotion && gameEnv.canUseBlue()) {
-                printMessage("[王辅]：吃蓝药！");
+                printMessage(":吃蓝药！");
                 gameEnv.useBluePotion();
             }
         }

@@ -30,8 +30,8 @@ function cleanPackage(){
     if(GAME_VARS.isAutoSale){
         // 如果查询背包完成
         if(isQueryPackage && !gameEnv.isQueryPackage){
-            gameEnv.printMessage(7, "[王辅]：更新背包信息完成！");
-            gameEnv.printMessage(7, "[王辅]：开始清空背包！");
+            gameEnv.printMessage(7, ":更新背包信息完成！");
+            gameEnv.printMessage(7, ":开始清空背包！");
             var saleTotal = 0;
             for(var i = 0; i < 36; ++i){
                 // 输出当前背包内容
@@ -39,16 +39,16 @@ function cleanPackage(){
                 // 如果物品存在，并且允许出售
                 if(item[0] > 0){
                     if(isSaleItem(item[2])){
-                        gameEnv.printMessage(7, "[王辅]：售卖物品，名称：" + item[2] + "，单价：" + item[5] + "，数量：" + item[1]);
+                        gameEnv.printMessage(7, ":售卖物品，名称：" + item[2] + "，单价：" + item[5] + "，数量：" + item[1]);
                         saleTotal += item[5] * item[1];
                         gameEnv.saleItem(i, item[1]);
                     }else{
-                        gameEnv.printMessage(7, "[王辅]：不售卖该物品，名称：" + item[2]);
+                        gameEnv.printMessage(7, ":不售卖该物品，名称：" + item[2]);
                     }
                 }
             }
             isQueryPackage = false;
-            gameEnv.printMessage(7, "[王辅]：背包清理完成！合计卖出：" + saleTotal);
+            gameEnv.printMessage(7, ":背包清理完成！合计卖出：" + saleTotal);
         }
     }
 }
@@ -91,23 +91,23 @@ function repairEquip(){
                 isQueryRepart = false;
                 var fixAllPrice = gameEnv.fixAllPrice;
                 var money = player.money;
-                gameEnv.printMessage(7, "[王辅]：修装查询完成，当前修装总需金钱：" + fixAllPrice);
+                gameEnv.printMessage(7, ":修装查询完成，当前修装总需金钱：" + fixAllPrice);
                 if(fixAllPrice > 0){
                     // 优先从玩家背包扣除，不够从仓库取钱
                     if(money >= fixAllPrice){
-                        gameEnv.printMessage(7, "[王辅]：开始修理装备！");
+                        gameEnv.printMessage(7, ":开始修理装备！");
                         // 修理全部装备
                         gameEnv.repairItem();
                     }else{
-                        gameEnv.printMessage(7, "[王辅]：修理装备所需金钱不够！");
+                        gameEnv.printMessage(7, ":修理装备所需金钱不够！");
                         // gameEnv.takeMoney(diff);
-                        // gameEnv.printMessage(7, "[王辅]：修理装备所需金钱不够！从仓库取钱：" + diff);
+                        // gameEnv.printMessage(7, ":修理装备所需金钱不够！从仓库取钱：" + diff);
                     }
                     // 提示装备修理完成
-                    gameEnv.printMessage(7, "[王辅]：装备修理操作完成！");
+                    gameEnv.printMessage(7, ":装备修理操作完成！");
                 }else{
                     // 提示装备修理完成
-                    gameEnv.printMessage(7, "[王辅]：装备无需修理！");
+                    gameEnv.printMessage(7, ":装备无需修理！");
                 }
                 // 设置装备修理完成
                 isRepartEquip = false;
@@ -134,10 +134,10 @@ function checkStore(){
                 storeTimer = 0;
                 var diff = player.money - GAME_VARS.RETAIN_MONEY;
                 if(diff > 0){
-                    gameEnv.printMessage(7, "[王辅]：当前玩家背包金钱：" + player.money + "，存入" + diff + "到仓库");
+                    gameEnv.printMessage(7, ":当前玩家背包金钱：" + player.money + "，存入" + diff + "到仓库");
                     gameEnv.storeMoney(diff);
                 }else{
-                    gameEnv.printMessage(7, "[王辅]：当前玩家背包金钱：" + player.money + "，低于存钱阀值" + GAME_VARS.RETAIN_MONEY + "!");
+                    gameEnv.printMessage(7, ":当前玩家背包金钱：" + player.money + "，低于存钱阀值" + GAME_VARS.RETAIN_MONEY + "!");
                 }
             }
         }
@@ -153,7 +153,7 @@ function printRunTime(){
     if(runTimer >= 10){
         runTimer = 0;
         // 输出运行时间
-        gameEnv.printMessage(7, "[王辅]：王辅已运行" + formatTime(gameEnv.getRuntime()));
+        gameEnv.printMessage(7, ":已运行" + formatTime(gameEnv.getRuntime()));
     }
 }
 
@@ -164,7 +164,7 @@ function printAD(){
     ++adTimer;
     if(!IS_MEMBER && adTimer >= 3){
         adTimer = 0;
-        gameEnv.broadcastMessage("王辅官方群：583627835，进群获取会员以及更强大功能！！！");
+        gameEnv.broadcastMessage("官方群：583627835，进群获取会员以及更强大功能！！！");
     }
 }
 

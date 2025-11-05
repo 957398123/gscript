@@ -518,7 +518,7 @@ function keyInHangMenuOk(){
                 uiFrame.addGameForm("msg", "功能正在开发中，敬请期待！", "确定", null, SCREEN_W - 30, 110);
             }
         }else{
-            uiFrame.addGameForm("msg", "您不是王辅会员，请注册会员！", "确定", null, SCREEN_W - 30, 110);
+            uiFrame.addGameForm("msg", "您不是会员，请注册会员！", "确定", null, SCREEN_W - 30, 110);
         }
     }
 }
@@ -714,25 +714,25 @@ function hangHangKey(){
                                 battle_pRow = player.row;
                                 // 直接设置挂机状态
                                 hook_status = -1;
-                                printMessage("[王辅]：挂机类型：定点挂机，当前定点坐标(" + battle_pCol + ", " + battle_pRow + ")。");
+                                printMessage(":挂机类型：定点挂机，当前定点坐标(" + battle_pCol + ", " + battle_pRow + ")。");
                             }else{
                                 // 巡逻挂机初始状态
                                 hook_direction = 0;
                                 hook_status = 0;
                             }
                             if(GAME_VARS.isCustomizeHangUp){
-                                printMessage("[王辅]：当前挂机战斗类型：自定义挂机！");
+                                printMessage(":当前挂机战斗类型：自定义挂机！");
                             }else{
-                                printMessage("[王辅]：当前挂机战斗类型：内置挂机！");
+                                printMessage(":当前挂机战斗类型：内置挂机！");
                             }
                             setIsHangUp(true);
                         }else{
                             setIsHangUp(false);
-                            printMessage("[王辅]：您不是王辅会员，请注册会员！");
+                            printMessage(":您不是会员，请注册会员！");
                         }
                     }else if(gameEnv.isKeyPress(SOFT_RIGHT)){
                         setIsHangUp(false);
-                        printMessage("[王辅]：当前挂机已取消！");
+                        printMessage(":当前挂机已取消！");
                     }
                     // 置空弹框
                     guiZone.hangUI.baseForm.clearAboutForm();

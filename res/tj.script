@@ -45,17 +45,17 @@ function entryGame(){
     var account = player.account;
     var name = player.name;
     // 输出hello
-    printMessage("[王辅]：欢迎使用王牌辅助" + GAME_VARS.version + "！");
+    printMessage(":欢迎使用王牌辅助" + GAME_VARS.version + "！");
     // 检查会员
     checkMember();
     if(IS_ADMIN_MEMBER){
-        printMessage("[王辅]：欢迎您，尊贵的管理员！");
+        printMessage(":欢迎您，尊贵的管理员！");
     }else if(IS_SUPER_MEMBER){
-        printMessage("[王辅]：欢迎您，尊贵的超级会员！");
+        printMessage(":欢迎您，尊贵的超级会员！");
     }else if(IS_MEMBER){
-        printMessage("[王辅]：欢迎您，尊贵的会员！");
+        printMessage(":欢迎您，尊贵的会员！");
     }else{
-        printMessage("[王辅]：您不是王辅会员，请注册会员！");
+        printMessage(":您不是会员，请注册会员！");
     }
     // 读取配置文件，覆盖默认设置
     readGameVarRecord();

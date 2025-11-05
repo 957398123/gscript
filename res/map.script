@@ -12,6 +12,6 @@ function canPassMap(){
         // 更新挂机地图数据，这里必须更新，不然就检测到不在了
         hook_map_name = gameEnv.mapName;
         hook_status = 0;
-        printMessage("[王辅]：巡逻挂机切换地图:" + hook_map_name);
+        printMessage(":巡逻挂机切换地图:" + hook_map_name);
     }
 }

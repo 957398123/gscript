@@ -10,7 +10,7 @@ function chatCommandHook(channel, id, name, msg){
         // 回复hello
         gameEnv.sendCommandMessage(1, id, "001");
     }else if(cmd == "001"){
-        printMessage("[王辅]：王辅会员" + name + "向您报道！");
+        printMessage(":王辅会员" + name + "向您报道！");
     }else if(cmd == "002"){  // 设置优先攻击目标
         // 如果自己当前的优先攻击对象为0，才进行设置
         if(player.priorityAttack == 0){
