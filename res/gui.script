@@ -15,6 +15,10 @@ function initHangModule(){
     initNpcForm();
     // 初始化高级界面
     initHighForm();
+    // 初始化系统界面
+    initSystemUIForm();
+    // 初始化协作界面
+    initTeamUIForm();
 }
 
 // 初始化列表
@@ -27,7 +31,7 @@ function initHangData(){
 // 初始化子菜单
 function initHangSubMenu(){
     var hangUI = guiZone.hangUI;
-    var subMenu = ["1 挂机", "2 功能", "3 寻路", "4 设置", "5 高级", "6 巡逻"];
+    var subMenu = ["1 挂机", "2 功能", "3 寻路", "4 设置", "5 高级", "6 巡逻", "7 系统", "8 协作"];
     hangUI.hangMenu = uiFrame.createUIMenu(145, 23, 60, 0, null, subMenu);
 }
 
@@ -69,6 +73,8 @@ function initUIConfig(){
         }else{
             GAME_VARS.isAllowWall = false;
         }
+        // 更改穿墙
+        gameEnv.setAllowWall(GAME_VARS.isAllowWall);
     });
     // 选项 自动修理
     var rb2 = uiFrame.createUIRadioButton(35, 38 + 1 * space, 0, 0, "自动修理", 0);
@@ -468,6 +474,108 @@ function initUIForm(){
     hangUI.baseForm = baseForm;
 }
 
+
+// 初始化系统UI
+function initSystemUIForm(){
+    var hangUI = guiZone.hangUI;
+    var keyMap = hangUI.keyMap;
+    var baseForm = uiFrame.createUIForm(0, 0, SCREEN_W, SCREEN_H, "");
+    baseForm.setStyle(0);
+    var rimFrame = uiFrame.createUIRim(0, 0, SCREEN_W - 1, SCREEN_H - 1, 4);
+    var rimTitle = uiFrame.createUIRim(0, 10, 160, 17, 7);
+    var lblTitle = uiFrame.createUILabel(0, rimTitle.positionY + 3, 0, 0, "系统", 15718815, 1, 0);
+    var rimDown = uiFrame.createUIRim(0, 27, 160, 160, 0);
+    var rimDownInner = uiFrame.createUIRim(0, 32, 150, 150, 0);
+    var lblOk = uiFrame.createUILabel(0, 0, 0, 0, "确定", 15718815, 1, 0);
+    var lblCancel = uiFrame.createUILabel(0, 0, 0, 0, "返回", 15718815, 1, 0);
+    // 选项 关闭日志
+    var rb1 = uiFrame.createUIRadioButton(35, 38 + 0 * 14, 0, 0, "输出日志", 0);
+    rb1.addItems("开");
+    rb1.addItems("关");
+    // 获取选项
+    if(GAME_VARS.isCloseLog){
+        rb1.setChooseItem(0);
+    }else{
+        rb1.setChooseItem(1);
+    }
+    // 按钮值发生改变时回调
+    rb1.addChooseCallMethods(function (value) {
+        if(value == 0){
+            GAME_VARS.isCloseLog = true;
+        }else{
+            GAME_VARS.isCloseLog = false;
+        }
+        // 回调设置仓库掉落函数
+    });
+    // 选项 仓库掉落
+    var rb2 = uiFrame.createUIRadioButton(35, 38 + 1 * 14, 0, 0, "掉落仓库", 0);
+    rb2.addItems("开");
+    rb2.addItems("关");
+    // 获取选项
+    if(GAME_VARS.isFullStore){
+        rb2.setChooseItem(0);
+    }else{
+        rb2.setChooseItem(1);
+    }
+    // 按钮值发生改变时回调
+    rb2.addChooseCallMethods(function (value) {
+        if(value == 0){
+            GAME_VARS.isFullStore = true;
+        }else{
+            GAME_VARS.isFullStore = false;
+        }
+        // 回调设置仓库掉落函数
+    });
+
+    // 持有引用
+    keyMap.isCloseLog = rb1;
+    keyMap.isFullStore = rb2;
+
+    baseForm.addComponent(rimFrame);
+    baseForm.addComponentInCenter(rimTitle, 2);
+    baseForm.addComponentInCenter(lblTitle, 2);
+    baseForm.addComponentInCenter(rimDown, 2);
+    baseForm.addComponentInCenter(rimDownInner, 2);
+    baseForm.addComponentInCenter(lblOk, 5);
+    baseForm.addComponentInCenter(lblCancel, 6);
+    baseForm.addKeyCallMethods(configKeyPress);
+    // 添加到容器
+    baseForm.addComponent(rb1);
+    baseForm.addComponent(rb2);
+    // 设置上下选项
+    rb1.setAroundComponent(rb2, 2);
+    rb2.setAroundComponent(rb1, 1);
+    baseForm.setFocus(true);
+    hangUI.systemForm = baseForm;
+ }
+
+ // 初始化协作UI
+function initTeamUIForm(){
+    var hangUI = guiZone.hangUI;
+    var keyMap = hangUI.keyMap;
+    var baseForm = uiFrame.createUIForm(0, 0, SCREEN_W, SCREEN_H, "");
+    baseForm.setStyle(0);
+    var rimFrame = uiFrame.createUIRim(0, 0, SCREEN_W - 1, SCREEN_H - 1, 4);
+    var rimTitle = uiFrame.createUIRim(0, 10, 160, 17, 7);
+    var lblTitle = uiFrame.createUILabel(0, rimTitle.positionY + 3, 0, 0, "协作", 15718815, 1, 0);
+    var rimDown = uiFrame.createUIRim(0, 27, 160, 160, 0);
+    var rimDownInner = uiFrame.createUIRim(0, 32, 150, 150, 0);
+    var lblOk = uiFrame.createUILabel(0, 0, 0, 0, "确定", 15718815, 1, 0);
+    var lblCancel = uiFrame.createUILabel(0, 0, 0, 0, "返回", 15718815, 1, 0);
+    baseForm.addComponent(rimFrame);
+    baseForm.addComponentInCenter(rimTitle, 2);
+    baseForm.addComponentInCenter(lblTitle, 2);
+    baseForm.addComponentInCenter(rimDown, 2);
+    baseForm.addComponentInCenter(rimDownInner, 2);
+    baseForm.addComponentInCenter(lblOk, 5);
+    baseForm.addComponentInCenter(lblCancel, 6);
+    baseForm.addKeyCallMethods(configKeyPress);
+    // 添加到容器
+    baseForm.addComponent(rb1);
+    baseForm.setFocus(true);
+    hangUI.teamForm = baseForm;
+}
+
 // 初始化最强NPC
 function initNpcForm(){
     var hangUI = guiZone.hangUI;
@@ -479,11 +587,8 @@ function initNpcForm(){
     npcMenu.setRimStyle(0);
     npcMenu.setFlushType(1);
     // 增加按钮回调函数
-    npcMenu.addCallMethods(function(index, type){
-        // 精炼前，请求能精炼的npc
-        if(type == 8){
-        }
-    });
+    // npcMenu.addCallMethods(function(index, type){
+    // });
     hangUI.npcMenu = npcMenu;
 }
 
@@ -500,7 +605,7 @@ function keyInHangMenuOk(){
             var hangMenu = uiFrame.getHangMenu();
             var index = hangMenu.getCurrentPointer();
             hangUI.index = index;
-            if(index == 0 || index == 3){
+            if(index == 0 || index == 3 || index == 6 || index == 7){
                 // 设置显示子内容
                 gameEnv.setRightMenuSubState(0);
             }else if(index == 1){
@@ -671,6 +776,10 @@ function keyHangUI(){
         hangUI.configForm.handPressKey();
     }else if(index == 4){
         hangUI.highForm.handPressKey();
+    }else if(index == 6){
+        hangUI.systemForm.handPressKey();
+    }else if(index == 7){
+        hangUI.teamForm.handPressKey();
     }
 }
 
@@ -684,6 +793,10 @@ function drawHangUI(g){
         hangUI.configForm.draw(g);
     } else if(index == 4){
         hangUI.highForm.draw(g);
+    }else if(index == 6){
+        hangUI.systemForm.draw(g);
+    }else if(index == 7){
+        hangUI.teamForm.draw(g);
     }
 }
 

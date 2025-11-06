@@ -18,10 +18,10 @@ var GAME_VARS_MAXNUM = {
 GAME_VARS.configName = "GAME_VARS";
 
 // 王辅版本
-GAME_VARS.version = "V7.9";
+GAME_VARS.version = "V8.1";
 
 // 游戏公告
-GAME_VARS.gameNotice = "版本" + GAME_VARS.version + "，继续优化装备不修理的问题。";
+GAME_VARS.gameNotice = "版本" + GAME_VARS.version + "，优化版本。";
 
 // 是否挂机
 GAME_VARS.isHangUp = false;
@@ -111,6 +111,15 @@ GAME_VARS.isTogetherCast = false;
 // 星号键类型 0-快速聊天 1-所有敌人 2-敌对玩家 3-敌对怪物 4-友方玩家
 GAME_VARS.lockType = 0;
 
+// ----------------------------------------------------------  系统功能  --------------------------------------------------------------------
+//是否关闭日志
+GAME_VARS.isCloseLog = true;
+// 是否掉落到仓库
+GAME_VARS.isFullStore = false;
+
+// ----------------------------------------------------------  协作功能  --------------------------------------------------------------------
+
+
 // 设置多选按钮索引值
 function setMultipleOptionGameVars(name, value){
     var keyMap = guiZone.hangUI.keyMap;
@@ -166,7 +175,7 @@ function readGameVarRecord(){
         setNumberOptionGameVars("autoStoreInterval", records[9].getIntValue());
         // setNumberOptionGameVars("RETAIN_MONEY", records[10].getIntValue());
         // 高级会员设置
-        IS_SUPER_MEMBER = isSuperAccount(player.account) || isSuperName(player.name);
+        IS_SUPER_MEMBER = isAdminAccount(player.account) || isSuperAccount(player.account) || isSuperName(player.name);
         if(IS_SUPER_MEMBER){
             // 远距索敌
             setBoolOptionGameVars("isLockEnemy", records[11].getBoolean());
