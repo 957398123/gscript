@@ -819,6 +819,8 @@ function hangHangKey(){
                         updateDefinedSkills();
                         // 检测当前玩家是否是会员
                         if(IS_MEMBER){
+                            // 复位挂机状态
+                            resetBattleStatus();
                             // 设置当前挂机地图
                             hook_map_name = gameEnv.mapName;
                             // 如果设置了定点挂机，设置挂机点

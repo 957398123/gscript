@@ -105,13 +105,8 @@ function battle() {
                     resetBattleStatus();
                 }
             } else {
-                // 没有怪物，选一个最近的怪物
-                var fightObj = gameEnv.getNearFightObj(battle_pCol, battle_pRow, GAME_VARS.attackScope);
-                if (fightObj == null) {
-                    resetBattleStatus();
-                } else {
-                    gameEnv.setCurrentTarget(fightObj);
-                }
+                // 没有怪物，回原点
+                resetBattleStatus();
             }
         }
     } else {
