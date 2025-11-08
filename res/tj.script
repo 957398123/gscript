@@ -18,14 +18,14 @@ var PLAYER_SECOND_CALL = [];
 // 游戏初始化时调用(只会调用一次)
 function start(){
     // 更新版本号
-    gameEnv.setVersion(100742552);
+    gameEnv.setVersion(100794368);
     // 这里是全局游戏
     regHandleCall(GAME_SECOND_CALL, tickRoleView);
     // 以下是游戏中玩家的处理
     // 注册时间播报
     regHandleCall(PLAYER_MINUTE_CALL, printRunTime);
     // 注册公告
-    regHandleCall(PLAYER_MINUTE_CALL, printAD);
+    // regHandleCall(PLAYER_MINUTE_CALL, printAD);
     // 注册修理装备
     regHandleCall(PLAYER_MINUTE_CALL, checkEquip);
     // 帧处理

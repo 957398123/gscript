@@ -228,7 +228,7 @@ SUPER_NAMES.push("强大的法师");
 SUPER_NAMES.push("王小财");
 SUPER_NAMES.push("大怪兽0");
 // 赠送文子
-SUPER_NAMES.push("血色战甲");
+MEMBERS_NAMES.push("血色战甲");
 
 // 直售2025/11/06 往事随风
 // 158661436503 购买高级(70标准)
@@ -243,6 +243,14 @@ SUPER_NAMES.push("矿工灬002");
 SUPER_NAMES.push("神殿之巅");
 // 购买高级会员(40标准)
 SUPER_NAMES.push("岁月v年华");
+
+// 直售2025/11/07 星星
+// 购买的会员 (30标准)(已赠送会员)
+MEMBERS_NAMES.push("看似温柔");
+// 购买的会员 (30标准)(已赠送会员)
+MEMBERS_NAMES.push("小憨憨2");
+// 赠送会员
+MEMBERS_NAMES.push("嗜魂法杖");
 
 // 是否是会员
 var IS_MEMBER = false;
