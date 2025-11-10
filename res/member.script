@@ -252,6 +252,13 @@ MEMBERS_NAMES.push("小憨憨2");
 // 赠送会员
 MEMBERS_NAMES.push("嗜魂法杖");
 
+// 2025/11/09 富贵
+// 会员直升高级 朱丶富贵 (10标准)
+SUPER_NAMES.push("朱丶富贵");
+
+// 2025/11/09 文子代售
+MEMBERS_ACCOUNTS.push(getMember([0, 19, 32, 16]));
+
 // 是否是会员
 var IS_MEMBER = false;
 

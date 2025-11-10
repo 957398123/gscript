@@ -10,7 +10,7 @@ var GAME_VARS_MAXNUM = {
     "attackScope": 99,       // 攻击范围最大值
     "repartInterval": 60,    // 自动修装间隔最大值
     "saleInterval": 60,      // 自动售卖间隔最大值
-    "moveSpeed": 99,          // 移动速度最大值
+    "moveSpeed": 1,          // 移动速度最大值
     "autoStoreInterval": 60, // 自动存钱最大值
     "battleScope": 120       // 施法最大范围
 };
@@ -18,10 +18,10 @@ var GAME_VARS_MAXNUM = {
 GAME_VARS.configName = "GAME_VARS";
 
 // 王辅版本
-GAME_VARS.version = "V8.4";
+GAME_VARS.version = "V8.9";
 
 // 游戏公告
-GAME_VARS.gameNotice = "版本" + GAME_VARS.version + "，修复版本问题。";
+GAME_VARS.gameNotice = "版本" + GAME_VARS.version + "，修复站着不动掉线问题。";
 
 // 是否挂机
 GAME_VARS.isHangUp = false;

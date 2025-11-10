@@ -36,6 +36,8 @@ function start(){
     regHandleCall(PLAYER_FRAME_CALL, hangUpFrame);
     // 秒处理
     regHandleCall(PLAYER_SECOND_CALL, hangUpSecond);
+    // 分钟处理
+    regHandleCall(PLAYER_MINUTE_CALL, hangUpMinute);
     // 初始化王辅模块
     initHangModule();
 }

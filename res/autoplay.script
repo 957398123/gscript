@@ -1,6 +1,6 @@
 // 天劫挂机模块
 
-// 巡逻挂机状态 -1-结束状态 0-初始状态 1-寻径(寻找) 2-寻径中
+// 巡逻挂机状态 -2-定时挂机 -1-定点挂机 0-初始状态 1-更新下一位置 2-寻径中 4-功能代码
 var hook_status = 0;
 
 // 挂机地点列表，如果当前挂机地图设置了一系列挂机坐标，会打完怪物后移动到下一个挂机点
@@ -41,6 +41,9 @@ var hook_login_name = "";
 
 // 等待释放技能 0-初始状态 1-等待释放技能 2-释放技能中 3-技能释放完毕
 var hook_skill_wait = 0;
+
+// 定点挂机剩余时间
+var hook_hang_time = 0;
 
 // 巡逻挂机实现函数
 function patrolBattle() {
@@ -178,7 +181,7 @@ function patrolBattle() {
                 // 如果更改了寻径坐标，纠正
                 player.setAimColRow(pos[0], pos[1]);
             }
-        } else if (hook_status == -1) {
+        } else if (hook_status == -1) {  // 定点挂机
             // 检测周围是否有可攻击敌人，没有前往下一个地点，这里必须放最后面
             if(gameEnv.status == 5){
                 if (!GAME_VARS.isPatrol && hook_pos != null && gameEnv.getNearFightObj(GAME_VARS.attackScope) == null) {  // 巡逻挂机，并且附近没有可攻击单位
@@ -188,6 +191,17 @@ function patrolBattle() {
                     printMessage(":当前位置怪物已清空，前往下一挂机点！");
                 } else {
                     battle();
+                }
+            }
+        }else if (hook_status == -2) {  // 定时定点挂机
+            // 检测周围是否有可攻击敌人，没有前往下一个地点，这里必须放最后面
+            if(gameEnv.status == 5){
+                if(hook_hang_time > 0 || battle_status != 0){
+                    battle();
+                }else{
+                    printMessage(":定时挂机结束！");
+                    // 检测当前是否在恢复状态，是更新下一位置
+                    updateHookOffset();
                 }
             }
         } else if (hook_status == 4) {  // 执行巡逻功能，执行完了才到下一个巡逻点
@@ -234,6 +248,25 @@ function patrolBattle() {
                     printMessage(":巡逻等待结束。");
                     hook_is_wait = 0;
                     updateHookOffset();
+                }
+            } else if(sign == -4){  // -4进入挂机状态
+                // 设置挂机位置
+                battle_pCol = player.col;
+                battle_pRow = player.row;
+                // 如果有挂机时间，设置挂机时间
+                if (data.length > 1) {
+                    hook_hang_time = parseInt(data[1]);
+                    printMessage(":当前挂机剩余时间：" + hook_hang_time + "分钟！");
+                    if(hook_hang_time > 0){
+                        // 设置进入定时挂机状态
+                        hook_status = -2;
+                    }else{
+                        hook_hang_time = 0;
+                        hook_status = -1;
+                    }
+                }else{
+                    printMessage(":当开始定点挂机！");
+                    hook_status = -1;
                 }
             } else if (sign == -5) {    // 登出当前角色，并于一定时间后登入
                 hook_login_time = 0;
@@ -357,6 +390,13 @@ function hangUpSecond() {
     }
 }
 
+// 挂机函数 每分钟执行
+function hangUpMinute(){
+    if(hook_status == -2 && hook_hang_time > 0){
+        --hook_hang_time;
+    }
+}
+
 // 重置autoplay
 function restAutoPlay() {
     hook_status = 0;
@@ -369,6 +409,7 @@ function restAutoPlay() {
     hook_direction = 0;
     hook_is_wait = 0;
     hook_wait_time = 0;
+    hook_hang_time = 0;
     hook_skill_wait = 0;
 }
 
