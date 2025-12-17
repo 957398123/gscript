@@ -10,7 +10,7 @@ var GAME_VARS_MAXNUM = {
     "attackScope": 99,       // 攻击范围最大值
     "repartInterval": 60,    // 自动修装间隔最大值
     "saleInterval": 60,      // 自动售卖间隔最大值
-    "moveSpeed": 1,          // 移动速度最大值
+    "moveSpeed": 2,          // 移动速度最大值
     "autoStoreInterval": 60, // 自动存钱最大值
     "battleScope": 120       // 施法最大范围
 };
@@ -18,10 +18,10 @@ var GAME_VARS_MAXNUM = {
 GAME_VARS.configName = "GAME_VARS";
 
 // 王辅版本
-GAME_VARS.version = "V8.9";
+GAME_VARS.version = "V9.9";
 
 // 游戏公告
-GAME_VARS.gameNotice = "版本" + GAME_VARS.version + "，修复站着不动掉线问题。";
+GAME_VARS.gameNotice = "版本" + GAME_VARS.version + "，增加是否允许组队和飞我参数。";
 
 // 是否挂机
 GAME_VARS.isHangUp = false;
@@ -53,8 +53,8 @@ GAME_VARS.isUsePurplePotion = false;
 // 挂机施法范围 默认60码
 GAME_VARS.battleScope = 60;
 
-// 挂机释放优先打敌对玩家
-GAME_VARS.isPriorityEnemy = false;
+// 挂机释放优先打敌对玩家 0-不反击 1-反击 2-优先玩家
+GAME_VARS.isPriorityEnemy = 0;
 
 // ----------------------------------------------------------  设置功能  --------------------------------------------------------------------
 
@@ -112,10 +112,14 @@ GAME_VARS.isTogetherCast = false;
 GAME_VARS.lockType = 0;
 
 // ----------------------------------------------------------  系统功能  --------------------------------------------------------------------
-//是否关闭日志
-GAME_VARS.isCloseLog = true;
+//是否开启日志
+GAME_VARS.isOpenLog = true;
 // 是否掉落到仓库
 GAME_VARS.isFullStore = false;
+// 是否允许别人组队
+GAME_VARS.teamAuto = false;
+// 是否允许别人飞我
+GAME_VARS.flyAuto = false;
 
 // ----------------------------------------------------------  协作功能  --------------------------------------------------------------------
 
@@ -161,7 +165,7 @@ function setNumberOptionGameVars(name, value){
 // 从配置中读取设置
 function readGameVarRecord(){
     var name = player.name + "_GAME_VARS";
-    var records = gameEnv.readRecord(name, 27);
+    var records = gameEnv.readRecord(name, 31);
     if(records != null){
         setBoolOptionGameVars("isPatrol", records[0].getBoolean());
         setBoolOptionGameVars("isAllowWall", records[1].getBoolean());
@@ -198,7 +202,11 @@ function readGameVarRecord(){
         setNumberOptionGameVars("battleScope", records[21].getIntValue());
         setNumberOptionGameVars("subSkillCd", records[22].getIntValue());
         setNumberOptionGameVars("subSkillRead", records[23].getIntValue());
-        setBoolOptionGameVars("isPriorityEnemy", records[26].getBoolean());
+        setNumberOptionGameVars("isPriorityEnemy", records[26].getIntValue());
+        setBoolOptionGameVars("isOpenLog", records[27].getBoolean());
+        setBoolOptionGameVars("isFullStore", records[28].getBoolean());
+        setBoolOptionGameVars("teamAuto", records[29].getBoolean());
+        setBoolOptionGameVars("flyAuto", records[30].getBoolean());
     }else{
         // 保存默认值
         storeGameVarRecord();
@@ -235,7 +243,11 @@ function storeGameVarRecord(){
         GAME_VARS.subSkillRead,       // 减读条时间
         GAME_VARS.isAutoCollection,   // 自动采集
         GAME_VARS.isTogetherCast,     // 同时施法
-        GAME_VARS.isPriorityEnemy     // 优先打敌对玩家
+        GAME_VARS.isPriorityEnemy,    // 优先打敌对玩家
+        GAME_VARS.isOpenLog,          // 是否打开日志输出
+        GAME_VARS.isFullStore,        // 是否掉落到仓库
+        GAME_VARS.teamAuto,           // 是否允许别人组队
+        GAME_VARS.flyAuto             // 是否允许别人飞我
     ];
     gameEnv.saveRecord(name, records);
 }

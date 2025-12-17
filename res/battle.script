@@ -42,7 +42,7 @@ function battle() {
     var hpPer = getPercentageHp();
     var mpPer = getPercentageMp();
     // 如果玩家没有死亡
-    if (player.state != 5) {
+    if (!player.isDead()) {
         if (battle_status == 0) {  // 恢复中
             if (player.isBeAttack || (isHangUpColRow() && ((hpPer >= GAME_VARS.hpStatusPer && mpPer >= GAME_VARS.mpStatusPer)))) {
                 var fightObj = gameEnv.getNearFightObj(battle_pCol, battle_pRow, GAME_VARS.attackScope);
@@ -110,6 +110,8 @@ function battle() {
             }
         }
     } else {
+        // 记录当前死亡挂机地图
+        need_find_map = true;
         resetBattleStatus();
         gameEnv.keyPressed(NUM_11);
     }

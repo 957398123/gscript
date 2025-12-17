@@ -7,11 +7,9 @@ function canNotPassMap(){
 // 过图回调
 function canPassMap(){
     // 如果是巡逻挂机中，切换地图时，更新当前地图的巡逻数据
-    if(GAME_VARS.isHangUp && !GAME_VARS.isPatrol){
-        // 这里需要看是不是寻路中，如果是挂机点切换的地图
-        // 更新挂机地图数据，这里必须更新，不然就检测到不在了
-        hook_map_name = gameEnv.mapName;
+    if(GAME_VARS.isHangUp && !GAME_VARS.isPatrol && !need_find_map){
         hook_status = 0;
+        hook_map_name = gameEnv.mapName;
         printMessage(":巡逻挂机切换地图:" + hook_map_name);
     }
 }

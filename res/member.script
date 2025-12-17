@@ -99,8 +99,6 @@ MEMBERS_ACCOUNTS.push(getMember([21, 18, 23, 21, 18, 15, 14, 23, 16, 11]));
 MEMBERS_ACCOUNTS.push(getMember([21, 18, 23, 21, 18, 15, 14, 23, 16, 10]));
 // 赠送高级会员 linlifengb
 SUPER_ACCOUNTS.push(getMember([21, 18, 23, 21, 18, 15, 14, 23, 16, 11]));
-// 购买的会员 agm123 50标准
-MEMBERS_ACCOUNTS.push(getMember([10, 16, 22, 1, 2, 3]));
 // 赠送角色
 MEMBERS_NAMES.push("奶气侧漏");
 
@@ -158,22 +156,12 @@ SUPER_ACCOUNTS.push(getMember([29, 24, 23, 16, 1, 1]));
 SUPER_ACCOUNTS.push(getMember([1, 29, 13, 0, 7]));
 
 // 文子代售
-// 购买的会员 w9001(已赠送高级会员)
-MEMBERS_ACCOUNTS.push(getMember([32, 9, 0, 0, 1]));
-// 购买的会员 w9008(已赠送高级会员)
-MEMBERS_ACCOUNTS.push(getMember([32, 9, 0, 0, 8]));
 // 购买的会员 zmy640721(已赠送高级会员)
 MEMBERS_ACCOUNTS.push(getMember([35, 22, 34, 6, 4, 0, 7, 2, 1]));
 // 升级高级会员zmy640721
 SUPER_ACCOUNTS.push(getMember([35, 22, 34, 6, 4, 0, 7, 2, 1]));
 
-// 文子代售 2025/10/30
-// 购买的会员 jta191(50标准)
-MEMBERS_ACCOUNTS.push(getMember([19, 29, 10, 1, 9, 1]));
-
 // 文子代售 2025/11/02
-// 购买的会员 fang2025(50标准)(已赠送高级会员)
-MEMBERS_ACCOUNTS.push(getMember([15, 10, 23, 16, 2, 0, 2, 5]));
 // 购买的会员 hai2025(50标准)(已赠送高级会员)
 MEMBERS_ACCOUNTS.push(getMember([17, 10, 18, 2, 0, 2, 5]));
 // 购买的会员 jinhai123(50标准)(已赠送高级会员)
@@ -259,6 +247,70 @@ SUPER_NAMES.push("朱丶富贵");
 // 2025/11/09 文子代售
 MEMBERS_ACCOUNTS.push(getMember([0, 19, 32, 16]));
 
+// 赠送文子 qq123456
+MEMBERS_ACCOUNTS.push(getMember([26, 26, 1, 2, 3, 4, 5, 6]));
+// 赠送文子 s01
+MEMBERS_ACCOUNTS.push(getMember([28, 0, 1]));
+// 赠送文子 15814103872
+SUPER_ACCOUNTS.push(getMember([1, 5, 8, 1, 4, 1, 0, 3, 8, 7, 2]));
+// 赠送文子 hh16
+MEMBERS_ACCOUNTS.push(getMember([17, 17, 1, 6]));
+// 赠送文子 tmadpj
+MEMBERS_ACCOUNTS.push(getMember([29, 22, 10, 13, 25, 19]));
+
+// 购买会员
+// 龙 133133(50标准)
+MEMBERS_ACCOUNTS.push(getMember([1, 3, 3, 1, 3, 3]));
+// 龙 66630766(50标准)(赠送会员)
+SUPER_ACCOUNTS.push(getMember([6, 6, 6, 3, 0, 7, 6, 6]));
+
+// 直售2025/11/20  医打怪兽
+// 购买高级会员(40标准)
+SUPER_NAMES.push("梦回鲁智深");
+// 购买高级会员(40标准)
+SUPER_NAMES.push("梦回公孙胜");
+
+// 直售2025/12/03  秦时明月
+// 升级高级会员 30标准
+SUPER_ACCOUNTS.push(getMember([2, 6, 8, 8, 3, 3]));
+
+// 直售2025/12/05 Make Money
+// 升级高级会员 w9001(已赠送高级会员)
+SUPER_ACCOUNTS.push(getMember([32, 9, 0, 0, 1]));
+// 升级高级会员 w9008(已赠送高级会员)
+SUPER_ACCOUNTS.push(getMember([32, 9, 0, 0, 8]));
+
+// 文子代售 2025/10/30 2025/12/16升级（小汽车嘀嘀嘀）
+// 购买的会员 jta191(50标准)(30升级高级会员)
+SUPER_ACCOUNTS.push(getMember([19, 29, 10, 1, 9, 1]));
+// 购买的会员 agm123 50标准(30升级高级会员)
+SUPER_ACCOUNTS.push(getMember([10, 16, 22, 1, 2, 3]));
+
+// 2025/12/16 直售 50
+// 设计、制作 a516427(50标准)(30升级会员)
+SUPER_ACCOUNTS.push(getMember([10, 5, 1, 6, 4, 2, 7]));
+// 设计、制作 a112233(50标准)(30升级会员)
+SUPER_ACCOUNTS.push(getMember([10, 1, 1, 2, 2, 3, 3]));
+// 设计、制作 a516729(50标准)(30升级会员)
+SUPER_ACCOUNTS.push(getMember([10, 5, 1, 6, 7, 2, 9]));
+// 设计、制作 a729427(50标准)(30升级会员)
+SUPER_ACCOUNTS.push(getMember([10, 7, 2, 9, 4, 2, 7]));
+
+// 同账号高级会员
+SUPER_NAMES.push("公子世无泪");
+// 同账号高级会员
+SUPER_NAMES.push("，无双，");
+
+// 文子代售 2025/12/17
+// 代售 l150bi(50标准)
+MEMBERS_ACCOUNTS.push(getMember([21, 1, 5, 0, 11, 18]));
+// 代售 l150bn(50标准)
+MEMBERS_ACCOUNTS.push(getMember([21, 1, 5, 0, 11, 23]));
+// 购买的会员 fang2025(50标准)(已赠送高级会员)(赠送高级)
+SUPER_ACCOUNTS.push(getMember([15, 10, 23, 16, 2, 0, 2, 5]));
+// 购买的会员 1dgp(80标准)
+SUPER_ACCOUNTS.push(getMember([1, 13, 16, 25]));
+
 // 是否是会员
 var IS_MEMBER = false;
 
@@ -335,6 +387,8 @@ function disableMemberConfig(){
     setNumberOptionGameVars("subSkillCd", 0);
     // 还原读条CD
     setNumberOptionGameVars("subSkillRead", 0);
+    // 还原仓库掉落
+    setBoolOptionGameVars("isFullStore", false);
 }
 
 // 关闭超级会员设置

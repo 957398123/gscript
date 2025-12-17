@@ -78,6 +78,10 @@ function entryGame(){
     if(!IS_SUPER_MEMBER){
         disableSuperMemberConfig();
     }
+    if(IS_MEMBER){
+        // 设置3D参数
+        init3DConfig();
+    }
 }
 
 // 玩家tick之前

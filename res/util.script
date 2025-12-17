@@ -30,8 +30,8 @@ function cleanPackage(){
     if(GAME_VARS.isAutoSale){
         // 如果查询背包完成
         if(isQueryPackage && !gameEnv.isQueryPackage){
-            gameEnv.printMessage(7, ":更新背包信息完成！");
-            gameEnv.printMessage(7, ":开始清空背包！");
+            printMessage(":更新背包信息完成！");
+            printMessage(":开始清空背包！");
             var saleTotal = 0;
             for(var i = 0; i < 36; ++i){
                 // 输出当前背包内容
@@ -39,16 +39,16 @@ function cleanPackage(){
                 // 如果物品存在，并且允许出售
                 if(item[0] > 0){
                     if(isSaleItem(item[2])){
-                        gameEnv.printMessage(7, ":售卖物品，名称：" + item[2] + "，单价：" + item[5] + "，数量：" + item[1]);
+                        printMessage(":售卖物品，名称：" + item[2] + "，单价：" + item[5] + "，数量：" + item[1]);
                         saleTotal += item[5] * item[1];
                         gameEnv.saleItem(i, item[1]);
                     }else{
-                        gameEnv.printMessage(7, ":不售卖该物品，名称：" + item[2]);
+                        printMessage(":不售卖该物品，名称：" + item[2]);
                     }
                 }
             }
             isQueryPackage = false;
-            gameEnv.printMessage(7, ":背包清理完成！合计卖出：" + saleTotal);
+            printMessage(":背包清理完成！合计卖出：" + saleTotal);
         }
     }
 }
@@ -91,23 +91,23 @@ function repairEquip(){
                 isQueryRepart = false;
                 var fixAllPrice = gameEnv.fixAllPrice;
                 var money = player.money;
-                gameEnv.printMessage(7, ":修装查询完成，当前修装总需金钱：" + fixAllPrice);
+                printMessage(":修装查询完成，当前修装总需金钱：" + fixAllPrice);
                 if(fixAllPrice > 0){
                     // 优先从玩家背包扣除，不够从仓库取钱
                     if(money >= fixAllPrice){
-                        gameEnv.printMessage(7, ":开始修理装备！");
+                        printMessage(":开始修理装备！");
                         // 修理全部装备
                         gameEnv.repairItem();
                     }else{
-                        gameEnv.printMessage(7, ":修理装备所需金钱不够！");
+                        printMessage(":修理装备所需金钱不够！");
                         // gameEnv.takeMoney(diff);
-                        // gameEnv.printMessage(7, ":修理装备所需金钱不够！从仓库取钱：" + diff);
+                        // printMessage(":修理装备所需金钱不够！从仓库取钱：" + diff);
                     }
                     // 提示装备修理完成
-                    gameEnv.printMessage(7, ":装备修理操作完成！");
+                    printMessage(":装备修理操作完成！");
                 }else{
                     // 提示装备修理完成
-                    gameEnv.printMessage(7, ":装备无需修理！");
+                    printMessage(":装备无需修理！");
                 }
                 // 设置装备修理完成
                 isRepartEquip = false;
@@ -134,10 +134,10 @@ function checkStore(){
                 storeTimer = 0;
                 var diff = player.money - GAME_VARS.RETAIN_MONEY;
                 if(diff > 0){
-                    gameEnv.printMessage(7, ":当前玩家背包金钱：" + player.money + "，存入" + diff + "到仓库");
+                    printMessage(":当前玩家背包金钱：" + player.money + "，存入" + diff + "到仓库");
                     gameEnv.storeMoney(diff);
                 }else{
-                    gameEnv.printMessage(7, ":当前玩家背包金钱：" + player.money + "，低于存钱阀值" + GAME_VARS.RETAIN_MONEY + "!");
+                    printMessage(":当前玩家背包金钱：" + player.money + "，低于存钱阀值" + GAME_VARS.RETAIN_MONEY + "!");
                 }
             }
         }
@@ -153,7 +153,7 @@ function printRunTime(){
     if(runTimer >= 10){
         runTimer = 0;
         // 输出运行时间
-        gameEnv.printMessage(7, ":已运行" + formatTime(gameEnv.getRuntime()));
+        printMessage(":已运行" + formatTime(gameEnv.getRuntime()));
     }
 }
 

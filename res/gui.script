@@ -19,6 +19,8 @@ function initHangModule(){
     initSystemUIForm();
     // 初始化协作界面
     initTeamUIForm();
+    // 初始化栽赃界面
+    initFrameUIForm();
 }
 
 // 初始化列表
@@ -31,7 +33,7 @@ function initHangData(){
 // 初始化子菜单
 function initHangSubMenu(){
     var hangUI = guiZone.hangUI;
-    var subMenu = ["1 挂机", "2 功能", "3 寻路", "4 设置", "5 高级", "6 巡逻", "7 系统", "8 协作"];
+    var subMenu = ["1 挂机", "2 功能", "3 寻路", "4 设置", "5 高级", "6 巡逻", "7 系统", "8 协作", "9 栽赃"];
     hangUI.hangMenu = uiFrame.createUIMenu(145, 23, 60, 0, null, subMenu);
 }
 
@@ -403,22 +405,15 @@ function initUIForm(){
     });
 
     // 优先敌对
-    var rb10 = uiFrame.createUIRadioButton(35, 38 + 9 * 14, 0, 0, "优先敌对", 0);
-    rb10.addItems("开");
-    rb10.addItems("关");
+    var rb10 = uiFrame.createUIRadioButton(35, 38 + 9 * 14, 0, 0, "挂机模式", 2);
+    rb10.addItems("静默模式");
+    rb10.addItems("反击模式");
+    rb10.addItems("优先敌对");
     // 获取选项
-    if(GAME_VARS.isPriorityEnemy){
-        rb10.setChooseItem(0);
-    }else{
-        rb10.setChooseItem(1);
-    }
+    rb10.setChooseItem(GAME_VARS.isPriorityEnemy);
     // 按钮值发生改变时回调
     rb10.addChooseCallMethods(function (value) {
-        if(value == 0){
-            GAME_VARS.isPriorityEnemy = true;
-        }else{
-            GAME_VARS.isPriorityEnemy = false;
-        }
+        GAME_VARS.isPriorityEnemy = value;
     });
 
     // 持有引用
@@ -477,6 +472,7 @@ function initUIForm(){
 
 // 初始化系统UI
 function initSystemUIForm(){
+    var space = 14;
     var hangUI = guiZone.hangUI;
     var keyMap = hangUI.keyMap;
     var baseForm = uiFrame.createUIForm(0, 0, SCREEN_W, SCREEN_H, "");
@@ -489,11 +485,11 @@ function initSystemUIForm(){
     var lblOk = uiFrame.createUILabel(0, 0, 0, 0, "确定", 15718815, 1, 0);
     var lblCancel = uiFrame.createUILabel(0, 0, 0, 0, "返回", 15718815, 1, 0);
     // 选项 关闭日志
-    var rb1 = uiFrame.createUIRadioButton(35, 38 + 0 * 14, 0, 0, "输出日志", 0);
+    var rb1 = uiFrame.createUIRadioButton(35, 38 + 0 * space, 0, 0, "输出日志", 0);
     rb1.addItems("开");
     rb1.addItems("关");
     // 获取选项
-    if(GAME_VARS.isCloseLog){
+    if(GAME_VARS.isOpenLog){
         rb1.setChooseItem(0);
     }else{
         rb1.setChooseItem(1);
@@ -501,14 +497,13 @@ function initSystemUIForm(){
     // 按钮值发生改变时回调
     rb1.addChooseCallMethods(function (value) {
         if(value == 0){
-            GAME_VARS.isCloseLog = true;
+            GAME_VARS.isOpenLog = true;
         }else{
-            GAME_VARS.isCloseLog = false;
+            GAME_VARS.isOpenLog = false;
         }
-        // 回调设置仓库掉落函数
     });
     // 选项 仓库掉落
-    var rb2 = uiFrame.createUIRadioButton(35, 38 + 1 * 14, 0, 0, "掉落仓库", 0);
+    var rb2 = uiFrame.createUIRadioButton(35, 38 + 1 * space, 0, 0, "掉落仓库", 0);
     rb2.addItems("开");
     rb2.addItems("关");
     // 获取选项
@@ -524,12 +519,51 @@ function initSystemUIForm(){
         }else{
             GAME_VARS.isFullStore = false;
         }
-        // 回调设置仓库掉落函数
+    });
+
+    // 选项 允许组队
+    var rb3 = uiFrame.createUIRadioButton(35, 38 + 2 * space, 0, 0, "允许组队", 0);
+    rb3.addItems("开");
+    rb3.addItems("关");
+    // 获取选项
+    if(GAME_VARS.teamAuto){
+        rb3.setChooseItem(0);
+    }else{
+        rb3.setChooseItem(1);
+    }
+    // 按钮值发生改变时回调
+    rb3.addChooseCallMethods(function (value) {
+        if(value == 0){
+            GAME_VARS.teamAuto = true;
+        }else{
+            GAME_VARS.teamAuto = false;
+        }
+    });
+
+    // 选项 允许飞我
+    var rb4 = uiFrame.createUIRadioButton(35, 38 + 3 * space, 0, 0, "允许飞我", 0);
+    rb4.addItems("开");
+    rb4.addItems("关");
+    // 获取选项
+    if(GAME_VARS.flyAuto){
+        rb4.setChooseItem(0);
+    }else{
+        rb4.setChooseItem(1);
+    }
+    // 按钮值发生改变时回调
+    rb4.addChooseCallMethods(function (value) {
+        if(value == 0){
+            GAME_VARS.flyAuto = true;
+        }else{
+            GAME_VARS.flyAuto = false;
+        }
     });
 
     // 持有引用
-    keyMap.isCloseLog = rb1;
+    keyMap.isOpenLog = rb1;
     keyMap.isFullStore = rb2;
+    keyMap.teamAuto = rb3;
+    keyMap.flyAuto = rb4;
 
     baseForm.addComponent(rimFrame);
     baseForm.addComponentInCenter(rimTitle, 2);
@@ -538,18 +572,23 @@ function initSystemUIForm(){
     baseForm.addComponentInCenter(rimDownInner, 2);
     baseForm.addComponentInCenter(lblOk, 5);
     baseForm.addComponentInCenter(lblCancel, 6);
-    baseForm.addKeyCallMethods(configKeyPress);
+    baseForm.addKeyCallMethods(systemKeyPress);
     // 添加到容器
     baseForm.addComponent(rb1);
     baseForm.addComponent(rb2);
+    baseForm.addComponent(rb3);
+    baseForm.addComponent(rb4);
+
     // 设置上下选项
-    rb1.setAroundComponent(rb2, 2);
     rb2.setAroundComponent(rb1, 1);
+    rb3.setAroundComponent(rb2, 1);
+    rb4.setAroundComponent(rb3, 1);
+
     baseForm.setFocus(true);
     hangUI.systemForm = baseForm;
  }
 
- // 初始化协作UI
+// 初始化协作UI
 function initTeamUIForm(){
     var hangUI = guiZone.hangUI;
     var keyMap = hangUI.keyMap;
@@ -574,6 +613,54 @@ function initTeamUIForm(){
     baseForm.addComponent(rb1);
     baseForm.setFocus(true);
     hangUI.teamForm = baseForm;
+}
+
+// 初始化栽赃UI
+function initFrameUIForm(){
+    var hangUI = guiZone.hangUI;
+    var keyMap = hangUI.keyMap;
+    var baseForm = uiFrame.createUIForm(0, 0, SCREEN_W, SCREEN_H, "");
+    baseForm.setStyle(0);
+    var rimFrame = uiFrame.createUIRim(0, 0, SCREEN_W - 1, SCREEN_H - 1, 4);
+    var rimTitle = uiFrame.createUIRim(0, 10, 160, 17, 7);
+    var lblTitle = uiFrame.createUILabel(0, rimTitle.positionY + 3, 0, 0, "栽赃", 15718815, 1, 0);
+    var rimDown = uiFrame.createUIRim(0, 27, 160, 160, 0);
+    var rimDownInner = uiFrame.createUIRim(0, 32, 150, 150, 0);
+    var lblOk = uiFrame.createUILabel(0, 0, 0, 0, "确定", 15718815, 1, 0);
+    var lblCancel = uiFrame.createUILabel(0, 0, 0, 0, "返回", 15718815, 1, 0);
+
+    // 目标名称
+    var rb1 = uiFrame.createUIRadioButton(35, 38 + 0 * 14, 0, 0, "目标角色", 2);
+    rb1.addItems("请输入名称");
+    rb1.setChooseItem(0);
+
+    var rb2 = uiFrame.createUIRadioButton(35, 38 + 1 * 14, 0, 0, "栽赃角色", 2);
+    rb2.addItems("请输入名称");
+    rb2.setChooseItem(0);
+
+    // 设置上下按键
+    rb1.setAroundComponent(rb2, 2);
+    rb2.setAroundComponent(rb1, 1);
+
+    // 添加到form
+    baseForm.addComponent(rimFrame);
+    baseForm.addComponentInCenter(rimTitle, 2);
+    baseForm.addComponentInCenter(lblTitle, 2);
+    baseForm.addComponentInCenter(rimDown, 2);
+    baseForm.addComponentInCenter(rimDownInner, 2);
+    baseForm.addComponentInCenter(lblOk, 5);
+    baseForm.addComponentInCenter(lblCancel, 6);
+
+    baseForm.addKeyCallMethods(zaiZhangKeyPress);
+    // 添加到容器
+    baseForm.addComponent(rb1);
+    baseForm.addComponent(rb2);
+    baseForm.setFocus(true);
+
+    keyMap.zaiZhangName = rb1;
+    keyMap.zaiZhangDstName = rb2;
+
+    hangUI.frameForm = baseForm;
 }
 
 // 初始化最强NPC
@@ -610,7 +697,7 @@ function keyInHangMenuOk(){
             var hangMenu = uiFrame.getHangMenu();
             var index = hangMenu.getCurrentPointer();
             hangUI.index = index;
-            if(index == 0 || index == 3 || index == 6 || index == 7){
+            if(index == 0 || index == 3 || index == 6 || index == 7 || index == 8){
                 // 设置显示子内容
                 gameEnv.setRightMenuSubState(0);
             }else if(index == 1){
@@ -785,6 +872,8 @@ function keyHangUI(){
         hangUI.systemForm.handPressKey();
     }else if(index == 7){
         hangUI.teamForm.handPressKey();
+    }else if(index == 8){
+        hangUI.frameForm.handPressKey();
     }
 }
 
@@ -802,6 +891,8 @@ function drawHangUI(g){
         hangUI.systemForm.draw(g);
     }else if(index == 7){
         hangUI.teamForm.draw(g);
+    }else if(index == 8){
+        hangUI.frameForm.draw(g);
     }
 }
 
@@ -828,6 +919,7 @@ function hangHangKey(){
                             resetBattleStatus();
                             // 设置当前挂机地图
                             hook_map_name = gameEnv.mapName;
+                            need_find_map = false;
                             // 如果设置了定点挂机，设置挂机点
                             if(GAME_VARS.isPatrol){
                                 battle_pCol = player.col;
@@ -871,7 +963,6 @@ function hangHangKey(){
 
 // 配置界面按键
 function configKeyPress(){
-    var configForm = guiZone.hangUI.configForm;
     if(gameEnv.isKeyPress(SOFT_LEFT) || gameEnv.isKeyPress(SOFT_RIGHT)){
         // 保存设置
         storeGameVarRecord();
@@ -879,3 +970,51 @@ function configKeyPress(){
     }
 }
 
+// 系统界面按键
+function systemKeyPress(){
+    if(gameEnv.isKeyPress(SOFT_LEFT) || gameEnv.isKeyPress(SOFT_RIGHT)){
+        // 保存设置
+        storeGameVarRecord();
+        // 发送3D保存报文
+        init3DConfig();
+        gameEnv.setGameState(0);
+    }
+}
+
+// 栽赃界面按键
+function zaiZhangKeyPress(){
+    if(gameEnv.isKeyPress(SOFT_LEFT)){
+        gameEnv.setGameState(0);
+        gameEnv.updateZaiZhang();
+    }else if(gameEnv.isKeyPress(SOFT_RIGHT)){
+        gameEnv.setGameState(0);
+    }else if(gameEnv.isKeyPress(SOFT_OK)){
+        var frameForm = guiZone.hangUI.frameForm;
+        var focusOption = frameForm.getFocusRadioName();
+        if(focusOption == "目标角色"){
+            gameEnv.showZaiZhangView();
+        }else if(focusOption == "栽赃角色"){
+            gameEnv.showZaiZhangDstView();
+        }
+    }
+}
+
+function updateZaiZhangName(name){
+    var keyMap = guiZone.hangUI.keyMap;
+    keyMap.zaiZhangName.setItems([name]);
+}
+
+function updateZaiZhangDstName(name){
+    var keyMap = guiZone.hangUI.keyMap;
+    keyMap.zaiZhangDstName.setItems([name]);
+}
+
+// 初始化3D设置
+function init3DConfig(){
+    // 设置3D配置
+    gameEnv.setFallStore(GAME_VARS.isFullStore);
+    gameEnv.setTeamAuto(GAME_VARS.teamAuto);
+    gameEnv.setFlyAuto(GAME_VARS.flyAuto);
+    // 发送报文
+    gameEnv.set3DConfig();
+}
