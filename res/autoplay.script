@@ -48,10 +48,41 @@ var hook_skill_wait = 0;
 // 定点挂机剩余时间
 var hook_hang_time = 0;
 
+// 过图等待队员时间
+var hook_wait_team = 5;
+
+// 组队挂机函数实现
+function teamBattle(){
+    // 判断当前玩家是不是队长，如果是队长，根据当前挂机模式（定点或者巡逻）进行挂机，但是也会根据职业监控队员状态
+    // 如果是队员，不进行默认挂机操作，而是跟随队长，并且优先攻击队长打的怪，如果队长打的怪死了，就优先攻击正在打其它队员的怪
+    // 在根据身份进行挂机操作前。优先检测队员状态，优先处理队长
+    if(player.isTeamLeader){  // 如果自己是队长
+        // 等待队员一定时间后，开始挂机
+        if(hook_wait_team <= 0){
+            patrolBattle();
+        }
+    }else{
+        // 首先检测是否能看到队长，不能进行等待
+        var leader = gameEnv.getTeamLeader();
+        // 如果能看到队长，设置跟随
+        if(player.isAroundObj(leader)){
+            // 设置跟随队长
+            player.setFollowObj(leader);
+            // 检测是否跟随到目标（如果开了移动施法，不受此限制）
+            if(player.isFollowObj || GAME_VARS.isMoveCast){
+                // 监控队伍成员状态
+                monitorTeamStatus();
+                // 可以开始挂机了
+                battleTeam();
+            }
+        }
+    }
+}
+
 // 巡逻挂机实现函数
 function patrolBattle() {
     // 玩家死亡了，先复活
-    if (player.isDead()) {
+    if (player.isDead) {
         gameEnv.keyPressed(NUM_11);
     } {
         // 检测角色是否需要
@@ -386,17 +417,29 @@ function printMessage(msg) {
 // 挂机函数 每一帧会执行
 function hangUpFrame() {
     if (GAME_VARS.isHangUp) {
-        patrolBattle();
+        // 检测当前挂机模式
+        if(GAME_VARS.isTeamMode && player.isTeam){  // 如果是组队协作模式，并且有队伍
+            teamBattle();
+        }else{
+            patrolBattle();
+        }
     }
 }
 
 // 挂机函数 每一秒执行
 function hangUpSecond() {
-    if (hook_is_wait == 1) {
-        hook_wait_time -= 1;
-        if (hook_wait_time < 0) {
-            hook_wait_time = 0;
-            hook_is_wait = 2;
+    if (GAME_VARS.isHangUp) {
+        // 更新巡逻挂机等待时间
+        if (hook_is_wait == 1) {
+            hook_wait_time -= 1;
+            if (hook_wait_time < 0) {
+                hook_wait_time = 0;
+                hook_is_wait = 2;
+            }
+        }
+        // 更新等待队员时间
+        if(hook_wait_team > 0){
+            hook_wait_team -= 1;
         }
     }
 }

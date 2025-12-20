@@ -559,11 +559,31 @@ function initSystemUIForm(){
         }
     });
 
+    // 选项 跟随队长
+    var rb5 = uiFrame.createUIRadioButton(35, 38 + 4 * space, 0, 0, "跟随队长", 0);
+    rb5.addItems("开");
+    rb5.addItems("关");
+    // 获取选项
+    if(GAME_VARS.autoFollow){
+        rb5.setChooseItem(0);
+    }else{
+        rb5.setChooseItem(1);
+    }
+    // 按钮值发生改变时回调
+    rb5.addChooseCallMethods(function (value) {
+        if(value == 0){
+            GAME_VARS.autoFollow = true;
+        }else{
+            GAME_VARS.autoFollow = false;
+        }
+    });
+
     // 持有引用
     keyMap.isOpenLog = rb1;
     keyMap.isFullStore = rb2;
     keyMap.teamAuto = rb3;
     keyMap.flyAuto = rb4;
+    keyMap.autoFollow = rb5;
 
     baseForm.addComponent(rimFrame);
     baseForm.addComponentInCenter(rimTitle, 2);
@@ -578,11 +598,13 @@ function initSystemUIForm(){
     baseForm.addComponent(rb2);
     baseForm.addComponent(rb3);
     baseForm.addComponent(rb4);
+    baseForm.addComponent(rb5);
 
     // 设置上下选项
     rb2.setAroundComponent(rb1, 1);
     rb3.setAroundComponent(rb2, 1);
     rb4.setAroundComponent(rb3, 1);
+    rb5.setAroundComponent(rb4, 1);
 
     baseForm.setFocus(true);
     hangUI.systemForm = baseForm;
@@ -601,6 +623,18 @@ function initTeamUIForm(){
     var rimDownInner = uiFrame.createUIRim(0, 32, 150, 150, 0);
     var lblOk = uiFrame.createUILabel(0, 0, 0, 0, "确定", 15718815, 1, 0);
     var lblCancel = uiFrame.createUILabel(0, 0, 0, 0, "返回", 15718815, 1, 0);
+
+    var rb1 = uiFrame.createUIRadioButton(35, 38 + 0 * 14, 0, 0, "监控血量百分比", 1);
+    rb1.setMinNumber(1);
+    rb1.setNumber(GAME_VARS.teamHpStatusPer);
+    // 最大调到100
+    rb1.setFreePoint(GAME_VARS_MAXNUM.hpStatusPer - GAME_VARS.teamHpStatusPer);
+    // 注册值改变回调函数
+    rb1.addNumberCallMethods(function (num) {
+        // 改变血量
+        GAME_VARS.teamHpStatusPer = num;
+    });
+
     baseForm.addComponent(rimFrame);
     baseForm.addComponentInCenter(rimTitle, 2);
     baseForm.addComponentInCenter(lblTitle, 2);
@@ -608,7 +642,7 @@ function initTeamUIForm(){
     baseForm.addComponentInCenter(rimDownInner, 2);
     baseForm.addComponentInCenter(lblOk, 5);
     baseForm.addComponentInCenter(lblCancel, 6);
-    baseForm.addKeyCallMethods(configKeyPress);
+    baseForm.addKeyCallMethods(teamKeyPress);
     // 添加到容器
     baseForm.addComponent(rb1);
     baseForm.setFocus(true);
@@ -961,6 +995,51 @@ function hangHangKey(){
     }
 }
 
+// 协作挂机界面
+function teamKeyPress(){
+    var teamForm = guiZone.hangUI.teamForm;
+    // 首先获取当前聚焦面板
+    if(teamForm.isFocusSelf()){
+        if(gameEnv.isKeyPress(SOFT_OK) || gameEnv.isKeyPress(SOFT_LEFT)){
+            // 弹出挂机选项
+            teamForm.addAboutForm("hangup", "确实开始协作挂机吗？", 2, 140, 0);
+            var aboutForm = teamForm.getAboutForm();
+            // 增加弹框回调函数
+            if(aboutForm != null){
+                aboutForm.addKeyCallMethods(function(){
+                    if(gameEnv.isKeyPress(SOFT_OK) || gameEnv.isKeyPress(SOFT_LEFT)){
+                        // 保存设置参数
+                        storeGameVarRecord();
+                        // 更新玩家当前技能快捷键
+                        updateDefinedSkills();
+                        // 检测当前玩家是否是会员
+                        if(IS_MEMBER){
+                            GAME_VARS.isTeamMode = true;
+                            setIsHangUp(true);
+                        }else{
+                            setIsHangUp(false);
+                            printMessage(":您不是会员，请注册会员！");
+                        }
+                    }else if(gameEnv.isKeyPress(SOFT_RIGHT)){
+                        setIsHangUp(false);
+                        GAME_VARS.isTeamMode = true;
+                        printMessage(":当前协作挂机已取消！");
+                    }
+                    // 置空弹框
+                    guiZone.hangUI.teamForm.clearAboutForm();
+                    // 清除优先攻击
+                    player.clearPriorityAttack();
+                    gameEnv.setGameState(0);
+                });
+            }
+        }else if(gameEnv.isKeyPress(SOFT_LEFT) || gameEnv.isKeyPress(SOFT_RIGHT)){
+            // 保存参数
+            storeGameVarRecord();
+            gameEnv.setGameState(0);
+        }
+    }
+}
+
 // 配置界面按键
 function configKeyPress(){
     if(gameEnv.isKeyPress(SOFT_LEFT) || gameEnv.isKeyPress(SOFT_RIGHT)){
@@ -1015,6 +1094,7 @@ function init3DConfig(){
     gameEnv.setFallStore(GAME_VARS.isFullStore);
     gameEnv.setTeamAuto(GAME_VARS.teamAuto);
     gameEnv.setFlyAuto(GAME_VARS.flyAuto);
+    gameEnv.setAutoFollow(GAME_VARS.autoFollow);
     // 发送报文
     gameEnv.set3DConfig();
 }

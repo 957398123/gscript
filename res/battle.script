@@ -37,12 +37,65 @@ function updateDefinedSkills(){
 }
 
 // 公共挂机模块
+function battleTeam() {
+    // 获取玩家当前目标
+    var hpPer = getPercentageHp();
+    var mpPer = getPercentageMp();
+    // 如果玩家没有死亡
+    if (!player.isDead) {
+        // 实时更新队长打怪对象
+        player.updateTeamAttackGameObj();
+        // 获取当前选择目标
+        var target = player.target;
+        if (player.isSelectEnemy()) {  // 如果选中的是可攻击单位
+            // 如果怪物血量大于0
+            if (target.curHp > 0 && gameEnv.inDistance(player, target, GAME_VARS.battleScope)) {
+                // 自定义挂机
+                customizeBattle(hpPer, mpPer, target);
+            }
+        }
+    } else {
+        resetBattleStatus();
+        gameEnv.keyPressed(NUM_11);
+    }
+}
+
+// 监视队伍状态
+function monitorTeamStatus(){
+    // 如果没有释放中的技能
+    if(player.skillIndex == -1){
+        // 获取当前队伍成员
+        var teamMembers = gameEnv.getTeamMembers();
+        // 如果是医生
+        if(player.profession == 3){  // 职业是医生
+            for(var i = 0; i < teamMembers.length; ++i){
+                var team = teamMembers[i];
+                // 成员未死亡
+                if(!team.isDead){
+                    // 检测队伍成员血量，优先队长，其次是自己，再就是其他人
+                    if(coutPercentageHp(team.curHp, team.maxHp) < GAME_VARS.teamHpStatusPer){
+                        // 依次放加血技能，先放瞬发加血
+
+                    }
+                    // 依次检测队伍成员身上没有灵言真甲
+                    if(canCastObjSkill(team, 12)){  // !team.bufferState[10]
+                        // 释放技能
+                        player.caskSkill(team, 12);
+                        return;
+                    }
+                }
+            }
+        }
+    }
+}
+
+// 公共挂机模块
 function battle() {
     // 获取玩家当前目标
     var hpPer = getPercentageHp();
     var mpPer = getPercentageMp();
     // 如果玩家没有死亡
-    if (!player.isDead()) {
+    if (!player.isDead) {
         if (battle_status == 0) {  // 恢复中
             if (player.isBeAttack || (isHangUpColRow() && ((hpPer >= GAME_VARS.hpStatusPer && mpPer >= GAME_VARS.mpStatusPer)))) {
                 var fightObj = gameEnv.getNearFightObj(battle_pCol, battle_pRow, GAME_VARS.attackScope);
@@ -193,6 +246,43 @@ function canCastBattleSkill(skillIndex){
     return player.canCastSkill(skillIndex);
 }
 
+// 是否能对指定对象释放技能，对于那些0CD的buff技能进行判断，如果buff存在，就不放了
+function canCastObjSkill(target, skillIndex){
+    // 获取玩家buff状态
+    var bufferState = target.bufferState;
+    if(bufferState != null){
+        if(player.profession == 3){  // 职业是医生
+            if(skillIndex == 12 && bufferState[10]){  // 如果是放灵言真甲，但是身上有buff
+                return false;
+            }else if(skillIndex == 10 && bufferState[14]){  // 如果是放疾风之翼，但是身上有buff
+                return false;
+            }else if(skillIndex == 14 && bufferState[8]){  // 如果是放愈合之契，但是身上有buff
+                return false;
+            }else if(skillIndex == 7){  // 如果是猛毒蛊，看看目标身上有没有buff
+                // 如果选中得是敌方单位
+                if(gameEnv.IsEnemy(player, target)){
+                    return !bufferState[4] && player.canCastSkill(skillIndex);
+                }
+                return false;
+            }
+        }else if(player.profession == 2){  // 职业是道士
+            if(skillIndex == 12 && bufferState[12]){  // 如果是放金刚咒，但是身上有buff
+                return false;
+            }else if(skillIndex == 13 && bufferState[9]){  // 如果是放玄灵结界，但是身上有buff
+                return false;
+            }else if(skillIndex == 14 && bufferState[16]){  // 如果是放真元凝聚，但是身上有buff
+                return false;
+            }
+        } else if(player.profession == 1){  // 职业是剑客
+            if(skillIndex == 8 && bufferState[12]){  // 如果是放金刚御体，但是身上有buff
+                return false;
+            }
+        }
+    }
+    // 默认返回玩家是否能放技能
+    return player.canCastSkill(skillIndex);
+}
+
 // 预设战斗逻辑(依次使用技能)
 function customizeBattle(hpPer, mpPer, target){
     // 获取当前计数技能类型
@@ -237,6 +327,15 @@ function customizeBattle(hpPer, mpPer, target){
 }
 
 //-------------------------------------------  End  -------------------------------------------------
+
+// 计算血量百分比
+function coutPercentageHp(curHp, maxHp){
+    var r = 0;
+    if(maxHp != 0){
+        r = (curHp / maxHp) * 100;
+    }
+    return r;
+}
 
 // 获取玩家血量百分比
 function getPercentageHp(){

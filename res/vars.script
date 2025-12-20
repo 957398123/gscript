@@ -18,13 +18,16 @@ var GAME_VARS_MAXNUM = {
 GAME_VARS.configName = "GAME_VARS";
 
 // 王辅版本
-GAME_VARS.version = "V9.9";
+GAME_VARS.version = "V10.0";
 
 // 游戏公告
-GAME_VARS.gameNotice = "版本" + GAME_VARS.version + "，增加是否允许组队和飞我参数。";
+GAME_VARS.gameNotice = "版本" + GAME_VARS.version + "，增加是否跟随队长。";
 
 // 是否挂机
 GAME_VARS.isHangUp = false;
+
+// 是否协作模式挂机
+GAME_VARS.isTeamMode = false;
 
 // 是否定点挂机
 GAME_VARS.isPatrol = true;
@@ -120,9 +123,12 @@ GAME_VARS.isFullStore = false;
 GAME_VARS.teamAuto = false;
 // 是否允许别人飞我
 GAME_VARS.flyAuto = false;
+// 是否跟随队长
+GAME_VARS.autoFollow = false;
 
 // ----------------------------------------------------------  协作功能  --------------------------------------------------------------------
-
+// 监控队员血量
+GAME_VARS.teamHpStatusPer = 70;
 
 // 设置多选按钮索引值
 function setMultipleOptionGameVars(name, value){
@@ -165,7 +171,7 @@ function setNumberOptionGameVars(name, value){
 // 从配置中读取设置
 function readGameVarRecord(){
     var name = player.name + "_GAME_VARS";
-    var records = gameEnv.readRecord(name, 31);
+    var records = gameEnv.readRecord(name, 33);
     if(records != null){
         setBoolOptionGameVars("isPatrol", records[0].getBoolean());
         setBoolOptionGameVars("isAllowWall", records[1].getBoolean());
@@ -207,6 +213,8 @@ function readGameVarRecord(){
         setBoolOptionGameVars("isFullStore", records[28].getBoolean());
         setBoolOptionGameVars("teamAuto", records[29].getBoolean());
         setBoolOptionGameVars("flyAuto", records[30].getBoolean());
+        setBoolOptionGameVars("autoFollow", records[30].getBoolean());
+        setNumberOptionGameVars("teamHpStatusPer", records[31].getIntValue());
     }else{
         // 保存默认值
         storeGameVarRecord();
@@ -247,7 +255,9 @@ function storeGameVarRecord(){
         GAME_VARS.isOpenLog,          // 是否打开日志输出
         GAME_VARS.isFullStore,        // 是否掉落到仓库
         GAME_VARS.teamAuto,           // 是否允许别人组队
-        GAME_VARS.flyAuto             // 是否允许别人飞我
+        GAME_VARS.flyAuto,            // 是否允许别人飞我
+        GAME_VARS.autoFollow,         // 是否允许别人飞我
+        GAME_VARS.teamHpStatusPer     // 协作挂机监控队员血量
     ];
     gameEnv.saveRecord(name, records);
 }

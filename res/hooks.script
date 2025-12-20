@@ -6,10 +6,20 @@ function canNotPassMap(){
 
 // 过图回调
 function canPassMap(){
+    // 切图后，5秒时间等待队伍成员
+    hook_wait_team = 5;
     // 如果是巡逻挂机中，切换地图时，更新当前地图的巡逻数据
     if(GAME_VARS.isHangUp && !GAME_VARS.isPatrol && !need_find_map){
         hook_status = 0;
         hook_map_name = gameEnv.mapName;
         printMessage(":巡逻挂机切换地图:" + hook_map_name);
+    }
+}
+
+// 解散队伍回调
+function disbandTeam(){
+    // 如果当前是协作模式，清空跟随目标
+    if(GAME_VARS.isTeamMode){
+        player.resetAimID();
     }
 }

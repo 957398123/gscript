@@ -19,7 +19,7 @@ import java.util.List;
 
 public class Test {
     public static void main(String[] args) throws IOException {
-        String[] list = new String[]{"map", "vars", "chat", "gui", "cons", "tj", "util", "member", "battle", "autoplay"};
+        String[] list = new String[]{"hooks", "vars", "chat", "gui", "cons", "tj", "util", "member", "battle", "autoplay"};
         String[] listMap = new String[]{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j"};
         // String[] list = new String[]{"test"};
         Test.gen(list, listMap);
