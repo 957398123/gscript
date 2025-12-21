@@ -21,5 +21,6 @@ function disbandTeam(){
     // 如果当前是协作模式，清空跟随目标
     if(GAME_VARS.isTeamMode){
         player.resetAimID();
+        // 这里退出挂机模式
     }
 }

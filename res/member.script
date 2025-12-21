@@ -154,8 +154,6 @@ MEMBERS_ACCOUNTS.push(getMember([35, 22, 34, 6, 4, 0, 7, 2, 1]));
 SUPER_ACCOUNTS.push(getMember([35, 22, 34, 6, 4, 0, 7, 2, 1]));
 
 // 文子代售 2025/11/02
-// 购买的会员 hai2025(50标准)(已赠送高级会员)
-MEMBERS_ACCOUNTS.push(getMember([17, 10, 18, 2, 0, 2, 5]));
 // 购买的会员 jinhai123(50标准)(已赠送高级会员)
 MEMBERS_ACCOUNTS.push(getMember([19, 18, 23, 17, 10, 18, 1, 2, 3]));
 // 升级高级会员jinhai123
@@ -308,6 +306,9 @@ SUPER_ACCOUNTS.push(getMember([10, 1, 8, 1, 7, 3, 0, 9]));
 
 // 2025/12/18 升级到高级会员 linlifenga 80标准
 SUPER_ACCOUNTS.push(getMember([21, 18, 23, 21, 18, 15, 14, 23, 16, 10]));
+
+// 购买的会员 hai2025 升级高级会员 80标准
+SUPER_ACCOUNTS.push(getMember([17, 10, 18, 2, 0, 2, 5]));
 
 // 是否是会员
 var IS_MEMBER = false;

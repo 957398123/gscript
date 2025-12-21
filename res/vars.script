@@ -18,10 +18,10 @@ var GAME_VARS_MAXNUM = {
 GAME_VARS.configName = "GAME_VARS";
 
 // 王辅版本
-GAME_VARS.version = "V10.0";
+GAME_VARS.version = "V11.0";
 
 // 游戏公告
-GAME_VARS.gameNotice = "版本" + GAME_VARS.version + "，增加是否跟随队长。";
+GAME_VARS.gameNotice = "版本" + GAME_VARS.version + "，增加协作挂机功能。";
 
 // 是否挂机
 GAME_VARS.isHangUp = false;
@@ -213,8 +213,8 @@ function readGameVarRecord(){
         setBoolOptionGameVars("isFullStore", records[28].getBoolean());
         setBoolOptionGameVars("teamAuto", records[29].getBoolean());
         setBoolOptionGameVars("flyAuto", records[30].getBoolean());
-        setBoolOptionGameVars("autoFollow", records[30].getBoolean());
-        setNumberOptionGameVars("teamHpStatusPer", records[31].getIntValue());
+        setBoolOptionGameVars("autoFollow", records[31].getBoolean());
+        setNumberOptionGameVars("teamHpStatusPer", records[32].getIntValue());
     }else{
         // 保存默认值
         storeGameVarRecord();

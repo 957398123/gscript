@@ -1,18 +1,7 @@
-function a(){
-    println("a");
-    return false;
-}
-
-function b(){
-    println("b");
-    return true;
-}
-
-function c(){
-    println("c");
-    return true;
-}
-
-if(a() || b() || c()){
-    println("end");
+for(var i = 0; i < 5; ++i){
+    if(i == 3){
+        continue;
+    }else{
+        println("i=" + i);
+    }
 }

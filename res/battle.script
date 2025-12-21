@@ -61,32 +61,58 @@ function battleTeam() {
 }
 
 // 监视队伍状态
-function monitorTeamStatus(){
+function monitorTeamStatus() {
+    var isOperate = false;
     // 如果没有释放中的技能
-    if(player.skillIndex == -1){
+    if (player.skillIndex == -1) {
         // 获取当前队伍成员
         var teamMembers = gameEnv.getTeamMembers();
-        // 如果是医生
-        if(player.profession == 3){  // 职业是医生
-            for(var i = 0; i < teamMembers.length; ++i){
-                var team = teamMembers[i];
+        for (var i = 0; i < teamMembers.length; ++i) {
+            var team = teamMembers[i];
+            if (player.profession == 3) {  // 职业是医生
                 // 成员未死亡
-                if(!team.isDead){
+                if (!team.isDead) {
+                    // 先设置为已操作
+                    isOperate = true;
                     // 检测队伍成员血量，优先队长，其次是自己，再就是其他人
-                    if(coutPercentageHp(team.curHp, team.maxHp) < GAME_VARS.teamHpStatusPer){
+                    var curPercent = coutPercentageHp(team.curHp, team.maxHp);
+                    if (curPercent < GAME_VARS.teamHpStatusPer) {
                         // 依次放加血技能，先放瞬发加血
-
-                    }
-                    // 依次检测队伍成员身上没有灵言真甲
-                    if(canCastObjSkill(team, 12)){  // !team.bufferState[10]
+                        if(canCastObjSkill(team, 14)){  // 先放愈合之契
+                            player.caskSkill(team, 14);
+                        }else if(canCastObjSkill(team, 5)){ // 再放天降甘霖
+                            player.caskSkill(team, 14);
+                        }else if(canCastObjSkill(team, 4)){ // 再放回春术
+                            player.caskSkill(team, 4);
+                        }else if(canCastObjSkill(team, 2)){ // 再放心疗术
+                            player.caskSkill(team, 2);
+                        }else{
+                            isOperate = false;
+                        }
+                    }else if (canCastObjSkill(team, 12)) {  // 依次检测队伍成员身上没有灵言真甲
                         // 释放技能
                         player.caskSkill(team, 12);
-                        return;
+                        break;
+                    }else if (team != player && team.profession != 1 && canCastObjSkill(team, 11)) {  // 依次检测队伍成员（非剑客）身上没有黄帝内径
+                        // 释放技能
+                        player.caskSkill(team, 11);
+                        break;
+                    }else{
+                        isOperate = false;
+                    }
+                    if(isOperate){
+                        break;
                     }
                 }
+            }else{
+                isOperate = false;
+                break;
             }
         }
+    }else{
+        isOperate = true;
     }
+    return isOperate;
 }
 
 // 公共挂机模块
@@ -258,6 +284,8 @@ function canCastObjSkill(target, skillIndex){
                 return false;
             }else if(skillIndex == 14 && bufferState[8]){  // 如果是放愈合之契，但是身上有buff
                 return false;
+            }else if(skillIndex == 11 && bufferState[19]){  // 如果是放黄帝内径，但是身上有buff
+                return false;
             }else if(skillIndex == 7){  // 如果是猛毒蛊，看看目标身上有没有buff
                 // 如果选中得是敌方单位
                 if(gameEnv.IsEnemy(player, target)){
@@ -279,8 +307,8 @@ function canCastObjSkill(target, skillIndex){
             }
         }
     }
-    // 默认返回玩家是否能放技能
-    return player.canCastSkill(skillIndex);
+    // 默认返回玩家是否能对目标放技能
+    return player.canCastSkill(target, skillIndex);
 }
 
 // 预设战斗逻辑(依次使用技能)

@@ -22,6 +22,7 @@ public class Test {
         String[] list = new String[]{"hooks", "vars", "chat", "gui", "cons", "tj", "util", "member", "battle", "autoplay"};
         String[] listMap = new String[]{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j"};
         // String[] list = new String[]{"test"};
+        // String[] listMap = new String[]{"test"};
         Test.gen(list, listMap);
     }
 

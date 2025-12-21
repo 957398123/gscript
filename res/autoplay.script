@@ -66,14 +66,18 @@ function teamBattle(){
         var leader = gameEnv.getTeamLeader();
         // 如果能看到队长，设置跟随
         if(player.isAroundObj(leader)){
-            // 设置跟随队长
-            player.setFollowObj(leader);
-            // 检测是否跟随到目标（如果开了移动施法，不受此限制）
-            if(player.isFollowObj || GAME_VARS.isMoveCast){
-                // 监控队伍成员状态
-                monitorTeamStatus();
-                // 可以开始挂机了
-                battleTeam();
+            // 如果当前不是跟随队长，设置跟随队长
+            if(player.followAimID != leader.objID){
+                player.setFollowObj(leader);
+            }else{
+                // 检测是否跟随到目标（如果开了移动施法，不受此限制）
+                if(player.isFollowObj || GAME_VARS.isMoveCast){
+                    // 监控队伍成员状态,不需要操作进行挂机
+                    if(!monitorTeamStatus()){
+                        // 可以开始挂机了
+                        battleTeam();
+                    }
+                }
             }
         }
     }
