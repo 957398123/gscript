@@ -971,12 +971,15 @@ function hangHangKey(){
                             }else{
                                 printMessage(":当前挂机战斗类型：内置挂机！");
                             }
+                            GAME_VARS.isTeamMode = false;
                             setIsHangUp(true);
                         }else{
+                            GAME_VARS.isTeamMode = false;
                             setIsHangUp(false);
                             printMessage(":您不是会员，请注册会员！");
                         }
                     }else if(gameEnv.isKeyPress(SOFT_RIGHT)){
+                        GAME_VARS.isTeamMode = false;
                         setIsHangUp(false);
                         printMessage(":当前挂机已取消！");
                     }
@@ -1014,6 +1017,7 @@ function teamKeyPress(){
                         updateDefinedSkills();
                         // 检测当前玩家是否是会员
                         if(IS_MEMBER){
+                            printMessage(":当前挂机战斗类型：协作挂机！");
                             GAME_VARS.isTeamMode = true;
                             setIsHangUp(true);
                         }else{
@@ -1022,7 +1026,7 @@ function teamKeyPress(){
                         }
                     }else if(gameEnv.isKeyPress(SOFT_RIGHT)){
                         setIsHangUp(false);
-                        GAME_VARS.isTeamMode = true;
+                        GAME_VARS.isTeamMode = false;
                         printMessage(":当前协作挂机已取消！");
                     }
                     // 置空弹框
