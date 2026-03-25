@@ -18,7 +18,7 @@ import java.util.List;
 
 public class TestScript {
     public static void main(String[] args) throws Exception {
-        TestScript.gen("test4");
+        TestScript.gen("test");
     }
 
     public static void gen(String fileName) throws Exception {

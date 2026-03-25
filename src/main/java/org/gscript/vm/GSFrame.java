@@ -105,7 +105,7 @@ public class GSFrame {
         GSExceptionMonitor monitor = exceptions.peek();
         if (monitor != null) {
             // 跳转需要清除当前块域
-            function.freeScope("block");
+            function.freeToSpecScope("block");
             if (ip >= monitor.tryStart && ip <= monitor.tryEnd) {  // 如果是try块出了异常，try块肯定没有执行完毕
                 if (monitor.catchStart != -1) {  // 如果有catch
                     setIp(monitor.catchStart);
@@ -182,7 +182,7 @@ public class GSFrame {
      * 销毁当前frame
      */
     public void destroy() {
-        this.function.resetScope();
+        this.function.returnSpecScope("function");
         this.exceptions.clear();
         this.throwException = null;
     }

@@ -18,7 +18,7 @@ public class Lexer {
     private int column;
 
     // 关键字列表
-    private static final Set<String> keywords = Set.of("function", "do", "var", "if", "else", "break", "for", "while", "true", "false", "null", "switch", "case", "return", "continue", "new", "try", "catch", "finally", "throw", "NaN");
+    private static final Set<String> keywords = Set.of("function", "do", "var", "if", "else", "break", "for", "while", "true", "false", "null", "switch", "case", "default", "return", "continue", "new", "try", "catch", "finally", "throw", "NaN");
 
     public Lexer() {
         this.pos = 0;
@@ -458,6 +458,10 @@ public class Lexer {
                         }
                         case "case": {
                             token = GSTokenType.CASE;
+                            break;
+                        }
+                        case "default": {
+                            token = GSTokenType.DEFAULT;
                             break;
                         }
                         case "return": {

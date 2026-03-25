@@ -121,6 +121,8 @@ public enum GSTokenType {
 
     CASE("case"),
 
+    DEFAULT("default"),
+
     RETURN("return"),
 
     TRY("try"),

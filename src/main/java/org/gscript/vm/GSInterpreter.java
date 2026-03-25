@@ -270,7 +270,18 @@ public class GSInterpreter {
                         break;
                     }
                     case "loop_jump": {
-                        frame.function.freeScope("loop");
+                        frame.function.freeToSpecScope("loop");
+                        int offset = Integer.parseInt(codes[1]);
+                        int ip = frame.getIP() + offset - 1;
+                        frame.setIp(ip);
+                        break;
+                    }
+                    case "block_jump": {
+                        frame.function.freeToSpecScope("block");
+                        int offset = Integer.parseInt(codes[1]);
+                        int ip = frame.getIP() + offset - 1;
+                        frame.setIp(ip);
+                        break;
                     }
                     case "jump": {
                         int offset = Integer.parseInt(codes[1]);
@@ -344,7 +355,7 @@ public class GSInterpreter {
                     }
                     case "popenv": {
                         String name = codes[1];
-                        frame.function.freeScope(name);
+                        frame.function.freeToSpecScope(name);
                         break;
                     }
                     case "pushenv": {

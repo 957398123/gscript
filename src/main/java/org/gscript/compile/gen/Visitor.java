@@ -16,6 +16,8 @@ public interface Visitor {
 
     void visit(IfStatement node);
 
+    void visit(SwitchStatement node);
+
     void visit(ForStatement node);
 
     void visit(DoWhileStatement node);

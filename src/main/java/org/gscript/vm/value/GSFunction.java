@@ -1,7 +1,6 @@
 package org.gscript.vm.value;
 
 import org.gscript.vm.GSEnv;
-import org.gscript.vm.GSException;
 
 public class GSFunction extends GSObject {
 
@@ -122,31 +121,46 @@ public class GSFunction extends GSObject {
     }
 
     /**
-     * 清理域
+     * 清除到对应类型的域为止
      *
      * @param type 域类型
      */
-    public void freeScope(String type) {
+    public void freeToSpecScope(String type) {
         while (this.env != null && this.env.parent != null) {
             // 这里是清除到对应类型的域
+            if (type.equals(env.name)) {
+                setEnv(env.parent);
+                break;
+            }
             setEnv(env.parent);
+        }
+    }
+
+    /**
+     * 将域恢复到指定类型的域为止
+     *
+     * @param type
+     */
+    public void returnSpecScope(String type) {
+        while (this.env != null && this.env.parent != null) {
             if (type.equals(env.name)) {
                 break;
+            } else {
+                setEnv(env.parent);
             }
         }
     }
 
     /**
-     * 将函数域恢复至调用前状态
-     * 清理域到function域
+     * 清除特定域
+     *
+     * @param type
      */
-    public void resetScope() {
+    public void freeSpecScope(String type) {
         while (this.env != null && this.env.parent != null) {
-            // 这里跟前面不一样，这里是遇到function停下来
-            if ("function".equals(env.name)) {
-                break;
-            } else {
+            if (type.equals(env.name)) {
                 setEnv(env.parent);
+                break;
             }
         }
     }

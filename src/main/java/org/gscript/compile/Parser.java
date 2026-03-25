@@ -6,6 +6,7 @@ import org.gscript.compile.token.GSToken;
 import org.gscript.compile.token.GSTokenType;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Hashtable;
 import java.util.List;
 
@@ -93,6 +94,7 @@ public class Parser {
      * {@literal <BlockStatement> 块语句}<br/>
      * {@literal <VariableStatement> 变量声明语句}<br/>
      * {@literal <IfStatement> if条件语句}<br/>
+     * {@literal <SwitchStatement> switch语句}<br/>
      * {@literal <ForStatement> for循环语句}<br/>
      * {@literal <DoWhileStatement> do语句}<br/>
      * {@literal <WhileStatement> while语句}<br/>
@@ -114,6 +116,7 @@ public class Parser {
         if (check(GSTokenType.LBRACE)) return parseBlockStatement();         // 解析块语句
         if (check(GSTokenType.VAR)) return parseVariableStatement();         // 解析变量声明语句
         if (check(GSTokenType.IF)) return parseIfStatement();                // 解析if语句
+        if (check(GSTokenType.SWITCH)) return parseSwitchStatement();        // 解析switch语句
         if (check(GSTokenType.FOR)) return parseForStatement();              // 解析for语句
         if (check(GSTokenType.DO)) return parseDoWhileStatement();           // 尝试解析do语句
         if (check(GSTokenType.WHILE)) return parseWhileStatement();          // 尝试解析while语句
@@ -202,6 +205,79 @@ public class Parser {
         }
         // 返回if语句节点
         return new IfStatement(condition, thenBranch, elseBranch);
+    }
+
+    /**
+     * 解析switch语句<br/>
+     * {@literal 语法定义：SwitchStatement
+     * = "switch", "(", Expression, ")", "{", { "case", Expression, ":", "{" Statement } }, [ "default", ":", { Statement } ], "}";
+     *
+     * @return switch语句
+     */
+    private SwitchStatement parseSwitchStatement() {
+        // switch语句必须switch关键字开头
+        consume(GSTokenType.SWITCH, "switch statement must start with 'switch'");
+        // switch关键字后面必须跟"("
+        consume(GSTokenType.LPAREN, "Expected '(' after 'switch'.");
+        // 解析条件表达式
+        Expression condition = parseExpression();
+        // 条件表达式后面必须是)
+        consume(GSTokenType.RPAREN, "Expected ')' after condition.");
+        // 块语句必须"{"开头
+        consume(GSTokenType.LBRACE, "Expected '{' before block statement");
+        List<Expression> cases = null;
+        List<BlockStatement> blocks = null;
+        int[] offsetMap = null;
+        boolean hasDefault = false;
+        // 这里判断是不是空的switch
+        if (!match(GSTokenType.RBRACE)) {
+            cases = new ArrayList<>();
+            blocks = new ArrayList<>();
+            int offset = 0;
+            int defaultOffset = 0;
+            if (!(check(GSTokenType.CASE) || check(GSTokenType.DEFAULT))) {
+                error(String.format("Uncaught SyntaxError: Unexpected token %s", advance().value));
+            }
+            // 只能case或者default
+            while (check(GSTokenType.CASE) || check(GSTokenType.DEFAULT)) {
+                boolean isCase = true;
+                if (check(GSTokenType.DEFAULT)) {
+                    if (hasDefault) {
+                        error("Uncaught SyntaxError: More than one default clause in switch statement");
+                    } else {
+                        isCase = false;
+                        defaultOffset = offset;
+                        hasDefault = true;
+                    }
+                }
+                advance();
+                if (isCase) {
+                    // 获取表达式
+                    cases.add(parseExpression());
+                } else {
+                    cases.add(null);
+                }
+                consume(GSTokenType.COLON, "Expected ':' after case expression.");
+                // 解析块语句
+                blocks.add(parseBlockStatement());
+                ++offset;
+            }
+            offsetMap = new int[offset];
+            // 格式化offset，这个时候offset是一一对应的
+            for (int i = 0; i < offset; i++) {
+                offsetMap[i] = i;
+            }
+            // 只有有default并且case大于1才交换
+            if (hasDefault && offset > 1 && defaultOffset != offset - 1) {
+                // 将case里面的default放到最后面
+                Collections.swap(cases, defaultOffset, offset - 1);
+                offsetMap[defaultOffset] = offset - 1;
+                offsetMap[offset - 1] = defaultOffset;
+            }
+            // 块语句必须"{"开头
+            consume(GSTokenType.RBRACE, "Expected '}' before block statement");
+        }
+        return new SwitchStatement(condition, cases, blocks, offsetMap, hasDefault);
     }
 
     /**

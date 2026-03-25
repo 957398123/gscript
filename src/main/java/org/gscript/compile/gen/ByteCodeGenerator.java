@@ -173,6 +173,62 @@ public class ByteCodeGenerator implements Visitor {
         }
     }
 
+    @Override
+    public void visit(SwitchStatement node) {
+        // 首先计算表达式
+        node.condition.accept(this);
+        // 接下来看case条件列表
+        List<Expression> cases = node.cases;
+        List<BlockStatement> blocks = node.blocks;
+        int[] offsetMap = node.offsetMap;
+        int defaultOffset = -1;
+        int size = cases.size();
+        if (size > 0) {
+            int[] caseOffset = new int[size];
+            // 这里进行比对，default一定是在最后面,default只有jump
+            for (int i = 0; i < cases.size(); ++i) {
+                Expression expr = cases.get(i);
+                if (expr != null) {  // case
+                    // 首先获取表达式值
+                    emit("copy");
+                    // 访问当前条件值
+                    expr.accept(this);
+                    // 进行比对
+                    emit("comp eq");
+                    // 对结果取反
+                    emit("rela_op l_not");
+                    // 预填false_jump
+                    emit("");
+                } else {  // default
+                    // 预填jump
+                    defaultOffset = i;
+                    emit("");
+                }
+                // 赋值offset方便修改false_jump
+                caseOffset[i] = size() - 1;
+            }
+            int bodyStart = size();
+            // 接下来解析case体，case体是按照声明顺序
+            for (int i = 0; i < blocks.size(); ++i) {
+                // 回填对应的jump
+                int mapOffset = offsetMap[i];
+                int address = caseOffset[mapOffset];
+                int offset = size() - address;
+                if (mapOffset != defaultOffset) {
+                    emit(address, String.format("false_jump %d", offset));
+                } else {
+                    emit(address, String.format("jump %d", offset));
+                }
+                BlockStatement block = blocks.get(i);
+                block.accept(this);
+            }
+            int bodyEnd = size();
+            // 最后处理语句中的break
+            handleSwitchJump(bodyStart, bodyEnd, bodyEnd);
+        }
+        emit("pop");
+    }
+
     /**
      * 生成for语句字节码
      *
@@ -1262,6 +1318,22 @@ public class ByteCodeGenerator implements Visitor {
                     // 跳转至结束
                     emit(i, String.format("loop_jump %d", breakStart - i));
                 }
+            }
+        }
+    }
+
+    /**
+     * 处理循环体里面的跳转
+     *
+     * @param bodyStart  循环体开始位置
+     * @param bodyEnd    循环体结束位置
+     * @param breakStart break跳转位置
+     */
+    private void handleSwitchJump(int bodyStart, int bodyEnd, int breakStart) {
+        for (int i = bodyStart; i < bodyEnd; ++i) {
+            if ("break".equals(get(i))) {
+                // 跳转至结束
+                emit(i, String.format("block_jump %d", breakStart - i));
             }
         }
     }

@@ -62,7 +62,7 @@ IfStatement
 
 (* SWITCH语句*)
 SwitchStatement
-    = "switch", "(", Expression, ")", "{", { "case", Expression, ":", { Statement } }, [ "default", ":", { Statement } ], "}";
+    = "switch", "(", Expression, ")", "{", { "case", Expression, ":", "{" Statement } }, [ "default", ":", { Statement } ], "}";
 
 (* FOR循环*)
 ForStatement
@@ -454,6 +454,11 @@ jump offset
 # ...
 loop_jump offset
 
+# 块域中跳转，执行后销毁最近的block域
+# ...
+# ...
+block_jump offset
+
 # 加载null到栈顶
 # ...
 # ...,null
@@ -507,7 +512,7 @@ return
 # ...,value
 # ...
 store b
-
+f
 # 交换栈顶的值
 # ...,value1,value2
 # ...,value2,value1
