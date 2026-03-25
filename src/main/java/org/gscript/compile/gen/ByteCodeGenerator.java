@@ -949,6 +949,7 @@ public class ByteCodeGenerator implements Visitor {
                 emit(String.format("const f %s", token.value));
                 break;
             }
+            case IDENTIFIER:
             case STRING: {
                 emit(String.format("const s %s", token.value));
                 break;

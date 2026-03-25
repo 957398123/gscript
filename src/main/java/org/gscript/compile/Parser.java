@@ -1024,10 +1024,7 @@ public class Parser {
                     do {
                         Node key;
                         switch (peek().type) {
-                            case IDENTIFIER: {
-                                key = new Identifier(advance().value);
-                                break;
-                            }
+                            case IDENTIFIER:
                             case STRING:
                             case INTEGER_HEX:
                             case INTEGER_DECIMAL: {

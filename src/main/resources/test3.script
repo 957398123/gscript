@@ -1,1 +1,8 @@
-console.log("log=" + console);
+function build(){
+    this.name = "大虾";
+    this.age = 18;
+}
+
+var a = new build();
+
+console.log("a.name=" + a.name + ", a.age=" + a.age);

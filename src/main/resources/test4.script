@@ -1,5 +1,79 @@
-for(var i = 0; i < 10; ++i){
-    if(i == 5){
-        break;
+function createCalculator() {
+    // 私有变量
+    var result = 0;
+    var history = null;
+    var historyCount = 0;
+
+    // 私有方法
+    function addToHistory(operation, value, currentResult) {
+        var newRecord = operation + "-" + value + "=" + currentResult;
+        if (historyCount === 0) {
+            history = newRecord;
+        } else {
+            history = history + "\n" + newRecord;
+        }
+        historyCount = historyCount + 1;
     }
+
+    // 返回公共方法（闭包）
+    return {
+        add: function(num) {
+            result = result + num;
+            addToHistory("add", num, result);
+            return this;
+        },
+
+        subtract: function(num) {
+            result = result - num;
+            addToHistory("subtract", num, result);
+            return this;
+        },
+
+        multiply: function(num) {
+            result = result * num;
+            addToHistory("multiply", num, result);
+            return this;
+        },
+
+        divide: function(num) {
+            if (num !== 0) {
+                result = result / num;
+                addToHistory("divide", num, result);
+            } else {
+                addToHistory("divide", num, "Error");
+            }
+            return this;
+        },
+
+        getResult: function() {
+            return result;
+        },
+
+        getHistory: function() {
+            if (history === null) {
+                return "No operations yet";
+            }
+            return history;
+        },
+
+        clear: function() {
+            result = 0;
+            history = null;
+            historyCount = 0;
+            return this;
+        }
+    };
 }
+
+// 使用示例
+var calc = createCalculator();
+calc.add(10).subtract(3).multiply(2).divide(2);
+console.log(calc.getResult()); // 7
+console.log(calc.getHistory());
+// add 10 = 10
+// subtract 3 = 7
+// multiply 2 = 14
+// divide 2 = 7
+
+var calc2 = createCalculator();
+console.log(calc2.getHistory()); // No operations yet
