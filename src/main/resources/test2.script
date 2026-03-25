@@ -1,0 +1,19 @@
+var a = "出异常了!";
+try{
+    try{
+        console.log("11");
+        throw a;
+        console.log("tryend1");
+    }catch(e){
+        console.log(e);
+        console.log("catch1!");
+    }finally{
+        throw "我是finally抛出异常";
+        console.log("finally1");
+    }
+    console.log("tryend2");
+}catch(e){
+    console.log("catch2" + e);
+}finally{
+    console.log("finally2");
+}

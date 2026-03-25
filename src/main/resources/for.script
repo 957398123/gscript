@@ -1,0 +1,7 @@
+for(var a = 0; i < l; ++i){
+    if(i == 5){
+        break;
+    }
+}
+
+console.log("gg");

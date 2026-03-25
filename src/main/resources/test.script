@@ -1,0 +1,19 @@
+var e = "异常";
+function fun1(){
+    try{
+        throw e;
+    }finally{
+        console.log("finally-fun1");
+    }
+}
+function fun2(){
+    try{
+        fun1();
+    }catch(e){
+        console.log("fun2-e=" + e);
+    }finally{
+        console.log("finally-fun2");
+    }
+}
+
+fun2();

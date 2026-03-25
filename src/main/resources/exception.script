@@ -1,0 +1,6 @@
+try{
+    var a = 0;
+    throw new Error();
+}catch(e){
+    println("hello");
+}

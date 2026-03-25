@@ -1,0 +1,9 @@
+if(a){
+    throw new Error("gg");
+}
+
+if(a){
+    println("a");
+}else{
+    println("b");
+}
