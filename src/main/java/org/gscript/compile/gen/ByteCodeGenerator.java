@@ -479,12 +479,7 @@ public class ByteCodeGenerator implements Visitor {
                 // 获取左值引用
                 node.object.accept(this);
                 // 访问key表达式
-                if (node.property instanceof Identifier) {
-                    Identifier property = (Identifier) node.property;
-                    emit(String.format("const s %s", property.name));
-                } else {
-                    node.property.accept(this);
-                }
+                node.property.accept(this);
                 // 如果不是=
                 if (type != GSTokenType.EQ) {
                     // 计算值

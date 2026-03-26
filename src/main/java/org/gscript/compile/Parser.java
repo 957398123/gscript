@@ -1116,9 +1116,11 @@ public class Parser {
         // 连续匹配MemberAccess或者CallSuffix
         while (true) {
             if (match(GSTokenType.DOT)) {  // 匹配到了对象成员访问
-                String name = consume(GSTokenType.IDENTIFIER, "");
-                Identifier identifier = new Identifier(name);
-                expr = new MemberAccess(expr, identifier);
+                if(check(GSTokenType.IDENTIFIER)){
+                    expr = new MemberAccess(expr, new Literal(advance()));
+                }else{
+                    error("access object property name expected after '.'");
+                }
             } else if (match(GSTokenType.LBRACKET)) {  // 匹配到了数组访问
                 Expression expression = parseExpression();
                 consume(GSTokenType.RBRACKET, "");
