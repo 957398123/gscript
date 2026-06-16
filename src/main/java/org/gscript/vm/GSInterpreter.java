@@ -487,7 +487,16 @@ public class GSInterpreter {
         String[][] codes = new String[src.length][];
         for (int i = 0; i < src.length; i++) {
             String code = src[i];
-            codes[i] = code.split(" ");
+            if (code.length() > 5 && "const".equals(code.substring(0, 5))) {
+                int start = code.indexOf(' ', 0);
+                start += 1;
+                String v1 = code.substring(start, start + 1);
+                start += 2;
+                String v2 = code.substring(start);
+                codes[i] = new String[]{"const", v1, v2};
+            } else {
+                codes[i] = code.split(" ");
+            }
         }
         GSFunction anonymous = new GSFunction("null", codes, global);
         GSFrame frame = new GSFrame(anonymous);

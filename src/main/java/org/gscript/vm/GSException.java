@@ -10,7 +10,7 @@ public class GSException extends RuntimeException {
     /**
      * 抛出异常时所在函数
      */
-    private String function;
+    private final String function;
 
     /**
      * 抛出异常时的ip

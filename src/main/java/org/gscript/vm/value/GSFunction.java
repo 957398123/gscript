@@ -151,18 +151,4 @@ public class GSFunction extends GSObject {
         }
     }
 
-    /**
-     * 清除特定域
-     *
-     * @param type
-     */
-    public void freeSpecScope(String type) {
-        while (this.env != null && this.env.parent != null) {
-            if (type.equals(env.name)) {
-                setEnv(env.parent);
-                break;
-            }
-        }
-    }
-
 }
