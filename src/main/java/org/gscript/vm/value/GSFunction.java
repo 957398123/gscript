@@ -20,6 +20,23 @@ public class GSFunction extends GSObject {
     public String src[][];
 
     /**
+     * 本函数字节码在顶级字节码中的起始偏移（用于调试器把任意帧的 IP 映射回源码行）。
+     * 顶级匿名函数该值为 0；通过 fundef 切片得到的子函数该值 = 父函数.baseOffset + 切片起始IP。
+     */
+    public int baseOffset = 0;
+
+    /**
+     * 顶级字节码索引对应的源码行号数组（与顶级字节码平行，1-based，0 表示未设置）。
+     *
+     * <p>所有函数共享同一个顶级 {@code sourceLines} 数组引用（不随 {@code src} 切片），
+     * 配合 {@link #baseOffset} 即可把任意帧的 IP 映射回源码行：
+     * {@code sourceLines[baseOffset + (ip - 1)]}。
+     *
+     * <p>非调试模式下该字段为 null，不影响正常执行。
+     */
+    public int[] sourceLines = null;
+
+    /**
      * 创建一个函数实例
      *
      * @param name 函数名称

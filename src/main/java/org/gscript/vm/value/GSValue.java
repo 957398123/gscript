@@ -136,6 +136,10 @@ public abstract class GSValue {
      * @return 计算结果
      */
     public static final boolean gt(GSValue v1, GSValue v2) {
+        // 两个字符串按字典序比较
+        if (v1.type == 5 && v2.type == 5) {
+            return v1.toStringValue().compareTo(v2.toStringValue()) > 0;
+        }
         if (v1.type <= 3 && v2.type <= 3) {
             if (v1.type == 3 || v2.type == 3) {
                 return v1.toFloatValue() > v2.toFloatValue();
@@ -155,6 +159,10 @@ public abstract class GSValue {
      * @return 计算结果
      */
     public static final boolean ge(GSValue v1, GSValue v2) {
+        // 两个字符串按字典序比较
+        if (v1.type == 5 && v2.type == 5) {
+            return v1.toStringValue().compareTo(v2.toStringValue()) >= 0;
+        }
         if (v1.type > 3 || v2.type > 3) {
             return false;
         } else {
@@ -174,6 +182,10 @@ public abstract class GSValue {
      * @return 计算结果
      */
     public static final boolean lt(GSValue v1, GSValue v2) {
+        // 两个字符串按字典序比较
+        if (v1.type == 5 && v2.type == 5) {
+            return v1.toStringValue().compareTo(v2.toStringValue()) < 0;
+        }
         if (v1.type > 3 || v2.type > 3) {
             return false;
         } else {
@@ -193,6 +205,10 @@ public abstract class GSValue {
      * @return 计算结果
      */
     public static final boolean le(GSValue v1, GSValue v2) {
+        // 两个字符串按字典序比较
+        if (v1.type == 5 && v2.type == 5) {
+            return v1.toStringValue().compareTo(v2.toStringValue()) <= 0;
+        }
         if (v1.type <= 3 && v2.type <= 3) {
             if (v1.type == 3 || v2.type == 3) {
                 return v1.toFloatValue() <= v2.toFloatValue();
@@ -291,11 +307,33 @@ public abstract class GSValue {
      */
     public static final GSValue div(GSValue v1, GSValue v2) {
         if (v1.type <= 3 && v2.type <= 3) {  // 数值类型计算
+            // JS 语义：/ 总是浮点除法（7/2=3.5 而非截断为 3）
+            // 除零返回 NaN（gscript 无 Infinity 表示）
+            float b = v2.toFloatValue();
+            if (b == 0) {
+                return GSNaN.NAN;
+            }
+            return new GSFloat(v1.toFloatValue() / b);
+        } else {
+            // 其中有一个不是数字，返回非数
+            return GSNaN.NAN;
+        }
+    }
+
+    /**
+     * 对值进行取模运算（JS 的 % 语义：截断除法的余数，与 Java % 一致）
+     *
+     * @param v1 值1
+     * @param v2 值2
+     * @return 结果
+     */
+    public static final GSValue modulo(GSValue v1, GSValue v2) {
+        if (v1.type <= 3 && v2.type <= 3) {  // 数值类型计算
             // float类型提升
             if (v1.type == 3 || v2.type == 3) {
-                return new GSFloat(v1.toFloatValue() / v2.toFloatValue());
+                return new GSFloat(v1.toFloatValue() % v2.toFloatValue());
             } else {
-                return new GSInt(v1.toIntValue() / v2.toIntValue());
+                return new GSInt(v1.toIntValue() % v2.toIntValue());
             }
         } else {
             // 其中有一个不是数字，返回非数

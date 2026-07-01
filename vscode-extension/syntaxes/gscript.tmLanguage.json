@@ -1,0 +1,128 @@
+{
+  "scopeName": "source.gscript",
+  "name": "gscript",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#numbers" },
+    { "include": "#keywords" },
+    { "include": "#constants" },
+    { "include": "#functions" },
+    { "include": "#objects" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.block.gscript",
+          "begin": "/\\*",
+          "end": "\\*/",
+          "captures": {
+            "0": { "name": "punctuation.definition.comment.gscript" }
+          }
+        },
+        {
+          "name": "comment.line.double-slash.gscript",
+          "match": "(//).*$\\n?",
+          "captures": {
+            "1": { "name": "punctuation.definition.comment.gscript" }
+          }
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.gscript",
+          "begin": "\"",
+          "end": "\"|$\n",
+          "beginCaptures": {
+            "0": { "name": "punctuation.definition.string.begin.gscript" }
+          },
+          "endCaptures": {
+            "0": { "name": "punctuation.definition.string.end.gscript" }
+          },
+          "patterns": [
+            {
+              "name": "constant.character.escape.gscript",
+              "match": "\\\\(b|t|f|n|r|\"|'|u[0-9A-Fa-f]{4}|u\\{[0-9A-Fa-f]+\\}|x[0-9A-Fa-f]{2})"
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.single.gscript",
+          "begin": "'",
+          "end": "'|$\n",
+          "beginCaptures": {
+            "0": { "name": "punctuation.definition.string.begin.gscript" }
+          },
+          "endCaptures": {
+            "0": { "name": "punctuation.definition.string.end.gscript" }
+          },
+          "patterns": [
+            {
+              "name": "constant.character.escape.gscript",
+              "match": "\\\\(b|t|f|n|r|\"|'|u[0-9A-Fa-f]{4}|u\\{[0-9A-Fa-f]+\\}|x[0-9A-Fa-f]{2})"
+            }
+          ]
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.hex.gscript",
+          "match": "\\b0[xX][0-9A-Fa-f]+\\b"
+        },
+        {
+          "name": "constant.numeric.decimal.gscript",
+          "match": "\\b(\\d+)(\\.(\\d+))?\\b"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.gscript",
+          "match": "\\b(if|else|switch|case|default|for|do|while|break|continue|return|throw|try|catch|finally|new)\\b"
+        },
+        {
+          "name": "keyword.declaration.gscript",
+          "match": "\\b(var|function)\\b"
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.gscript",
+          "match": "\\b(true|false)\\b"
+        },
+        {
+          "name": "constant.language.null.gscript",
+          "match": "\\b(null|NaN)\\b"
+        }
+      ]
+    },
+    "functions": {
+      "patterns": [
+        {
+          "name": "entity.name.function.gscript",
+          "match": "\\b([_$a-zA-Z][_$a-zA-Z0-9]*)\\s*(?=\\()"
+        }
+      ]
+    },
+    "objects": {
+      "patterns": [
+        {
+          "name": "support.class.gscript",
+          "match": "\\b(console)\\b"
+        },
+        {
+          "name": "variable.other.object.gscript",
+          "match": "\\b([_$a-zA-Z][_$a-zA-Z0-9]*)(?=\\.)"
+        }
+      ]
+    }
+  }
+}

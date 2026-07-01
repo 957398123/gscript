@@ -1,0 +1,66 @@
+// gscript 调试器端到端测试脚本
+// 覆盖：变量声明、函数调用、控制流、对象、数组、闭包、异常
+// 用法：
+//   1. mvn package 生成 fat jar
+//   2. 在 VSCode 打开此文件，配置 gscript.jarPath
+//   3. 在感兴趣的行设置断点，按 F5 启动调试
+
+var globalCount = 0;
+
+function fibonacci(n) {
+    if (n <= 1) {
+        return n;
+    }
+    return fibonacci(n - 1) + fibonacci(n - 2);
+}
+
+function buildPerson(name, age) {
+    var person = {
+        name: name,
+        age: age,
+        hobbies: ["reading", "coding"]
+    };
+    person.greet = function() {
+        return "Hello, I am " + this.name;
+    };
+    return person;
+}
+
+function sumRange(start, end) {
+    var total = 0;
+    var i = start;
+    while (i <= end) {
+        total = total + i;
+        i = i + 1;
+    }
+    return total;
+}
+
+function tryCatchDemo() {
+    try {
+        throw "custom error";
+    } catch (e) {
+        return "caught: " + e;
+    } finally {
+        globalCount = globalCount + 1;
+    }
+}
+
+// 主流程
+console.log("=== gscript 调试器测试 ===");
+
+var fib10 = fibonacci(10);
+console.log("fibonacci(10) = " + fib10);
+
+var person = buildPerson("Alice", 30);
+console.log(person.greet());
+console.log("first hobby: " + person.hobbies[0]);
+
+var sum = sumRange(1, 100);
+console.log("sum(1..100) = " + sum);
+
+var result = tryCatchDemo();
+console.log(result);
+
+console.log("globalCount = " + globalCount);
+console.log("=== 测试完成 ===");

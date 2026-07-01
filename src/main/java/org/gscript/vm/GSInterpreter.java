@@ -1,5 +1,7 @@
 package org.gscript.vm;
 
+import org.gscript.vm.debug.DebugAbortException;
+import org.gscript.vm.debug.DebugController;
 import org.gscript.vm.value.*;
 
 import java.util.ArrayDeque;
@@ -17,7 +19,48 @@ public class GSInterpreter {
      */
     public ArrayDeque<GSValue> stack = new ArrayDeque<>();
 
+    /**
+     * 调试器调用栈（栈顶为当前执行帧，栈底为顶级匿名帧）。
+     *
+     * <p>解释器每进入一次 {@code eval(GSFrame, args)} 入栈一帧，方法退出（含异常传播）时出栈。
+     * 调试器挂起期间，DAP 线程通过 {@link #getCallStack()} 读取调用栈生成 stackTrace 响应。
+     * 非调试模式下该栈仍会被维护（push/pop 开销极小），但不会被读取。
+     */
+    public ArrayDeque<GSFrame> callStack = new ArrayDeque<>();
+
+    /**
+     * 调试控制器（null 表示非调试模式，解释器全速运行不做挂起检查）。
+     */
+    private DebugController debugController;
+
     public GSInterpreter() {
+    }
+
+    /**
+     * 设置调试控制器，进入调试模式。
+     *
+     * @param debugController 调试控制器
+     */
+    public void setDebugController(DebugController debugController) {
+        this.debugController = debugController;
+    }
+
+    /**
+     * 获取调试控制器。
+     *
+     * @return 调试控制器，非调试模式返回 null
+     */
+    public DebugController getDebugController() {
+        return debugController;
+    }
+
+    /**
+     * 获取调用栈（栈顶在前）。
+     *
+     * @return 调用栈双端队列，迭代顺序为栈顶到栈底
+     */
+    public ArrayDeque<GSFrame> getCallStack() {
+        return callStack;
     }
 
     /**
@@ -27,6 +70,9 @@ public class GSInterpreter {
      * @param args  函数入参
      */
     private void eval(GSFrame frame, ArrayList<GSValue> args) {
+        // 调试器调用栈追踪：当前帧入栈，方法退出时（含异常传播）出栈
+        callStack.push(frame);
+        try {
         while (!frame.isEvalComplete()) {
             // 获取当前字节码
             String[] codes = frame.getCode();
@@ -34,6 +80,10 @@ public class GSInterpreter {
             frame.incrIP();
             // 命令类型
             String command = codes[0];
+            // 调试器挂起检查（命中断点/单步/暂停请求时阻塞，直至 DAP 线程唤醒）
+            if (debugController != null) {
+                debugController.suspendCheck(frame, callStack.size());
+            }
             try {
                 switch (command) {
                     case "const": {
@@ -90,6 +140,10 @@ public class GSInterpreter {
                                 }
                                 case "div": {
                                     stack.push(GSValue.div(v1, v2));
+                                    break;
+                                }
+                                case "modulo": {
+                                    stack.push(GSValue.modulo(v1, v2));
                                     break;
                                 }
                                 case "ls": {
@@ -233,6 +287,10 @@ public class GSInterpreter {
                         String[][] src = new String[len][];
                         System.arraycopy(frame.function.src, ip, src, 0, len);
                         GSFunction function = new GSFunction(name, src, env);
+                        // 调试器源码映射：子函数共享顶级 sourceLines 数组（不切片），
+                        // baseOffset = 父函数.baseOffset + 切片起始IP，使任意帧 IP 可映射回源码行
+                        function.sourceLines = frame.function.sourceLines;
+                        function.baseOffset = frame.function.baseOffset + ip;
                         stack.push(function);
                         // 加载定义函数后要移动程序计数器
                         frame.setIp(ip + len);
@@ -259,7 +317,15 @@ public class GSInterpreter {
                         if (methodRef.type == 6) {  // 普通函数（普通函数执行后会往栈顶放值）
                             GSFunction method = (GSFunction) methodRef;
                             GSFrame newFrame = new GSFrame(method);
-                            eval(newFrame, callArgs);
+                            try {
+                                eval(newFrame, callArgs);
+                            } catch (GSException ex) {
+                                // 异常从被调用函数传播上来：必须用调用者 invoke 指令位置重定位 ip，
+                                // 否则调用者 handleException 会用 callee 的 ip 空间比对 caller 的 monitor 范围，
+                                // 导致跨函数抛出的异常无法被调用者的 try/catch 捕获
+                                ex.setIp(frame.getIP() - 1);
+                                throw ex;
+                            }
                         } else if (methodRef.type == 9) {  // 本地函数（本地函数需要手动放值）
                             GSNativeFunction nativeFunction = (GSNativeFunction) methodRef;
                             GSValue r = nativeFunction.eval(callArgs);
@@ -327,7 +393,13 @@ public class GSInterpreter {
                         if (methodRef.type == 6) {  // 普通函数（普通函数执行后会往栈顶放值）
                             GSFunction method = (GSFunction) methodRef;
                             GSFrame newFrame = new GSFrame(method);
-                            eval(newFrame, callArgs);
+                            try {
+                                eval(newFrame, callArgs);
+                            } catch (GSException ex) {
+                                // 异常从被调用函数传播上来：用调用者指令位置重定位 ip（同 invoke）
+                                ex.setIp(frame.getIP() - 1);
+                                throw ex;
+                            }
                             // 这里需要取栈顶的数据，看看函数执行完成以后是不是一个对象，如果是，返回函数返回的对象
                             GSValue r = stack.pop();
                             if (r.type >= 4 && r.type != 8) {
@@ -411,6 +483,17 @@ public class GSInterpreter {
                         break;
                     }
                     case "return": {
+                        int retIp = frame.getIP() - 1;
+                        GSExceptionMonitor finMonitor = frame.findReturnFinallyTarget(retIp);
+                        if (finMonitor != null) {
+                            // return 位于带 finally 的 try/catch 块内：暂存返回值，跳到 finally 执行，
+                            // 待 finally_check 时再完成真正的返回（JS 语义：finally 必须执行）
+                            frame.pendingReturnValue = stack.pop();
+                            frame.function.returnSpecScope("function");
+                            frame.setIp(finMonitor.finallyStart);
+                            break;
+                        }
+                        // 正常返回：返回值留在共享栈上由调用者读取
                         frame.destroy();
                         return;
                     }
@@ -423,8 +506,9 @@ public class GSInterpreter {
                     case "swap": {
                         GSValue v1 = stack.pop();
                         GSValue v2 = stack.pop();
-                        stack.push(v2);
+                        // 交换栈顶两个值：原栈顶 v1 应放到次顶，原次顶 v2 应放到栈顶
                         stack.push(v1);
+                        stack.push(v2);
                         break;
                     }
                     case "throw": {
@@ -446,8 +530,26 @@ public class GSInterpreter {
                         break;
                     }
                     case "finally_check": {
-                        // 检测是否向上抛出异常
+                        int checkIp = frame.getIP() - 1;
+                        // 检测是否向上抛出异常（finallyCheck 内部 pop monitor，若 throwException != null 则抛出）
                         frame.finallyCheck();
+                        // 若有待处理的 return（try/catch 内 return 跳 finally 的情况），完成返回
+                        if (frame.pendingReturnValue != null) {
+                            // 看是否还有外层 finally 需要执行（嵌套 finally 链）
+                            GSExceptionMonitor outer = frame.findReturnFinallyTarget(checkIp);
+                            if (outer != null) {
+                                // 跳到外层 finally 继续执行（保留 pendingReturnValue）
+                                frame.function.returnSpecScope("function");
+                                frame.setIp(outer.finallyStart);
+                                break;
+                            }
+                            // 没有外层 finally，真正返回：把返回值压回共享栈
+                            GSValue ret = frame.pendingReturnValue;
+                            frame.pendingReturnValue = null;
+                            stack.push(ret);
+                            frame.destroy();
+                            return;
+                        }
                         break;
                     }
                     default: {  // 这里要报错，不支持的字节码
@@ -463,6 +565,10 @@ public class GSInterpreter {
                     stack.push(value);
                 }
             } catch (Exception e) {  // 如果是运行时异常（虚拟机异常）
+                // 调试器中止异常向上传播，不当作虚拟机异常处理
+                if (e instanceof DebugAbortException) {
+                    throw (DebugAbortException) e;
+                }
                 e.printStackTrace();
                 // 包装异常对象并再处理异常对象
                 GSValue origin = new GSString(e.getMessage());
@@ -476,14 +582,23 @@ public class GSInterpreter {
                 }
             }
         }
+        } finally {
+            // 调试器调用栈追踪：当前帧出栈（无论正常返回还是异常传播）
+            callStack.pop();
+        }
     }
 
     /**
-     * 执行字节码
+     * 执行字节码（带源码映射，供调试器使用）。
      *
-     * @param src 字节码
+     * <p>创建顶级匿名函数并执行。源码映射数组 {@code sourceLines} 与 {@code src} 平行，
+     * 存入匿名函数的 {@link org.gscript.vm.value.GSFunction#sourceLines} 字段，
+     * 供 {@link DebugController} 把任意帧的 IP 映射回源码行。
+     *
+     * @param src         字节码
+     * @param sourceLines 字节码索引对应的源码行号数组（与 src 平行，1-based，0=未设置），可为 null
      */
-    public void eval(String[] src) {
+    public void eval(String[] src, int[] sourceLines) {
         String[][] codes = new String[src.length][];
         for (int i = 0; i < src.length; i++) {
             String code = src[i];
@@ -499,12 +614,25 @@ public class GSInterpreter {
             }
         }
         GSFunction anonymous = new GSFunction("null", codes, global);
+        anonymous.sourceLines = sourceLines;
+        anonymous.baseOffset = 0;
         GSFrame frame = new GSFrame(anonymous);
         try {
             eval(frame, null);
+        } catch (DebugAbortException e) {
+            // 调试会话被终止，正常退出，不输出未捕获异常信息
         } catch (GSException e) {
             System.out.println(String.format("Uncaught Error: %s at <anonymous>:%d", e.origin.toStringValue(), e.getIp()));
         }
+    }
+
+    /**
+     * 执行字节码（无源码映射，非调试模式入口）。
+     *
+     * @param src 字节码
+     */
+    public void eval(String[] src) {
+        eval(src, null);
     }
 
     /**

@@ -3,6 +3,7 @@ package org.gscript.vm;
 import org.gscript.vm.value.GSValue;
 
 import java.util.HashMap;
+import java.util.Map;
 
 public class GSEnv {
 
@@ -55,5 +56,14 @@ public class GSEnv {
      */
     public boolean isDeclareVariable(String name) {
         return values.containsKey(name);
+    }
+
+    /**
+     * 获取当前域所有变量（调试器变量监视用）
+     *
+     * @return 变量名 -> 值 的只读视图
+     */
+    public Map<String, GSValue> getValues() {
+        return values;
     }
 }

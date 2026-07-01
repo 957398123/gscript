@@ -1,0 +1,376 @@
+// gscript 语义综合测试脚本
+// 目的：系统验证各语法/语义的正确性，发现潜在 bug
+// 输出格式："标签 : 实际值"，对照预期判断对错
+
+function check(label, actual) {
+    console.log(label + " : " + actual);
+}
+
+// ============ 1. 算术运算 ============
+console.log("=== [1] 算术运算 ===");
+check("1+2", 1 + 2);              // 预期 3
+check("10-3", 10 - 3);            // 预期 7
+check("4*5", 4 * 5);              // 预期 20
+check("20/4", 20 / 4);            // 预期 5
+check("7/2", 7 / 2);              // JS预期 3.5
+check("3/2", 3 / 2);              // JS预期 1.5
+check("7%3", 7 % 3);              // 预期 1
+check("10%4", 10 % 4);            // 预期 2
+check("2.5+1", 2.5 + 1);          // 预期 3.5
+check("1+2.5", 1 + 2.5);          // 预期 3.5
+check("2.5*2", 2.5 * 2);          // 预期 5.0
+check("7.5/2.5", 7.5 / 2.5);      // 预期 3.0
+check("0-5", 0 - 5);              // 预期 -5
+check("-(-5)", -(-5));            // 预期 5
+check("负号-5", -5);              // 预期 -5
+// 10/0 整数除零已修复(返回NaN)，恢复测试
+check("10/0", 10 / 0);           // 预期 NaN (gscript无Infinity，除零返回NaN)
+
+// ============ 2. 比较运算 ============
+console.log("=== [2] 比较运算 ===");
+check("1==1", 1 == 1);            // 预期 true
+check("1!=2", 1 != 2);            // 预期 true
+check("1<2", 1 < 2);              // 预期 true
+check("2<=2", 2 <= 2);            // 预期 true
+check("3>2", 3 > 2);              // 预期 true
+check("3>=3", 3 >= 3);            // 预期 true
+check("1=='1'", 1 == "1");        // JS预期 true(隐式转换)
+check("1==='1'", 1 === "1");      // 预期 false
+check("1===1", 1 === 1);          // 预期 true
+check("null==null", null == null);// 预期 true
+check("'a'=='a'", "a" == "a");    // 预期 true
+check("'a'<'b'", "a" < "b");      // 预期 true
+check("5=='5'", 5 == "5");        // JS预期 true
+
+// ============ 3. 逻辑运算与短路 ============
+console.log("=== [3] 逻辑运算 ===");
+check("true&&false", true && false);   // 预期 false
+check("true||false", true || false);   // 预期 true
+check("!true", !true);                 // 预期 false
+check("!false", !false);               // 预期 true
+check("!0", !0);                       // 预期 true (0 falsy)
+check("!1", !1);                       // 预期 false
+check("!''", !"");                     // 预期 true (空串 falsy)
+check("!'x'", !"x");                   // 预期 false
+check("!null", !null);                 // 预期 true
+check("!(!1)", !(!1));                 // 预期 true (EBNF一元不嵌套，需括号)
+
+// ============ 4. truthy/falsy 条件 ============
+console.log("=== [4] 条件 truthy/falsy ===");
+if ("x") { check("if('x')", "进入"); } else { check("if('x')", "未进入"); }       // 预期 进入
+if ("") { check("if('')", "进入"); } else { check("if('')", "未进入"); }          // 预期 未进入
+if (0) { check("if(0)", "进入"); } else { check("if(0)", "未进入"); }             // 预期 未进入
+if (1) { check("if(1)", "进入"); } else { check("if(1)", "未进入"); }             // 预期 进入
+if (null) { check("if(null)", "进入"); } else { check("if(null)", "未进入"); }    // 预期 未进入
+if ({}) { check("if({})", "进入"); } else { check("if({})", "未进入"); }          // 预期 进入(对象truthy)
+if ([]) { check("if([])", "进入"); } else { check("if([])", "未进入"); }          // 预期 进入(数组truthy)
+
+// ============ 5. 位运算 ============
+console.log("=== [5] 位运算 ===");
+check("5&3", 5 & 3);              // 预期 1
+check("5|2", 5 | 2);              // 预期 7
+check("5^3", 5 ^ 3);              // 预期 6
+check("~5", ~5);                  // 预期 -6
+check("1<<3", 1 << 3);            // 预期 8
+check("8>>2", 8 >> 2);            // 预期 2
+
+// ============ 6. 自增自减 ============
+console.log("=== [6] 自增自减 ===");
+var a1 = 5;
+check("a1++(表达式值)", a1++);     // 预期 5
+check("a1++(后值)", a1);           // 预期 6
+var a2 = 5;
+check("++a2(表达式值)", ++a2);     // 预期 6
+check("++a2(后值)", a2);           // 预期 6
+var a3 = 5;
+check("a3--(表达式值)", a3--);     // 预期 5
+check("a3--(后值)", a3);           // 预期 4
+var a4 = 5;
+check("--a4(表达式值)", --a4);     // 预期 4
+// 成员自增
+var obj1 = {x: 10};
+check("obj1.x++(表达式值)", obj1.x++);  // 预期 10
+check("obj1.x(后值)", obj1.x);          // 预期 11
+var obj2 = {y: 10};
+check("++obj2.y(表达式值)", ++obj2.y);  // 预期 11
+
+// ============ 7. 三元运算符 ============
+console.log("=== [7] 三元运算符 ===");
+check("1>0?yes:no", 1 > 0 ? "yes" : "no");   // 预期 yes
+check("0>0?yes:no", 0 > 0 ? "yes" : "no");   // 预期 no
+check("嵌套三元", 5 > 3 ? (2 > 1 ? "A" : "B") : "C");  // 预期 A
+
+// ============ 8. 复合赋值 ============
+console.log("=== [8] 复合赋值 ===");
+var b1 = 5; b1 += 3; check("5+=3", b1);    // 预期 8
+var b2 = 5; b2 -= 2; check("5-=2", b2);    // 预期 3
+var b3 = 5; b3 *= 2; check("5*=2", b3);    // 预期 10
+var b4 = 10; b4 /= 2; check("10/=2", b4);  // 预期 5
+var b5 = 10; b5 %= 3; check("10%=3", b5);  // 预期 1
+
+// ============ 9. 控制流 ============
+console.log("=== [9] 控制流 ===");
+var sum1 = 0;
+for (var i = 1; i <= 5; i = i + 1) {
+    sum1 = sum1 + i;
+}
+check("for求和1..5", sum1);       // 预期 15
+
+// for + break
+var sum2 = 0;
+for (var i = 1; i <= 100; i = i + 1) {
+    if (i > 5) { break; }
+    sum2 = sum2 + i;
+}
+check("for+break", sum2);         // 预期 15
+
+// for + continue
+var sum3 = 0;
+for (var i = 1; i <= 10; i = i + 1) {
+    if (i % 2 == 0) { continue; }
+    sum3 = sum3 + i;
+}
+check("for+continue(奇数和1..10)", sum3);  // 预期 25
+
+// while
+var w = 0;
+var n = 5;
+while (n > 0) {
+    w = w + n;
+    n = n - 1;
+}
+check("while递减求和", w);        // 预期 15
+
+// do-while
+var dw = 0;
+var m = 0;
+do {
+    dw = dw + m;
+    m = m + 1;
+} while (m < 5);
+check("do-while求和0..4", dw);    // 预期 10
+
+// do-while 至少执行一次
+var dw2 = 100;
+var first = 0;
+do {
+    first = 1;
+    dw2 = dw2 + 1;
+} while (false);
+check("do-while(false)执行一次", first);  // 预期 1
+
+// switch
+function sw(x) {
+    var r = 0;
+    switch (x) {
+        case 1: { r = 100; break; }
+        case 2: { r = 200; break; }
+        case 3: { r = 300; break; }
+        default: { r = 999; }
+    }
+    return r;
+}
+check("switch(1)", sw(1));        // 预期 100
+check("switch(2)", sw(2));        // 预期 200
+check("switch(9)", sw(9));        // 预期 999
+
+// ============ 10. 函数：递归/闭包/this/返回值 ============
+console.log("=== [10] 函数 ===");
+function fib(n) {
+    if (n <= 1) { return n; }
+    return fib(n - 1) + fib(n - 2);
+}
+check("fib(10)", fib(10));        // 预期 55
+check("fib(0)", fib(0));          // 预期 0
+check("fib(1)", fib(1));          // 预期 1
+check("fib(15)", fib(15));        // 预期 610
+
+// 闭包计数器
+function makeCounter() {
+    var count = 0;
+    return function() {
+        count = count + 1;
+        return count;
+    };
+}
+var c1 = makeCounter();
+check("闭包c1第1次", c1());       // 预期 1
+check("闭包c1第2次", c1());       // 预期 2
+check("闭包c1第3次", c1());       // 预期 3
+var c2 = makeCounter();
+check("闭包c2独立", c2());        // 预期 1
+
+// this 绑定
+var obj3 = {
+    name: "Tom",
+    getName: function() {
+        return this.name;
+    }
+};
+check("this.name", obj3.getName());  // 预期 Tom
+
+// 无 return 的函数返回值
+function noReturn() {
+    var x = 1 + 2;
+}
+check("无return函数", noReturn());   // 预期 null
+
+// 函数作为参数
+function apply(fn, x) {
+    return fn(x);
+}
+function double(x) { return x * 2; }
+check("函数作参数", apply(double, 5));  // 预期 10
+
+// ============ 11. 字符串 ============
+console.log("=== [11] 字符串 ===");
+check("'ab'+'cd'", "ab" + "cd");      // 预期 abcd
+check("'a'+1", "a" + 1);              // 预期 a1
+check("1+'a'", 1 + "a");              // 预期 1a
+check("'x'+true", "x" + true);        // 预期 xtrue
+check("'x'+null", "x" + null);        // 预期 xnull
+
+// ============ 12. 对象与数组 ============
+console.log("=== [12] 对象与数组 ===");
+var obj4 = {a: 1, b: 2, c: 3};
+check("obj4.a", obj4.a);              // 预期 1
+check("obj4['b']", obj4["b"]);        // 预期 2
+obj4.a = 100;
+check("obj4.a修改后", obj4.a);        // 预期 100
+obj4["d"] = 4;
+check("obj4['d']新增", obj4.d);       // 预期 4
+// 不存在属性
+check("obj4.z(不存在)", obj4.z);      // 预期 null
+
+var arr1 = [10, 20, 30];
+check("arr1[0]", arr1[0]);            // 预期 10
+check("arr1[2]", arr1[2]);            // 预期 30
+arr1[1] = 99;
+check("arr1[1]修改后", arr1[1]);      // 预期 99
+// 数组求和(不能用arr.length)
+var arrSum = arr1[0] + arr1[1] + arr1[2];
+check("arr1求和", arrSum);            // 预期 10+99+30=139
+
+// 嵌套对象
+var nested = {outer: {inner: 42}};
+check("嵌套对象", nested.outer.inner);  // 预期 42
+nested.outer.inner = 99;
+check("嵌套对象修改", nested.outer.inner);  // 预期 99
+
+// ============ 13. 异常处理 ============
+console.log("=== [13] 异常处理 ===");
+// 基本 try-catch
+function tryCatch() {
+    try {
+        throw "err1";
+    } catch (e) {
+        return "caught:" + e;
+    }
+}
+check("try-catch", tryCatch());       // 预期 caught:err1
+
+// finally 正常执行
+var fin1 = 0;
+function tryFinally() {
+    try {
+        fin1 = 1;
+    } finally {
+        fin1 = 2;
+    }
+}
+tryFinally();
+check("finally正常执行", fin1);       // 预期 2
+
+// finally + try 有 return
+var fin2 = 0;
+function tryReturnFinally() {
+    try {
+        fin2 = 1;
+        return "try-ret";
+    } finally {
+        fin2 = 2;
+    }
+}
+var tr = tryReturnFinally();
+check("try-return+finally返回值", tr);  // 预期 try-ret
+check("try-return+finally副作用", fin2); // 预期 2
+
+// finally + catch 有 return (debug_test 暴露的 bug)
+var fin3 = 0;
+function catchReturnFinally() {
+    try {
+        throw "e";
+    } catch (e) {
+        fin3 = 1;
+        return "catch-ret";
+    } finally {
+        fin3 = 2;
+    }
+}
+var cr = catchReturnFinally();
+check("catch-return+finally返回值", cr);  // 预期 catch-ret
+check("catch-return+finally副作用", fin3); // 预期 2
+
+// finally 抛异常 (Bug #12: finally抛异常外层catch捕获不到，已修复)
+function finallyThrow() {
+    try {
+        throw "first";
+    } finally {
+        throw "second";
+    }
+}
+try {
+    finallyThrow();
+    check("finally抛异常", "未抛");
+} catch (e) {
+    check("finally抛异常", e);        // 预期 second
+}
+
+// 跨函数抛异常被调用者 catch 捕获
+function throwAcross() {
+    throw "cross";
+}
+try {
+    throwAcross();
+    check("跨函数抛异常", "未抛");
+} catch (e) {
+    check("跨函数抛异常", e);          // 预期 cross
+}
+
+// 嵌套 try
+function nestedTry() {
+    var log = "";
+    try {
+        log = log + "A";
+        try {
+            log = log + "B";
+            throw "inner";
+        } catch (e2) {
+            log = log + "C";
+        }
+        log = log + "D";
+    } catch (e1) {
+        log = log + "X";
+    }
+    return log;
+}
+check("嵌套try", nestedTry());        // 预期 ABCD
+
+// ============ 14. 作用域 ============
+console.log("=== [14] 作用域 ===");
+var x = "outer";
+function scopeTest() {
+    var x = "inner";
+    return x;
+}
+check("作用域-内层", scopeTest());    // 预期 inner
+check("作用域-外层未变", x);          // 预期 outer
+
+// 块作用域遮蔽
+var y = 1;
+{
+    var y = 2;
+}
+check("块作用域var", y);              // 预期 2 (JS var无块作用域) 或 1
+
+console.log("=== 测试结束 ===");

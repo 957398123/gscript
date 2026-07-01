@@ -18,7 +18,9 @@ import java.util.List;
 
 public class TestScript {
     public static void main(String[] args) throws Exception {
-        TestScript.gen("test4") ;
+        // 支持命令行参数指定脚本名，默认 debug_test
+        String name = (args != null && args.length > 0) ? args[0] : "debug_test";
+        TestScript.gen(name);
     }
 
     public static void gen(String fileName) throws Exception {

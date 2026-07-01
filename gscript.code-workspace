@@ -1,0 +1,35 @@
+{
+  "folders": [
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    "gscript.jarPath": "e:/JProjects/gscript/target/gscript-1.0-SNAPSHOT.jar",
+    "gscript.javaPath": "C:\\Program Files\\Java\\jdk-9.0.4\\bin\\java.exe",
+    "files.associations": {
+      "*.script": "gscript",
+      "*.gs": "gscript"
+    },
+    "debug.trace": true
+  },
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "type": "gscript",
+        "request": "launch",
+        "name": "Launch gscript",
+        "program": "${file}",
+        "stopOnEntry": false
+      },
+      {
+        "type": "gscript",
+        "request": "attach",
+        "name": "Attach to gscript",
+        "host": "localhost",
+        "port": 4711
+      }
+    ]
+  }
+}

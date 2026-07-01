@@ -1,0 +1,9 @@
+.vscode/**
+.vscode-test/**
+node_modules/**
+src/**
+!src/extension.js
+.gitignore
+.eslintrc.js
+tsconfig.json
+README.md

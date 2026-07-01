@@ -82,11 +82,14 @@ public class Parser {
      * @return 程序根节点
      */
     public Node parseProgram() {
+        final int startLine = peek().line;
         List<Node> stmt = new ArrayList<>();
         while (!isAtEnd()) {
             stmt.add(parseStatement());
         }
-        return new ProgramNode(stmt);
+        ProgramNode programNode = new ProgramNode(stmt);
+        programNode.line = startLine;
+        return programNode;
     }
 
     /**
@@ -137,6 +140,7 @@ public class Parser {
      * @return 块语句
      */
     private BlockStatement parseBlockStatement() {
+        final int startLine = peek().line;
         // 块语句必须"{"开头
         consume(GSTokenType.LBRACE, "Expect '{' before block statement");
         List<Node> stmt = null;
@@ -151,7 +155,9 @@ public class Parser {
         // 块语句必须"}"结尾
         consume(GSTokenType.RBRACE, "Expect '}' after block statement");
         // 返回块语句节点
-        return new BlockStatement(stmt);
+        BlockStatement blockNode = new BlockStatement(stmt);
+        blockNode.line = startLine;
+        return blockNode;
     }
 
     /**
@@ -162,6 +168,7 @@ public class Parser {
      * @return 变量声明语句
      */
     private VariableStatement parseVariableStatement() {
+        final int startLine = peek().line;
         // 变量声明语句必须使用"var"开头
         consume(GSTokenType.VAR, "variable declaration must start with 'var'");
         // 解析变量声明列表
@@ -169,7 +176,9 @@ public class Parser {
         // 变量声明语句必须以";"结尾
         consume(GSTokenType.SEMICOLON, "variable declaration must end with ';'");
         // 返回变量声明语句节点
-        return new VariableStatement(vars);
+        VariableStatement variableStatement = new VariableStatement(vars);
+        variableStatement.line = startLine;
+        return variableStatement;
     }
 
     /**
@@ -181,6 +190,7 @@ public class Parser {
      * @return if语句
      */
     private IfStatement parseIfStatement() {
+        final int startLine = peek().line;
         // if语句必须if关键字开头
         consume(GSTokenType.IF, "if statement must start with 'if'");
         // if关键字后面必须跟"("
@@ -204,7 +214,9 @@ public class Parser {
             }
         }
         // 返回if语句节点
-        return new IfStatement(condition, thenBranch, elseBranch);
+        IfStatement ifStatement = new IfStatement(condition, thenBranch, elseBranch);
+        ifStatement.line = startLine;
+        return ifStatement;
     }
 
     /**
@@ -215,6 +227,7 @@ public class Parser {
      * @return switch语句
      */
     private SwitchStatement parseSwitchStatement() {
+        final int startLine = peek().line;
         // switch语句必须switch关键字开头
         consume(GSTokenType.SWITCH, "switch statement must start with 'switch'");
         // switch关键字后面必须跟"("
@@ -277,7 +290,9 @@ public class Parser {
             // 块语句必须"{"开头
             consume(GSTokenType.RBRACE, "Expected '}' before block statement");
         }
-        return new SwitchStatement(condition, cases, blocks, offsetMap, hasDefault);
+        SwitchStatement switchStatement = new SwitchStatement(condition, cases, blocks, offsetMap, hasDefault);
+        switchStatement.line = startLine;
+        return switchStatement;
     }
 
     /**
@@ -289,6 +304,7 @@ public class Parser {
      * @return for语句
      */
     private ForStatement parseForStatement() {
+        final int startLine = peek().line;
         // for语句必须是"for"关键字开头
         consume(GSTokenType.FOR, "for statement must start with 'for'");
         // 匹配"("
@@ -335,7 +351,9 @@ public class Parser {
             consume(GSTokenType.RBRACE, "Expect '}' after block statement");
         }
         // 返回for语句节点
-        return new ForStatement(init, condition, update, body);
+        ForStatement forStatement = new ForStatement(init, condition, update, body);
+        forStatement.line = startLine;
+        return forStatement;
     }
 
     /**
@@ -382,6 +400,7 @@ public class Parser {
      * @return while语句
      */
     private WhileStatement parseWhileStatement() {
+        final int startLine = peek().line;
         // while语句必须"while"关键字开头
         consume(GSTokenType.WHILE, "Expected 'while' to start while statement");
         // 匹配符号"("
@@ -420,6 +439,7 @@ public class Parser {
      * @return function语句
      */
     private FunctionStatement parseFunctionStatement() {
+        final int startLine = peek().line;
         // function语句必须function关键字开头
         consume(GSTokenType.FUNCTION, "Expected 'function' keyword");
         // 获取函数名称
@@ -429,6 +449,7 @@ public class Parser {
         }
         // 创建函数名称标识符节点
         Identifier identifier = new Identifier(funName);
+        identifier.line = startLine;
         // 匹配符号"("
         consume(GSTokenType.LPAREN, "Expected '(' after function name.");
         // 初始化参数列表节点
@@ -440,7 +461,9 @@ public class Parser {
             // 循环解析多个参数
             do {
                 String paramName = consume(GSTokenType.IDENTIFIER, "Expected parameter name");
-                params.add(new Identifier(paramName));
+                Identifier param = new Identifier(paramName);
+                param.line = startLine;
+                params.add(param);
             } while (match(GSTokenType.COMMA));
             // 匹配符号)
             consume(GSTokenType.RPAREN, "Expected ')' after parameters.");
@@ -452,10 +475,14 @@ public class Parser {
             if (body.stmts == null) {
                 body.stmts = new ArrayList<>();
             }
-            body.stmts.add(new ReturnStatement(null));
+            ReturnStatement implicitReturn = new ReturnStatement(null);
+            implicitReturn.line = startLine;
+            body.stmts.add(implicitReturn);
         }
         // 返回函数定义语句节点
-        return new FunctionStatement(identifier, params, body);
+        FunctionStatement functionStatement = new FunctionStatement(identifier, params, body);
+        functionStatement.line = startLine;
+        return functionStatement;
     }
 
     /**
@@ -466,12 +493,15 @@ public class Parser {
      * @return break语句
      */
     private BreakStatement parseBreakStatement() {
+        final int startLine = peek().line;
         // 匹配"break"关键字
         consume(GSTokenType.BREAK, "Expected 'break' keyword");
         // 匹配";"符号
         consume(GSTokenType.SEMICOLON, "Expected ';' after 'break'.");
         // 返回break语句节点
-        return new BreakStatement();
+        BreakStatement breakStatement = new BreakStatement();
+        breakStatement.line = startLine;
+        return breakStatement;
     }
 
     /**
@@ -482,12 +512,15 @@ public class Parser {
      * @return 返回continue语句
      */
     private ContinueStatement parseContinueStatement() {
+        final int startLine = peek().line;
         // 匹配"continue"关键字
         consume(GSTokenType.CONTINUE, "Expected 'continue' keyword");
         // 匹配";"符号
         consume(GSTokenType.SEMICOLON, "Expected ';' after 'continue'.");
         // 返回continue语句节点
-        return new ContinueStatement();
+        ContinueStatement continueStatement = new ContinueStatement();
+        continueStatement.line = startLine;
+        return continueStatement;
     }
 
     /**
@@ -498,6 +531,7 @@ public class Parser {
      * @return 返回return语句
      */
     private ReturnStatement parseReturnStatement() {
+        final int startLine = peek().line;
         // 匹配"return"关键字
         consume(GSTokenType.RETURN, "Expected 'return' keyword");
         // 初始化返回值表达式
@@ -508,7 +542,9 @@ public class Parser {
             consume(GSTokenType.SEMICOLON, "Expected ';' after return expression");
         }
         // 返回return语句节点
-        return new ReturnStatement(expr);
+        ReturnStatement returnStatement = new ReturnStatement(expr);
+        returnStatement.line = startLine;
+        return returnStatement;
     }
 
     /**
@@ -519,6 +555,7 @@ public class Parser {
      * @return 返回throw语句
      */
     private ThrowStatement parseThrowStatement() {
+        final int startLine = peek().line;
         // 匹配throw关键字
         consume(GSTokenType.THROW, "Expected 'throw' keyword");
         // 初始化throw值表达式
@@ -526,7 +563,9 @@ public class Parser {
         // 消费;
         consume(GSTokenType.SEMICOLON, "Expected ';' after throw expression");
         // 返回return语句节点
-        return new ThrowStatement(expr);
+        ThrowStatement throwStatement = new ThrowStatement(expr);
+        throwStatement.line = startLine;
+        return throwStatement;
     }
 
     /**
@@ -538,6 +577,7 @@ public class Parser {
      * @return 返回exception语句
      */
     private ExceptionStatement parseExceptionStatement() {
+        final int startLine = peek().line;
         // 匹配try关键字
         consume(GSTokenType.TRY, "Expected 'try' keyword");
         // 解析try块语句
@@ -575,7 +615,9 @@ public class Parser {
             error(peek(), "Uncaught SyntaxError: Missing catch or finally after try");
         }
         // 返回异常处理语句
-        return new ExceptionStatement(tryClause, catchClause, finallyClause);
+        ExceptionStatement exceptionStatement = new ExceptionStatement(tryClause, catchClause, finallyClause);
+        exceptionStatement.line = startLine;
+        return exceptionStatement;
     }
 
     /**
@@ -585,12 +627,15 @@ public class Parser {
      * @return 表达式节点
      */
     private ExpressionStatement parseExpressionStatement() {
+        final int startLine = peek().line;
         // 解析表达式
         Expression expr = parseExpression();
         // 匹配";"符号
         consume(GSTokenType.SEMICOLON, "Expected ';' after expression");
         // 返回表达式节点
-        return new ExpressionStatement(expr);
+        ExpressionStatement expressionStatement = new ExpressionStatement(expr);
+        expressionStatement.line = startLine;
+        return expressionStatement;
     }
 
     /**
@@ -619,6 +664,7 @@ public class Parser {
      * @return 变量声明节点
      */
     private VariableDecl parseVariableDecl() {
+        final int startLine = peek().line;
         // 获取变量名
         String name = consume(GSTokenType.IDENTIFIER, "Expect variable name");
         // 初始化关联值
@@ -629,7 +675,11 @@ public class Parser {
             value = parseExpression();
         }
         // 返回变量声明节点
-        return new VariableDecl(new Identifier(name), value);
+        Identifier identifier = new Identifier(name);
+        identifier.line = startLine;
+        VariableDecl variableDecl = new VariableDecl(identifier, value);
+        variableDecl.line = startLine;
+        return variableDecl;
     }
 
     /**
@@ -1150,10 +1200,12 @@ public class Parser {
      * @return function表达式
      */
     private FunctionExpression parseFunctionExpression() {
+        final int startLine = peek().line;
         // function语句必须function关键字开头
         consume(GSTokenType.FUNCTION, "Expected 'function' keyword");
         // 函数名称
         Identifier identifier = new Identifier("null");
+        identifier.line = startLine;
         if (check(GSTokenType.IDENTIFIER)) {
             // 获取函数名称
             String funName = consume(GSTokenType.IDENTIFIER, "Expected function name after 'function'");
@@ -1161,6 +1213,7 @@ public class Parser {
                 error("Function name cannot be null");
             }
             identifier = new Identifier(funName);
+            identifier.line = startLine;
         }
         // 匹配符号"("
         consume(GSTokenType.LPAREN, "Expected '(' after function name.");
@@ -1173,7 +1226,9 @@ public class Parser {
             // 循环解析多个参数
             do {
                 String paramName = consume(GSTokenType.IDENTIFIER, "Expected parameter name");
-                params.add(new Identifier(paramName));
+                Identifier param = new Identifier(paramName);
+                param.line = startLine;
+                params.add(param);
             } while (match(GSTokenType.COMMA));
             // 匹配符号)
             consume(GSTokenType.RPAREN, "Expected ')' after parameters.");
@@ -1182,10 +1237,14 @@ public class Parser {
         BlockStatement body = parseBlockStatement();
         // 这里需要判断，如果函数最后一行不是return，需要显式加上return null;
         if (!body.havingReturn()) {
-            body.stmts.add(new ReturnStatement(null));
+            ReturnStatement implicitReturn = new ReturnStatement(null);
+            implicitReturn.line = startLine;
+            body.stmts.add(implicitReturn);
         }
         // 返回函数定义语句节点
-        return new FunctionExpression(identifier, params, body);
+        FunctionExpression functionExpression = new FunctionExpression(identifier, params, body);
+        functionExpression.line = startLine;
+        return functionExpression;
     }
 
     /**

@@ -15,4 +15,10 @@ public class GSNaN extends GSObject {
     private GSNaN() {
         this.type = 10;
     }
+
+    @Override
+    public boolean toBoolean() {
+        // NaN 是 falsy（JS 语义）
+        return false;
+    }
 }

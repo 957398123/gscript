@@ -1,0 +1,162 @@
+{
+  "name": "gscript-debug",
+  "displayName": "gscript Debug",
+  "version": "0.1.0",
+  "publisher": "gscript",
+  "description": "gscript 语言调试器与语法高亮支持（Launch + Attach 模式）",
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "categories": [
+    "Debuggers",
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onDebug:gscript",
+    "onLanguage:gscript"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "breakpoints": [
+      {
+        "language": "gscript"
+      }
+    ],
+    "debuggers": [
+      {
+        "type": "gscript",
+        "label": "gscript Debugger",
+        "languages": [
+          "gscript"
+        ],
+        "configurationAttributes": {
+          "launch": {
+            "required": [
+              "program"
+            ],
+            "properties": {
+              "program": {
+                "type": "string",
+                "description": "gscript 脚本文件的绝对路径"
+              },
+              "stopOnEntry": {
+                "type": "boolean",
+                "description": "是否在脚本入口处暂停（执行首条指令前挂起）",
+                "default": false
+              },
+              "jarPath": {
+                "type": "string",
+                "description": "gscript 调试适配器 fat jar 路径（覆盖 gscript.jarPath 设置）"
+              },
+              "javaPath": {
+                "type": "string",
+                "description": "java 可执行路径（覆盖 gscript.javaPath 设置）",
+                "default": "java"
+              }
+            }
+          },
+          "attach": {
+            "required": [
+              "port"
+            ],
+            "properties": {
+              "port": {
+                "type": "number",
+                "description": "gscript 调试适配器监听的 socket 端口"
+              },
+              "host": {
+                "type": "string",
+                "description": "调试适配器主机地址",
+                "default": "localhost"
+              }
+            }
+          }
+        },
+        "initialConfigurations": [
+          {
+            "type": "gscript",
+            "request": "launch",
+            "name": "Launch gscript",
+            "program": "${file}",
+            "stopOnEntry": false
+          },
+          {
+            "type": "gscript",
+            "request": "attach",
+            "name": "Attach to gscript",
+            "host": "localhost",
+            "port": 4711
+          }
+        ],
+        "configurationSnippets": [
+          {
+            "label": "gscript: Launch Script",
+            "description": "启动并调试一个 gscript 脚本",
+            "body": {
+              "type": "gscript",
+              "request": "launch",
+              "name": "Launch gscript",
+              "program": "^\"\\${file}\"",
+              "stopOnEntry": false
+            }
+          },
+          {
+            "label": "gscript: Attach (socket)",
+            "description": "附加到已运行的 gscript 调试适配器（socket 模式）",
+            "body": {
+              "type": "gscript",
+              "request": "attach",
+              "name": "Attach to gscript",
+              "host": "localhost",
+              "port": 4711
+            }
+          }
+        ]
+      }
+    ],
+    "languages": [
+      {
+        "id": "gscript",
+        "aliases": [
+          "gscript",
+          "GScript"
+        ],
+        "extensions": [
+          ".gs",
+          ".gscript",
+          ".script"
+        ],
+        "configuration": "./gscript-language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "gscript",
+        "scopeName": "source.gscript",
+        "path": "./syntaxes/gscript.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "title": "gscript",
+      "properties": {
+        "gscript.jarPath": {
+          "type": "string",
+          "default": "",
+          "description": "gscript 调试适配器 fat jar 的绝对路径（由 mvn package 生成，包含 Gson）。可在 launch.json 中用 jarPath 字段覆盖。"
+        },
+        "gscript.javaPath": {
+          "type": "string",
+          "default": "java",
+          "description": "java 可执行路径（用于启动调试适配器）。可在 launch.json 中用 javaPath 字段覆盖。"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.60.0",
+    "@types/node": "^18.0.0"
+  }
+}

@@ -17,10 +17,44 @@ public class ByteCodeGenerator implements Visitor {
     private final ArrayList<String> bytecode = new ArrayList<>();
 
     /**
+     * 字节码索引对应的源码行号（1-based，0 表示未设置）。
+     * 与 {@link #bytecode} 平行，调试器用于"字节码索引 ↔ 源码行"映射。
+     * 回填操作（{@link #emit(int, String)}）不修改本列表，保持映射稳定。
+     */
+    private final ArrayList<Integer> sourceLines = new ArrayList<>();
+
+    /**
+     * 当前正在生成字节码的源码行号。
+     * 由 {@link #line(Node)} 在每个语句节点入口处更新。
+     */
+    private int currentLine = 0;
+
+    /**
      * 获取生成的字节码
      */
     public ArrayList<String> getBytecode() {
         return bytecode;
+    }
+
+    /**
+     * 获取字节码索引对应的源码行号列表（与字节码平行）。
+     *
+     * @return 源码行号列表，第 i 项为字节码第 i 条对应的源码行号（1-based，0 表示未设置）
+     */
+    public ArrayList<Integer> getSourceLines() {
+        return sourceLines;
+    }
+
+    /**
+     * 切换当前源码行号。
+     * 仅在节点携带有效行号（{@code > 0}）时更新，避免表达式节点（line=0）覆盖语句行号。
+     *
+     * @param node AST 节点，可为 null
+     */
+    private void line(Node node) {
+        if (node != null && node.line > 0) {
+            currentLine = node.line;
+        }
     }
 
     /**
@@ -57,14 +91,17 @@ public class ByteCodeGenerator implements Visitor {
     }
 
     /**
-     * 提交字节码
+     * 提交字节码。
+     * 同时向 {@link #sourceLines} 追加当前源码行号，保持与字节码平行。
      */
     public void emit(String byteCode) {
         bytecode.add(byteCode);
+        sourceLines.add(currentLine);
     }
 
     /**
-     * 替换指定位置字节码
+     * 替换指定位置字节码（回填）。
+     * 不修改 {@link #sourceLines}，以保持"字节码索引 ↔ 源码行"映射稳定。
      */
     public void emit(int index, String byteCode) {
         bytecode.set(index, byteCode);
@@ -105,6 +142,7 @@ public class ByteCodeGenerator implements Visitor {
      */
     @Override
     public void visit(ProgramNode node) {
+        line(node);
         List<Node> stmts = node.stmts;
         // 将函数声明提前
         handleFunctionDeclare(stmts);
@@ -121,6 +159,7 @@ public class ByteCodeGenerator implements Visitor {
      */
     @Override
     public void visit(BlockStatement node) {
+        line(node);
         List<Node> stmts = node.stmts;
         // 将函数声明提前
         handleFunctionDeclare(stmts);
@@ -141,6 +180,7 @@ public class ByteCodeGenerator implements Visitor {
      */
     @Override
     public void visit(VariableStatement node) {
+        line(node);
         node.args.accept(this);
     }
 
@@ -151,6 +191,7 @@ public class ByteCodeGenerator implements Visitor {
      */
     @Override
     public void visit(IfStatement node) {
+        line(node);
         // 处理If条件(if里面的条件表达式是不能为空的)
         node.condition.accept(this);
         // 如果有 else，这里先预填一个跳转
@@ -175,6 +216,7 @@ public class ByteCodeGenerator implements Visitor {
 
     @Override
     public void visit(SwitchStatement node) {
+        line(node);
         // 首先计算表达式
         node.condition.accept(this);
         // 接下来看case条件列表
@@ -236,6 +278,7 @@ public class ByteCodeGenerator implements Visitor {
      */
     @Override
     public void visit(ForStatement node) {
+        line(node);
         Node init = node.init;
         Expression condition = node.condition;
         Expression update = node.update;
@@ -283,6 +326,7 @@ public class ByteCodeGenerator implements Visitor {
      */
     @Override
     public void visit(DoWhileStatement node) {
+        line(node);
         // 解析body
         // body开始位置
         int bodyStart = size();
@@ -307,6 +351,7 @@ public class ByteCodeGenerator implements Visitor {
      */
     @Override
     public void visit(WhileStatement node) {
+        line(node);
         // 条件表达式开始位置
         int cStart = size();
         // 解析条件表达式
@@ -334,6 +379,7 @@ public class ByteCodeGenerator implements Visitor {
      */
     @Override
     public void visit(FunctionStatement node) {
+        line(node);
         String identifier = node.identifier.name;
         // 声明函数变量
         emit(String.format("declare %s", identifier));
@@ -354,6 +400,7 @@ public class ByteCodeGenerator implements Visitor {
      */
     @Override
     public void visit(BreakStatement node) {
+        line(node);
         // 这里直接提交break，让其上一级处理
         emit("break");
     }
@@ -365,6 +412,7 @@ public class ByteCodeGenerator implements Visitor {
      */
     @Override
     public void visit(ContinueStatement node) {
+        line(node);
         // 这里直接提交continue，让其上一级处理
         emit("continue");
     }
@@ -376,6 +424,7 @@ public class ByteCodeGenerator implements Visitor {
      */
     @Override
     public void visit(ReturnStatement node) {
+        line(node);
         // 如果有返回值
         if (node.expression != null) {
             node.expression.accept(this);
@@ -393,6 +442,7 @@ public class ByteCodeGenerator implements Visitor {
      */
     @Override
     public void visit(ThrowStatement node) {
+        line(node);
         // 首先计算抛出异常值
         node.expression.accept(this);
         // 生成throw字节码
@@ -407,6 +457,7 @@ public class ByteCodeGenerator implements Visitor {
      */
     @Override
     public void visit(ExceptionStatement node) {
+        line(node);
         // try块起始位置
         int tStart = size();
         // 首先生成try字节码
@@ -438,6 +489,7 @@ public class ByteCodeGenerator implements Visitor {
      */
     @Override
     public void visit(ExpressionStatement node) {
+        line(node);
         // 计算表达式
         node.expr.accept(this);
         // 纯表达式语句要出栈栈顶的表达式的值
@@ -548,14 +600,14 @@ public class ByteCodeGenerator implements Visitor {
         emit("");
         // 表达式计算为true
         emit("const b true");
-        // 跳转至行尾
-        emit(String.format("jump %d", size() + 2));
+        // 跳转至行尾：jump 在 const b true 之后，需跳过 const b false 到行尾，相对偏移固定为 2
+        emit("jump 2");
         // 表达式计算为false
         emit("const b false");
         // 回填第一个true跳转（必须到const b true）
         emit(start, String.format("false_jump %d", size() - start - 3));
-        // 回填第二个false跳转（必须到const b false）
-        emit(start2, String.format("false_jump %d", size() - start - 1));
+        // 回填第二个false跳转（必须到const b false）—— 注意用 start2 计算偏移
+        emit(start2, String.format("false_jump %d", size() - start2 - 1));
     }
 
     /**
@@ -577,14 +629,14 @@ public class ByteCodeGenerator implements Visitor {
         emit("");
         // 表达式计算为true
         emit("const b true");
-        // 跳转至行尾
-        emit(String.format("jump %d", size() + 2));
+        // 跳转至行尾：jump 在 const b true 之后，需跳过 const b false 到行尾，相对偏移固定为 2
+        emit("jump 2");
         // 表达式计算为false
         emit("const b false");
         // 回填第一个false跳转（必须到const b false）
         emit(start, String.format("false_jump %d", size() - start - 1));
-        // 回填第二个false跳转（必须到const b false）
-        emit(start2, String.format("false_jump %d", size() - start - 1));
+        // 回填第二个false跳转（必须到const b false）—— 注意用 start2 计算偏移
+        emit(start2, String.format("false_jump %d", size() - start2 - 1));
     }
 
     /**
@@ -1001,6 +1053,7 @@ public class ByteCodeGenerator implements Visitor {
      */
     @Override
     public void visit(FunctionExpression node) {
+        line(node);
         // 更新当前函数定义位置
         definedFunctionOffset = size() + 1;
         // 函数表达式就需要留函数引用在栈顶
@@ -1139,6 +1192,7 @@ public class ByteCodeGenerator implements Visitor {
      */
     @Override
     public void visit(VariableDecl node) {
+        line(node);
         Expression value = node.value;
         // 这里需要判断有没有值
         if (value != null) {
@@ -1291,6 +1345,12 @@ public class ByteCodeGenerator implements Visitor {
         for (Node stmt : stmts) {
             stmt.accept(this);
         }
+        // 函数末尾自动 return null：确保没有显式 return 的函数也返回 null 到栈顶
+        // （JS 语义：无 return 的函数返回 undefined，gscript 用 null 表示）
+        // currentLine=0 避免隐式返回误触发调试器断点（sourceLine=0 不会命中断点）
+        currentLine = 0;
+        emit("lda_null");
+        emit("return");
         // 回填函数定义总长度（不包括fundef本身）
         emit(start, String.format("fundef %s %d", funName, (size() - start - 1)));
     }

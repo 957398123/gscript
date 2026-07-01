@@ -28,6 +28,15 @@ public class GSFrame {
     private GSException throwException = null;
 
     /**
+     * 待处理的返回值（用于 try/catch 内 return 时跳过 finally 的情况）。
+     *
+     * <p>当 return 指令位于带 finally 的 try/catch 块内时，不能直接 destroy 帧，
+     * 而是先把返回值暂存到此字段，跳转到 finally 块执行；finally 执行完毕
+     * （{@code finally_check}）时再取出此值完成真正的返回。
+     */
+    public GSValue pendingReturnValue = null;
+
+    /**
      * 构建执行帧
      *
      * @param function
@@ -179,11 +188,50 @@ public class GSFrame {
     }
 
     /**
+     * 查找包含指定 ip 的、带 finally 的最近异常监视器（用于 return 跳转 finally）。
+     *
+     * <p>从栈顶（最内层）向下查找，返回第一个 finallyStart != -1 且 ip 落在其
+     * try 块或 catch 块范围内的监视器。用于实现 "try/catch 内 return 时先执行 finally"。
+     *
+     * @param ip return 指令的位置
+     * @return 目标监视器，没有则返回 null
+     */
+    public GSExceptionMonitor findReturnFinallyTarget(int ip) {
+        for (GSExceptionMonitor m : exceptions) {
+            if (m.finallyStart == -1) {
+                continue;  // 无 finally 的监视器不需要跳转
+            }
+            // try 块内
+            if (ip >= m.tryStart && ip <= m.tryEnd) {
+                return m;
+            }
+            // catch 块内（catchStart <= ip < finallyStart）
+            if (m.catchStart != -1 && ip >= m.catchStart && ip < m.finallyStart) {
+                return m;
+            }
+        }
+        return null;
+    }
+
+    /**
      * 销毁当前frame
+     *
+     * <p>必须把 {@code function.env} 完全恢复到调用前的静态作用域（function env 的 parent），
+     * 而不是只回退到 function env 本身。原因：{@code GSFunction.env} 是共享字段，
+     * 递归调用同一个函数时 {@code pushenv function} 会覆盖它。若 return 后只回退到
+     * function env，外层调用再访问局部变量会从内层调用的 function env 取值，
+     * 导致递归结果错误（如 {@code fibonacci(10) = -80} 的根因）。
      */
     public void destroy() {
+        // 先回退到 function env（清理函数体内遗留的 block/loop 嵌套域）
         this.function.returnSpecScope("function");
+        // 再回退一层到 function env 的 parent，恢复调用前的静态作用域
+        GSEnv env = this.function.getEnv();
+        if (env != null && "function".equals(env.name)) {
+            this.function.setEnv(env.parent);
+        }
         this.exceptions.clear();
         this.throwException = null;
+        this.pendingReturnValue = null;
     }
 }

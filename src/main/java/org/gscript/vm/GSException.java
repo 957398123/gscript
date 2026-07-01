@@ -35,4 +35,13 @@ public class GSException extends RuntimeException {
     public int getIp() {
         return ip;
     }
+
+    /**
+     * 抛出异常时所在函数名（调试器用）
+     *
+     * @return 函数名
+     */
+    public String getFunction() {
+        return function;
+    }
 }

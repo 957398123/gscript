@@ -27,7 +27,8 @@ public class GSObject extends GSValue {
 
     @Override
     public boolean toBoolean() {
-        return false;
+        // 对象总是 truthy（JS 语义：任何对象/数组/函数都为 true）
+        return true;
     }
 
     /**
@@ -53,5 +54,14 @@ public class GSObject extends GSValue {
      */
     public void setProperty(String name, GSValue value) {
         members.put(name, value);
+    }
+
+    /**
+     * 获取全部成员（调试器变量监视用）
+     *
+     * @return 成员名 -> 值 的视图
+     */
+    public java.util.Map<String, GSValue> getMembers() {
+        return members;
     }
 }
