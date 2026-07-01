@@ -305,6 +305,9 @@ public class ByteCodeGenerator implements Visitor {
         int bodyEnd = size();
         // 如果有update，执行update
         if (update != null) {
+            // 重置行号到 for 头，使 update 表达式指令映射到 for 行
+            // （否则会继承 body 末尾语句的行号，导致循环回退单步时光标停在 body 末尾）
+            line(node);
             update.accept(this);
             // update表达式的值需要出栈
             emit("pop");
@@ -334,7 +337,9 @@ public class ByteCodeGenerator implements Visitor {
         handleLoopStatement(node.body);
         // body结束位置
         int bodyEnd = size();
-        // 执行表达式
+        // 执行表达式（重置行号到 do 行，使 condition 指令映射到 do-while 语句行
+        // 而非 body 末尾语句行，避免循环回退单步时光标停在 body 末尾）
+        line(node);
         node.condition.accept(this);
         // 对栈顶的值进行取反，方便false跳转
         emit("rela_op l_not");
@@ -1246,6 +1251,9 @@ public class ByteCodeGenerator implements Visitor {
      */
     @Override
     public void visit(CatchClause node) {
+        // 设置 catch 关键字行号，使 pushenv/declare/store 等 setup 指令映射到 catch 行
+        // （否则会继承 try body 末尾语句的行号，导致调试器单步从 throw 跳到 catch 时光标位置错误）
+        line(node);
         // 创建块级作用域
         emit("pushenv block");
         // 异常名称
@@ -1269,6 +1277,8 @@ public class ByteCodeGenerator implements Visitor {
      */
     @Override
     public void visit(FinallyClause node) {
+        // 设置 finally 关键字行号，使 finally 块指令映射到 finally 行
+        line(node);
         node.finallyBody.accept(this);
         // 最后的异常监测
         emit("finally_check");
