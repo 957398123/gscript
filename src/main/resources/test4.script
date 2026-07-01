@@ -6,7 +6,7 @@ function createCalculator() {
 
     // 私有方法
     function addToHistory(operation, value, currentResult) {
-        var newRecord = operation + "-" + value + "=" + currentResult;
+        var newRecord = operation + " " + value + "=" + currentResult;
         if (historyCount === 0) {
             history = newRecord;
         } else {

@@ -1,0 +1,14 @@
+var a = {zz : "zz1", kk: "kk2", fun: getSign};
+
+var sign = "kk";
+
+a[getSign()] += "-hello";
+
+console.log("a.kk=" + a[sign]);
+
+function getSign(){
+    return "kk";
+}
+
+
+console.log("a.fun()=" + a.fun());

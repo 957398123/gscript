@@ -1,0 +1,11 @@
+var a = 1;
+
+switch(a){
+    default:{
+        console.log("default");
+    }
+    case "1":{
+        console.log("11");
+        break;
+    }
+}
