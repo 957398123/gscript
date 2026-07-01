@@ -364,6 +364,7 @@ public class Parser {
      * @return do-while语句
      */
     private DoWhileStatement parseDoWhileStatement() {
+        final int startLine = peek().line;
         // do语句必须"do"关键字开头
         consume(GSTokenType.DO, "Expected 'do' to start do-while statement");
         // 解析循环体
@@ -389,7 +390,9 @@ public class Parser {
         // 匹配符号";"
         consume(GSTokenType.SEMICOLON, "Expected ';' after do-while statement");
         // 返回do-while语句节点
-        return new DoWhileStatement(body, condition);
+        DoWhileStatement doWhileStatement = new DoWhileStatement(body, condition);
+        doWhileStatement.line = startLine;
+        return doWhileStatement;
     }
 
     /**
@@ -428,7 +431,9 @@ public class Parser {
             }
         }
         // 返回while语句节点
-        return new WhileStatement(condition, body);
+        WhileStatement whileStatement = new WhileStatement(condition, body);
+        whileStatement.line = startLine;
+        return whileStatement;
     }
 
     /**
@@ -592,6 +597,8 @@ public class Parser {
         if (check(GSTokenType.CATCH) || check(GSTokenType.FINALLY)) {
             // 解析异常处理语句
             if (match(GSTokenType.CATCH)) {
+                // 记录 catch 关键字所在行号（match 已消费 CATCH，previous() 返回它）
+                int catchLine = previous().line;
                 // 匹配(
                 consume(GSTokenType.LPAREN, "Expected '(' after catch.");
                 // 获取函数名称
@@ -604,12 +611,16 @@ public class Parser {
                 BlockStatement catchBody = parseBlockStatement();
                 // 创建异常处理节点
                 catchClause = new CatchClause(identifier, catchBody.stmts);
+                catchClause.line = catchLine;
             }
             if (match(GSTokenType.FINALLY)) {
+                // 记录 finally 关键字所在行号
+                int finallyLine = previous().line;
                 // 解析最终执行语句块
                 BlockStatement finallyBody = parseBlockStatement();
                 // 创建最终执行节点
                 finallyClause = new FinallyClause(finallyBody);
+                finallyClause.line = finallyLine;
             }
         } else {
             error(peek(), "Uncaught SyntaxError: Missing catch or finally after try");

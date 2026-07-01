@@ -1,0 +1,18 @@
+// 调试器 sourceLine 映射验证脚本
+// 每行一个语句，便于 dump 后核对字节码索引 <-> 源码行号
+var i = 0;              // line 2
+while(i < 3) {          // line 3 — while 条件指令应映射到此行
+    i = i + 1;          // line 4
+}                       // line 5
+do {                    // line 6 — do-while body 入口
+    i = i + 1;          // line 7
+} while(i < 10);        // line 8 — do-while 条件指令应映射到此行
+if (i > 5) {            // line 9 — if 条件应映射到此行
+    i = 0;              // line 10
+} else {                // line 11
+    i = 1;              // line 12
+}                       // line 13
+for(var k = 0; k < 2; k = k + 1) {  // line 14 — for 头应映射到此行
+    i = i + k;          // line 15
+}                       // line 16
+console.log(i);         // line 17
