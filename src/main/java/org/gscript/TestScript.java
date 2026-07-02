@@ -11,6 +11,8 @@ import org.gscript.compile.node.Node;
 import org.gscript.compile.token.GSToken;
 import org.gscript.vm.GSInterpreter;
 import org.gscript.vm.stdlib.Console;
+import org.gscript.vm.value.GSNull;
+import org.gscript.vm.value.GSValue;
 
 import java.io.File;
 import java.io.InputStream;
@@ -21,7 +23,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public class TestScript {
     public static void main(String[] args) throws Exception {
@@ -44,9 +49,12 @@ public class TestScript {
         } else if ("dumpgclass".equals(mode)) {
             // 新增：加载 .gclass + dump 字节码映射（验证反序列化正确性）
             TestScript.dumpGclass(name);
+        } else if ("hosttest".equals(mode)) {
+            // 新增：宿主交互 API 测试（Java 调用 gscript 解释器）
+            TestScript.hostTest();
         } else {
             System.err.println("Unknown mode: " + mode);
-            System.err.println("Usage: TestScript <name> [run|dump|compile|rungclass|dumpgclass]");
+            System.err.println("Usage: TestScript <name> [run|dump|compile|rungclass|dumpgclass|hosttest]");
         }
     }
 
@@ -196,5 +204,61 @@ public class TestScript {
         System.err.println("gclass loaded: /gtxt/" + name + ".gclass"
                 + " (bytecode=" + data.src.length + " instructions)");
         return data;
+    }
+
+    // =========================================================================
+    //  宿主交互 API 测试（hosttest 模式）
+    // =========================================================================
+
+    /**
+     * 宿主交互 API 演示与测试入口。
+     *
+     * <p>逐项打印结果到 stdout（格式 "key=value"），供 tests/test_host_interaction.py 校验。
+     * 验证 Java 调用 gscript 解释器的 6 个 API：evalScript / evalExpression / getVariable /
+     * setVariable / toJavaObject / fromJavaObject。
+     */
+    public static void hostTest() {
+        GSInterpreter interpreter = new GSInterpreter();
+        interpreter.addVariableToGlobal("console", new Console());
+
+        // 1. evalScript 执行语句 + getVariable 读取变量
+        interpreter.evalScript("var x = 10; var y = 20; function add(a, b) { return a + b; }");
+        System.out.println("x=" + interpreter.getVariable("x").toIntValue());
+        System.out.println("y=" + interpreter.getVariable("y").toIntValue());
+
+        // 2. evalExpression 求值表达式（调用上面定义的 add）
+        GSValue sum = interpreter.evalExpression("add(x, y)");
+        System.out.println("sum=" + sum.toIntValue());
+
+        // 3. setVariable 注入 Java 值 + gscript 读取
+        interpreter.setVariable("z", 100);
+        interpreter.setVariable("greeting", "hello");
+        interpreter.evalScript("console.log(z); console.log(greeting);");
+
+        // 4. toJavaObject：对象 + 嵌套数组递归转换
+        GSValue obj = interpreter.evalExpression("{name: \"Alice\", age: 30, scores: [90, 85, 95]}");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> javaObj = (Map<String, Object>) obj.toJavaObject();
+        System.out.println("obj.name=" + javaObj.get("name"));
+        System.out.println("obj.age=" + javaObj.get("age"));
+        System.out.println("obj.scores=" + javaObj.get("scores"));
+
+        // 5. fromJavaObject：注入 Map/List + gscript 访问
+        Map<String, Object> config = new LinkedHashMap<>();
+        config.put("timeout", 5000);
+        config.put("retries", 3);
+        List<Integer> tags = Arrays.asList(1, 2, 3);
+        interpreter.setVariable("config", config);
+        interpreter.setVariable("tags", tags);
+        GSValue timeout = interpreter.evalExpression("config.timeout");
+        GSValue retries = interpreter.evalExpression("config.retries");
+        GSValue tag0 = interpreter.evalExpression("tags[0]");
+        System.out.println("config.timeout=" + timeout.toIntValue());
+        System.out.println("config.retries=" + retries.toIntValue());
+        System.out.println("tags[0]=" + tag0.toIntValue());
+
+        // 6. 表达式运行时出错（调用非函数值）→ 返回 GSNull.NULL
+        GSValue err = interpreter.evalExpression("x()");
+        System.out.println("err_is_null=" + (err == GSNull.NULL));
     }
 }

@@ -1075,7 +1075,8 @@ public class Parser {
             case NaN:
             case INTEGER_HEX:
             case INTEGER_DECIMAL: {  // Literal
-                return new Literal(advance());
+                // 字面量后可跟成员访问/调用，如 "str".length、42.toString()、null.foo
+                return parseMemberAccessOrCallSuffix(new Literal(advance()));
             }
             case LBRACE: {  // <ObjectLiteral>
                 advance();
@@ -1108,7 +1109,8 @@ public class Parser {
                     } while (match(GSTokenType.COMMA));
                     consume(GSTokenType.RBRACE, "Expected '}' to close object literal.");
                 }
-                return new ObjectLiteral(members);
+                // 对象字面量后可跟成员访问/调用，如 {a:1}.a、{a:1}["a"]、{fn:func}()
+                return parseMemberAccessOrCallSuffix(new ObjectLiteral(members));
             }
             case FUNCTION: {  // FunctionExpression
                 return parseFunctionExpression();
@@ -1175,6 +1177,19 @@ public class Parser {
             }
         }
         // 连续匹配MemberAccess或者CallSuffix
+        return parseMemberAccessOrCallSuffix(expr);
+    }
+
+    /**
+     * 解析成员访问/调用后缀（.foo / [expr] / (args)），可连续匹配。</br>
+     * 供 parsePrimaryExpression 的字面量/对象字面量分支与
+     * parseAccessPropertyOrMemberExpressionOrCallExpression 共用，使
+     * "str".length、{a:1}.a、null.foo 等字面量上的成员访问合法。
+     *
+     * @param expr 已解析的基础表达式
+     * @return 附加后缀后的表达式（无后缀时原样返回）
+     */
+    private Node parseMemberAccessOrCallSuffix(Node expr) {
         while (true) {
             if (match(GSTokenType.DOT)) {  // 匹配到了对象成员访问
                 if(check(GSTokenType.IDENTIFIER)){

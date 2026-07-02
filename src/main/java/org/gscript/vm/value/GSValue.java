@@ -1,5 +1,10 @@
 package org.gscript.vm.value;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
 public abstract class GSValue {
 
     /**
@@ -426,6 +431,88 @@ public abstract class GSValue {
      */
     public static final GSValue l_not(GSValue v1) {
         return GSBool.getGSBool(!v1.toBoolean());
+    }
+
+    /**
+     * 将 GSValue 转换为 Java 原生对象（递归转换对象/数组）。
+     *
+     * <p>类型映射：
+     * <ul>
+     *   <li>bool/int/float/str → Boolean/Integer/Float/String</li>
+     *   <li>null → null；nan → Float.NaN</li>
+     *   <li>object → LinkedHashMap（递归转换每个成员）</li>
+     *   <li>array → ArrayList（按索引顺序递归转换）</li>
+     *   <li>function/native → 原样返回 GSValue 引用</li>
+     * </ul>
+     *
+     * @return Java 原生对象
+     */
+    public Object toJavaObject() {
+        switch (this.type) {
+            case 1:  // GSBool
+                return ((GSBool) this).value;
+            case 2:  // GSInt
+                return ((GSInt) this).value;
+            case 3:  // GSFloat
+                return ((GSFloat) this).value;
+            case 5:  // GSString（value 私有，用 toStringValue）
+                return this.toStringValue();
+            case 8:  // GSNull
+                return null;
+            case 10: // GSNaN
+                return Float.NaN;
+            case 4:  // GSObject
+                Map<String, Object> map = new LinkedHashMap<>();
+                for (Map.Entry<String, GSValue> e : ((GSObject) this).getMembers().entrySet()) {
+                    map.put(e.getKey(), e.getValue().toJavaObject());
+                }
+                return map;
+            case 7:  // GSArray（extends GSObject，元素键为 "0","1",...）
+                List<Object> list = new ArrayList<>();
+                GSObject arr = (GSObject) this;
+                for (int i = 0; arr.getMembers().containsKey(String.valueOf(i)); i++) {
+                    list.add(arr.getProperty(String.valueOf(i)).toJavaObject());
+                }
+                return list;
+            default:  // GSFunction(6) / GSNativeFunction(9) 原样返回
+                return this;
+        }
+    }
+
+    /**
+     * 将 Java 对象转换为 GSValue（静态工厂，递归转换 Map/List）。
+     *
+     * <p>支持类型：Integer/Float/Double/String/Boolean/Map/List/null/GSValue。
+     * Double 会收窄为 float（gscript 浮点统一用 GSFloat）。
+     *
+     * @param obj Java 对象
+     * @return 对应的 GSValue
+     * @throws IllegalArgumentException 不支持的 Java 类型
+     */
+    public static GSValue fromJavaObject(Object obj) {
+        if (obj == null) return GSNull.NULL;
+        if (obj instanceof GSValue) return (GSValue) obj;
+        if (obj instanceof Integer) return new GSInt((Integer) obj);
+        if (obj instanceof Float) return new GSFloat((Float) obj);
+        if (obj instanceof Double) return new GSFloat(((Double) obj).floatValue());
+        if (obj instanceof String) return new GSString((String) obj);
+        if (obj instanceof Boolean) return GSBool.getGSBool((Boolean) obj);
+        if (obj instanceof Map) {
+            GSObject gso = new GSObject();
+            for (Map.Entry<?, ?> e : ((Map<?, ?>) obj).entrySet()) {
+                gso.setProperty(e.getKey().toString(), fromJavaObject(e.getValue()));
+            }
+            return gso;
+        }
+        if (obj instanceof List) {
+            GSArray gsa = new GSArray();
+            int i = 0;
+            for (Object item : (List<?>) obj) {
+                gsa.setProperty(String.valueOf(i++), fromJavaObject(item));
+            }
+            return gsa;
+        }
+        throw new IllegalArgumentException("Cannot convert Java type to GSValue: " + obj.getClass());
     }
 
 }

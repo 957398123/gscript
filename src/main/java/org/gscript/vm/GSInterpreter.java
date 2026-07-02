@@ -1,8 +1,13 @@
 package org.gscript.vm;
 
+import org.gscript.compile.Lexer;
+import org.gscript.compile.Parser;
+import org.gscript.compile.gen.ByteCodeGenerator;
 import org.gscript.compile.gclass.BytecodeEncoder;
 import org.gscript.compile.gclass.EncodedBytecode;
 import org.gscript.compile.gclass.GSClassConstants;
+import org.gscript.compile.node.Node;
+import org.gscript.compile.token.GSToken;
 import org.gscript.vm.debug.DebugAbortException;
 import org.gscript.vm.debug.DebugController;
 import org.gscript.vm.value.*;
@@ -10,6 +15,7 @@ import org.gscript.vm.value.*;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 public class GSInterpreter {
 
@@ -670,5 +676,87 @@ public class GSInterpreter {
      */
     public void addVariableToGlobal(String name, GSValue value) {
         global.addVariableValue(name, value);
+    }
+
+    /**
+     * 编译 gscript 源码为二进制字节码（供 evalScript/evalExpression 共用）。
+     *
+     * @param code gscript 源码
+     * @return 编码后的二进制字节码 + 常量池
+     */
+    private EncodedBytecode compile(String code) {
+        Lexer lexer = new Lexer();
+        List<GSToken> tokens = lexer.tokenize(code);
+        Parser parser = new Parser(tokens);
+        Node program = parser.parseProgram();
+        ByteCodeGenerator gen = new ByteCodeGenerator();
+        program.accept(gen);
+        String[] src = gen.getByteCode().toArray(new String[0]);
+        return new BytecodeEncoder().encode(Arrays.asList(src));
+    }
+
+    /**
+     * 在当前解释器全局上下文中执行一段 gscript 源码（语句序列）。
+     *
+     * <p>共享 {@link #global} 环境：执行的 var 声明、function 定义会落入 global，
+     * 后续 {@link #getVariable} / {@link #evalExpression} 可访问。
+     * 脚本未捕获异常会被捕获并打印（与 {@link #eval(byte[][], Object[], int[], String)} 行为一致）。
+     *
+     * @param code gscript 源码
+     */
+    public void evalScript(String code) {
+        EncodedBytecode encoded = compile(code);
+        eval(encoded.instructions, encoded.constantPool, null, null);
+    }
+
+    /**
+     * 求值一个 gscript 表达式并返回结果。
+     *
+     * <p>实现：将表达式包装为 {@code return (expr);} 执行，OP_RETURN 会把结果留在
+     * {@link #stack} 上，执行后弹出返回。表达式出错（语法/运行时）时返回 {@link GSNull#NULL}。
+     *
+     * <p>注意：不能复用 {@link #evalScript}（它内部 eval 会吞掉 GSException），
+     * 故直接调用 {@link #eval(GSFrame, ArrayList)} 以检测异常。
+     *
+     * @param expr gscript 表达式（如 "a + b"、"add(1, 2)"、"{x: 1, y: 2}"）
+     * @return 求值结果，出错返回 GSNull.NULL
+     */
+    public GSValue evalExpression(String expr) {
+        stack.clear();  // 清空栈上残留值，确保返回值是本次表达式的结果
+        EncodedBytecode encoded = compile("return (" + expr + ");");
+        GSFunction anonymous = new GSFunction("null", encoded.instructions, encoded.constantPool, global);
+        GSFrame frame = new GSFrame(anonymous);
+        try {
+            eval(frame, null);
+        } catch (GSException e) {
+            System.out.println(String.format("Uncaught Error: %s at <anonymous>:%d", e.origin.toStringValue(), e.getIp()));
+            stack.clear();
+            return GSNull.NULL;
+        } catch (DebugAbortException e) {
+            return GSNull.NULL;
+        }
+        if (stack.isEmpty()) return GSNull.NULL;
+        return stack.pop();
+    }
+
+    /**
+     * 从全局作用域获取变量。
+     *
+     * @param name 变量名
+     * @return 变量值，未定义返回 {@link GSNull#NULL}
+     */
+    public GSValue getVariable(String name) {
+        GSValue value = global.getVariableValue(name);
+        return value != null ? value : GSNull.NULL;
+    }
+
+    /**
+     * 设置全局变量（自动包装 Java 对象为 GSValue）。
+     *
+     * @param name  变量名
+     * @param value Java 对象（Integer/Float/Double/String/Boolean/Map/List/null/GSValue）
+     */
+    public void setVariable(String name, Object value) {
+        addVariableToGlobal(name, GSValue.fromJavaObject(value));
     }
 }

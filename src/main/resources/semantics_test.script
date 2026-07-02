@@ -373,4 +373,49 @@ var y = 1;
 }
 check("块作用域var", y);              // 预期 2 (JS var无块作用域) 或 1
 
+// ============ 15. 字面量成员访问 ============
+console.log("=== [15] 字面量成员访问 ===");
+// 对象字面量后跟 .prop
+check("{a:1}.a", {a: 1}.a);                       // 预期 1
+check("{a:1,b:2}.b", {a: 1, b: 2}.b);             // 预期 2
+// 对象字面量后跟 [expr]
+check("{a:1}['a']", {a: 1}["a"]);                 // 预期 1
+// 对象字面量链式访问
+check("{a:{b:1}}.a.b", {a: {b: 1}}.a.b);          // 预期 1
+check("{a:{b:{c:2}}}.a.b.c", {a: {b: {c: 2}}}.a.b.c);  // 预期 2
+// 对象字面量后跟函数调用（字面量直接 .fn()，无需外层括号）
+check("{fn:func}()", {fn: function() { return 42; }}.fn());  // 预期 42
+// 数组字面量后跟 [index]
+check("[1,2,3][0]", [1, 2, 3][0]);                // 预期 1
+check("[1,2,3][2]", [1, 2, 3][2]);                // 预期 3
+check("[10,20][1]", [10, 20][1]);                 // 预期 20
+// 数组字面量链式
+check("[[1,2],[3,4]][1][0]", [[1, 2], [3, 4]][1][0]);  // 预期 3
+// null 字面量成员访问 → 抛 TypeError
+try {
+    null.foo;
+    check("null.foo", "未抛");
+} catch (e) {
+    check("null.foo异常", e);                      // 预期 TypeError: Cannot read properties of null
+}
+// 数值字面量成员访问 → 静默返回 null (type<=3)
+// 注意：42.foo 会被词法器解析为 FLOAT "42." + IDENTIFIER "foo"（与 JS 一致），
+// 故需用 (42).foo 形式访问整数字面量属性；3.14.bar 可直接访问浮点字面量属性
+check("(42).foo", (42).foo);                      // 预期 null
+check("3.14.bar", 3.14.bar);                      // 预期 null
+// 字符串字面量成员访问 → 返回 null (GSString 无该属性)
+check("'str'.foo", "str".foo);                    // 预期 null
+check("'str'[0]", "str"[0]);                      // 预期 null (gscript 字符串不支持索引)
+// 布尔字面量成员访问 → 返回 null
+check("true.x", true.x);                          // 预期 null
+// 复合：字面量成员访问参与运算
+check("算术参与", {a: 5}.a + 10);                  // 预期 15
+check("数组参与", [1, 2, 3][0] + [1, 2, 3][2]);    // 预期 4
+// 赋值给字面量成员访问的结果
+var fromObj = {x: 99}.x;
+check("赋值自字面量", fromObj);                    // 预期 99
+// 字面量成员访问作为函数实参
+function echo(v) { return v; }
+check("字面量作实参", echo({a: 7}.a));             // 预期 7
+
 console.log("=== 测试结束 ===");
