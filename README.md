@@ -512,7 +512,7 @@ return
 # ...,value
 # ...
 store b
-f
+
 # 交换栈顶的值
 # ...,value1,value2
 # ...,value2,value1

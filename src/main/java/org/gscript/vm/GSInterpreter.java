@@ -1,11 +1,15 @@
 package org.gscript.vm;
 
+import org.gscript.compile.gclass.BytecodeEncoder;
+import org.gscript.compile.gclass.EncodedBytecode;
+import org.gscript.compile.gclass.GSClassConstants;
 import org.gscript.vm.debug.DebugAbortException;
 import org.gscript.vm.debug.DebugController;
 import org.gscript.vm.value.*;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public class GSInterpreter {
 
@@ -64,6 +68,20 @@ public class GSInterpreter {
     }
 
     /**
+     * 读 u2（无符号 2 字节，Big-Endian），用于读取 CP 索引和计数值。
+     */
+    private static int readU2(byte[] code, int off) {
+        return ((code[off] & 0xFF) << 8) | (code[off + 1] & 0xFF);
+    }
+
+    /**
+     * 读 s2（有符号 2 字节，Big-Endian），用于读取跳转偏移量。
+     */
+    private static short readS2(byte[] code, int off) {
+        return (short) ((code[off] << 8) | (code[off + 1] & 0xFF));
+    }
+
+    /**
      * 执行js函数
      *
      * @param frame 当前函数帧
@@ -74,100 +92,88 @@ public class GSInterpreter {
         callStack.push(frame);
         try {
             while (!frame.isEvalComplete()) {
-                // 获取当前字节码
-                String[] codes = frame.getCode();
+                // 获取当前字节码（二进制格式：byte[]，code[0]=opcode）
+                byte[] codes = frame.getCode();
                 // 自增程序计数器
                 frame.incrIP();
-                // 命令类型
-                String command = codes[0];
+                // 操作码
+                byte opcode = codes[0];
                 // 调试器挂起检查（命中断点/单步/暂停请求时阻塞，直至 DAP 线程唤醒）
                 if (debugController != null) {
                     debugController.suspendCheck(frame, callStack.size());
                 }
                 try {
-                    switch (command) {
-                        case "const": {
-                            GSValue temp = null;
-                            String type = codes[1];
-                            String value = codes[2];
-                            switch (type) {
-                                case "a": {  // 从域中加载变量到栈顶
-                                    temp = frame.function.getVariableFromScope(value);
-                                    break;
-                                }
-                                case "i": {  // 加载整数到栈顶
-                                    temp = new GSInt(value);
-                                    break;
-                                }
-                                case "f": {  // 加载浮点数到栈顶
-                                    temp = new GSFloat(value);
-                                    break;
-                                }
-                                case "s": {  // 加载字符串到栈顶
-                                    temp = new GSString(value);
-                                    break;
-                                }
-                                case "b": {  // 加载布尔型到栈顶
-                                    temp = GSBool.getGSBool(value);
-                                    break;
-                                }
-                                default: {  // 抛出异常
-                                    throw new Error("VMError: the virtual machine does not support this bytecode");
-                                }
-                            }
-                            stack.push(temp);
+                    switch (opcode) {
+                        // ===== const_* =====
+                        case GSClassConstants.OP_CONST_A: {  // const a <name>  从域中加载变量到栈顶
+                            int cpIdx = readU2(codes, 1);
+                            String name = (String) frame.function.constantPool[cpIdx];
+                            stack.push(frame.function.getVariableFromScope(name));
                             break;
                         }
-                        case "arith_op": {
-                            String type = codes[1];
+                        case GSClassConstants.OP_CONST_I: {  // const i <value> 加载整数到栈顶
+                            int cpIdx = readU2(codes, 1);
+                            stack.push(new GSInt((Integer) frame.function.constantPool[cpIdx]));
+                            break;
+                        }
+                        case GSClassConstants.OP_CONST_F: {  // const f <value> 加载浮点数到栈顶
+                            int cpIdx = readU2(codes, 1);
+                            stack.push(new GSFloat((Float) frame.function.constantPool[cpIdx]));
+                            break;
+                        }
+                        case GSClassConstants.OP_CONST_S: {  // const s <value> 加载字符串到栈顶
+                            int cpIdx = readU2(codes, 1);
+                            stack.push(new GSString((String) frame.function.constantPool[cpIdx]));
+                            break;
+                        }
+                        case GSClassConstants.OP_CONST_B: {  // const b <value> 加载布尔型到栈顶
+                            int cpIdx = readU2(codes, 1);
+                            stack.push(GSBool.getGSBool((Boolean) frame.function.constantPool[cpIdx]));
+                            break;
+                        }
+                        // ===== 算术运算 =====
+                        case GSClassConstants.OP_ARITH_OP: {
+                            byte sub = codes[1];
                             GSValue v2 = stack.pop();
-                            if (type.equals("neg")) {
+                            if (sub == GSClassConstants.ARITH_NEG) {
                                 stack.push(GSValue.neg(v2));
                             } else {
                                 GSValue v1 = stack.pop();
-                                switch (type) {
-                                    case "plus": {
+                                switch (sub) {
+                                    case GSClassConstants.ARITH_PLUS:
                                         stack.push(GSValue.plus(v1, v2));
                                         break;
-                                    }
-                                    case "minus": {
+                                    case GSClassConstants.ARITH_MINUS:
                                         stack.push(GSValue.minus(v1, v2));
                                         break;
-                                    }
-                                    case "mul": {
+                                    case GSClassConstants.ARITH_MUL:
                                         stack.push(GSValue.mul(v1, v2));
                                         break;
-                                    }
-                                    case "div": {
+                                    case GSClassConstants.ARITH_DIV:
                                         stack.push(GSValue.div(v1, v2));
                                         break;
-                                    }
-                                    case "modulo": {
+                                    case GSClassConstants.ARITH_MODULO:
                                         stack.push(GSValue.modulo(v1, v2));
                                         break;
-                                    }
-                                    case "ls": {
+                                    case GSClassConstants.ARITH_LS:
                                         stack.push(GSValue.ls(v1, v2));
                                         break;
-                                    }
-                                    case "rs": {
+                                    case GSClassConstants.ARITH_RS:
                                         stack.push(GSValue.rs(v1, v2));
                                         break;
-                                    }
-                                    default: {  // 抛出异常
+                                    default:
                                         throw new Error("VMError: the virtual machine does not support this bytecode");
-                                    }
                                 }
                             }
                             break;
                         }
-                        case "getfield": {
+                        // ===== 字段访问 =====
+                        case GSClassConstants.OP_GETFIELD: {
                             String name = stack.pop().toStringValue();
                             GSValue objRef = stack.pop();
                             if (objRef.type <= 3) {
                                 stack.push(GSNull.NULL);
                             } else if (objRef.type == 8) {
-                                // TODO 抛出异常
                                 throw new GSException(frame.function.name, frame.getIP() - 1, new GSString("TypeError: Cannot read properties of null"));
                             } else {
                                 GSObject object = (GSObject) objRef;
@@ -175,7 +181,7 @@ public class GSInterpreter {
                             }
                             break;
                         }
-                        case "putfield": {
+                        case GSClassConstants.OP_PUTFIELD: {
                             GSValue objValue = stack.pop();
                             String name = stack.pop().toStringValue();
                             GSValue objRef = stack.pop();
@@ -190,11 +196,12 @@ public class GSInterpreter {
                             stack.push(objValue);
                             break;
                         }
-                        case "copy": {
+                        // ===== 栈操作 =====
+                        case GSClassConstants.OP_COPY: {
                             stack.push(stack.peek());
                             break;
                         }
-                        case "copy2": {
+                        case GSClassConstants.OP_COPY2: {
                             GSValue value2 = stack.pop();
                             GSValue value1 = stack.pop();
                             stack.push(value1);
@@ -203,90 +210,184 @@ public class GSInterpreter {
                             stack.push(value2);
                             break;
                         }
-                        case "comp": {
-                            String type = codes[1];
+                        case GSClassConstants.OP_SWAP: {
+                            GSValue v1 = stack.pop();
+                            GSValue v2 = stack.pop();
+                            stack.push(v1);
+                            stack.push(v2);
+                            break;
+                        }
+                        case GSClassConstants.OP_POP: {
+                            stack.pop();
+                            break;
+                        }
+                        // ===== 比较运算 =====
+                        case GSClassConstants.OP_COMP: {
+                            byte sub = codes[1];
                             GSValue v2 = stack.pop();
                             GSValue v1 = stack.pop();
-                            switch (type) {
-                                case "eq": {  // 等于
+                            switch (sub) {
+                                case GSClassConstants.COMP_EQ:
                                     stack.push(GSBool.getGSBool(GSValue.eq(v1, v2)));
                                     break;
-                                }
-                                case "neq": {  // 不等于
+                                case GSClassConstants.COMP_NEQ:
                                     stack.push(GSBool.getGSBool(!GSValue.eq(v1, v2)));
                                     break;
-                                }
-                                case "seq": {  // 严格等于
+                                case GSClassConstants.COMP_SEQ:
                                     stack.push(GSBool.getGSBool(GSValue.seq(v1, v2)));
                                     break;
-                                }
-                                case "sneq": {  // 严格不等于
+                                case GSClassConstants.COMP_SNEQ:
                                     stack.push(GSBool.getGSBool(!GSValue.seq(v1, v2)));
                                     break;
-                                }
-                                case "gt": {  // 大于
+                                case GSClassConstants.COMP_GT:
                                     stack.push(GSBool.getGSBool(GSValue.gt(v1, v2)));
                                     break;
-                                }
-                                case "ge": {  // 大于等于
+                                case GSClassConstants.COMP_GE:
                                     stack.push(GSBool.getGSBool(GSValue.ge(v1, v2)));
                                     break;
-                                }
-                                case "lt": {  // 小于
+                                case GSClassConstants.COMP_LT:
                                     stack.push(GSBool.getGSBool(GSValue.lt(v1, v2)));
                                     break;
-                                }
-                                case "le": {  // 小于等于
+                                case GSClassConstants.COMP_LE:
                                     stack.push(GSBool.getGSBool(GSValue.le(v1, v2)));
                                     break;
-                                }
-                                default: {
+                                default:
                                     throw new Error("VMError: the virtual machine does not support this bytecode");
-                                }
                             }
                             break;
                         }
-                        case "declare": {
-                            String name = codes[1];
+                        // ===== 变量声明与赋值 =====
+                        case GSClassConstants.OP_DECLARE: {
+                            int cpIdx = readU2(codes, 1);
+                            String name = (String) frame.function.constantPool[cpIdx];
                             frame.function.declareVariableToScope(name);
                             break;
                         }
-                        case "decr": {
+                        case GSClassConstants.OP_STORE: {
+                            int cpIdx = readU2(codes, 1);
+                            String name = (String) frame.function.constantPool[cpIdx];
+                            GSValue value = stack.pop();
+                            frame.function.setVariableToScope(name, value);
+                            break;
+                        }
+                        // ===== 自增自减 =====
+                        case GSClassConstants.OP_INCR: {
+                            GSValue v1 = stack.pop();
+                            stack.push(v1.incr());
+                            break;
+                        }
+                        case GSClassConstants.OP_DECR: {
                             GSValue v1 = stack.pop();
                             stack.push(v1.decr());
                             break;
                         }
-                        case "false_jump": {
+                        // ===== 跳转指令 =====
+                        case GSClassConstants.OP_JUMP: {
+                            short offset = readS2(codes, 1);
+                            int ip = frame.getIP() + offset - 1;
+                            frame.setIp(ip);
+                            break;
+                        }
+                        case GSClassConstants.OP_FALSE_JUMP: {
                             GSValue value = stack.pop();
-                            int offset = Integer.parseInt(codes[1]);
+                            short offset = readS2(codes, 1);
                             if (!value.toBoolean()) {
                                 int ip = frame.getIP() + offset - 1;
                                 frame.setIp(ip);
                             }
                             break;
                         }
-                        case "fstore": {
-                            String name = codes[1];
-                            int offset = Integer.parseInt(codes[2]);
-                            GSValue value;
-                            // 传来的参数可能为空，也就是调用的时候少传
-                            if (offset < args.size()) {
-                                value = args.get(offset);
-                            } else {
-                                value = GSNull.NULL;
-                            }
-                            // 关联变量值到当前域
-                            frame.function.assignmentVariableToScope(name, value);
+                        case GSClassConstants.OP_LOOP_JUMP: {
+                            frame.function.freeToSpecScope("loop");
+                            short offset = readS2(codes, 1);
+                            int ip = frame.getIP() + offset - 1;
+                            frame.setIp(ip);
                             break;
                         }
-                        case "fundef": {
-                            String name = codes[1];
-                            int len = Integer.parseInt(codes[2]);
+                        case GSClassConstants.OP_BLOCK_JUMP: {
+                            frame.function.freeToSpecScope("block");
+                            short offset = readS2(codes, 1);
+                            int ip = frame.getIP() + offset - 1;
+                            frame.setIp(ip);
+                            break;
+                        }
+                        // ===== 特殊常量 =====
+                        case GSClassConstants.OP_LDA_NULL: {
+                            stack.push(GSNull.NULL);
+                            break;
+                        }
+                        case GSClassConstants.OP_LDA_NAN: {
+                            stack.push(GSNaN.NAN);
+                            break;
+                        }
+                        // ===== 域操作 =====
+                        case GSClassConstants.OP_PUSHENV: {
+                            byte sub = codes[1];
+                            String type = GSClassConstants.PUSHENV_SUB_REV.get(sub);
+                            String name = frame.function.name;
+                            GSEnv env = frame.function.addEnv(type);
+                            // 创建函数域的时候，如果不是匿名函数，把函数本身加入到域里面
+                            if (sub == GSClassConstants.PUSHENV_FUNCTION) {
+                                // 隐式入参this
+                                env.addVariableValue("this", args.get(0));
+                                // 入参函数名指向函数本身
+                                if (!"null".equals(name)) {
+                                    env.addVariableValue(name, frame.function);
+                                }
+                            }
+                            frame.function.setEnv(env);
+                            break;
+                        }
+                        case GSClassConstants.OP_POPENV: {
+                            byte sub = codes[1];
+                            String name = GSClassConstants.POPENV_SUB_REV.get(sub);
+                            frame.function.freeToSpecScope(name);
+                            break;
+                        }
+                        // ===== 关系运算 =====
+                        case GSClassConstants.OP_RELA_OP: {
+                            byte sub = codes[1];
+                            GSValue v2 = stack.pop();
+                            switch (sub) {
+                                case GSClassConstants.RELA_B_AND: {
+                                    GSValue v1 = stack.pop();
+                                    stack.push(GSValue.b_and(v1, v2));
+                                    break;
+                                }
+                                case GSClassConstants.RELA_B_OR: {
+                                    GSValue v1 = stack.pop();
+                                    stack.push(GSValue.b_or(v1, v2));
+                                    break;
+                                }
+                                case GSClassConstants.RELA_B_XOR: {
+                                    GSValue v1 = stack.pop();
+                                    stack.push(GSValue.b_xor(v1, v2));
+                                    break;
+                                }
+                                case GSClassConstants.RELA_B_NOT: {
+                                    stack.push(GSValue.b_not(v2));
+                                    break;
+                                }
+                                case GSClassConstants.RELA_L_NOT: {
+                                    stack.push(GSValue.l_not(v2));
+                                    break;
+                                }
+                                default:
+                                    throw new Error("VMError: the virtual machine does not support this bytecode");
+                            }
+                            break;
+                        }
+                        // ===== 函数定义与调用 =====
+                        case GSClassConstants.OP_FUNDEF: {
+                            int cpIdx = readU2(codes, 1);
+                            String name = (String) frame.function.constantPool[cpIdx];
+                            int len = readU2(codes, 3);
                             int ip = frame.getIP();
                             GSEnv env = frame.function.getEnv();
-                            String[][] src = new String[len][];
+                            byte[][] src = new byte[len][];
                             System.arraycopy(frame.function.src, ip, src, 0, len);
-                            GSFunction function = new GSFunction(name, src, env);
+                            // 子函数共享父函数的 constantPool 引用（同文件函数共享 CP）
+                            GSFunction function = new GSFunction(name, src, frame.function.constantPool, env);
                             // 调试器源码映射：子函数共享顶级 sourceLines 数组（不切片），
                             // baseOffset = 父函数.baseOffset + 切片起始IP，使任意帧 IP 可映射回源码行
                             function.sourceLines = frame.function.sourceLines;
@@ -297,14 +398,23 @@ public class GSInterpreter {
                             frame.setIp(ip + len);
                             break;
                         }
-                        case "incr": {
-                            GSValue v1 = stack.pop();
-                            stack.push(v1.incr());
+                        case GSClassConstants.OP_FSTORE: {
+                            int cpIdx = readU2(codes, 1);
+                            String name = (String) frame.function.constantPool[cpIdx];
+                            int argIdx = readU2(codes, 3);
+                            GSValue value;
+                            // 传来的参数可能为空，也就是调用的时候少传
+                            if (argIdx < args.size()) {
+                                value = args.get(argIdx);
+                            } else {
+                                value = GSNull.NULL;
+                            }
+                            // 关联变量值到当前域
+                            frame.function.assignmentVariableToScope(name, value);
                             break;
                         }
-                        case "invoke": {
-                            // 取变量值
-                            int argCount = Integer.parseInt(codes[1]);
+                        case GSClassConstants.OP_INVOKE: {
+                            int argCount = readU2(codes, 1);
                             ArrayList<GSValue> callArgs = new ArrayList<>();
                             // 预占位this
                             callArgs.add(null);
@@ -336,50 +446,10 @@ public class GSInterpreter {
                             }
                             break;
                         }
-                        case "loop_jump": {
-                            frame.function.freeToSpecScope("loop");
-                            int offset = Integer.parseInt(codes[1]);
-                            int ip = frame.getIP() + offset - 1;
-                            frame.setIp(ip);
-                            break;
-                        }
-                        case "block_jump": {
-                            frame.function.freeToSpecScope("block");
-                            int offset = Integer.parseInt(codes[1]);
-                            int ip = frame.getIP() + offset - 1;
-                            frame.setIp(ip);
-                            break;
-                        }
-                        case "jump": {
-                            int offset = Integer.parseInt(codes[1]);
-                            int ip = frame.getIP() + offset - 1;
-                            frame.setIp(ip);
-                            break;
-                        }
-                        case "lda_null": {
-                            stack.push(GSNull.NULL);
-                            break;
-                        }
-                        case "lda_nan": {
-                            stack.push(GSNaN.NAN);
-                            break;
-                        }
-                        case "new": {
-                            String type = codes[1];
-                            if ("Object".equals(type)) {
-                                stack.push(new GSObject());
-                            } else if ("Array".equals(type)) {
-                                stack.push(new GSArray());
-                            } else {
-                                // TODO 抛出异常
-                            }
-                            break;
-                        }
-                        case "constructor": {
+                        case GSClassConstants.OP_CONSTRUCTOR: {
                             // 默认对象
                             GSObject object = new GSObject();
-                            // 取变量值
-                            int argCount = Integer.parseInt(codes[1]);
+                            int argCount = readU2(codes, 1);
                             ArrayList<GSValue> callArgs = new ArrayList<>();
                             // 预占位this
                             callArgs.add(null);
@@ -422,68 +492,7 @@ public class GSInterpreter {
                             }
                             break;
                         }
-                        case "pop": {
-                            stack.pop();
-                            break;
-                        }
-                        case "popenv": {
-                            String name = codes[1];
-                            frame.function.freeToSpecScope(name);
-                            break;
-                        }
-                        case "pushenv": {
-                            // 域类型
-                            String type = codes[1];
-                            // 函数名称
-                            String name = frame.function.name;
-                            // 增加域
-                            GSEnv env = frame.function.addEnv(type);
-                            // 创建函数域的时候，如果不是匿名函数，把函数本身加入到域里面
-                            if ("function".equals(type)) {
-                                // 隐式入参this
-                                env.addVariableValue("this", args.get(0));
-                                // 入参函数名指向函数本身
-                                if (!"null".equals(name)) {
-                                    env.addVariableValue(name, frame.function);
-                                }
-                            }
-                            frame.function.setEnv(env);
-                            break;
-                        }
-                        case "rela_op": {
-                            String type = codes[1];
-                            GSValue v2 = stack.pop();
-                            switch (type) {
-                                case "b_and": {
-                                    GSValue v1 = stack.pop();
-                                    stack.push(GSValue.b_and(v1, v2));
-                                    break;
-                                }
-                                case "b_or": {
-                                    GSValue v1 = stack.pop();
-                                    stack.push(GSValue.b_or(v1, v2));
-                                    break;
-                                }
-                                case "b_xor": {
-                                    GSValue v1 = stack.pop();
-                                    stack.push(GSValue.b_xor(v1, v2));
-                                    break;
-                                }
-                                case "b_not": {
-                                    stack.push(GSValue.b_not(v2));
-                                    break;
-                                }
-                                case "l_not": {
-                                    stack.push(GSValue.l_not(v2));
-                                    break;
-                                }
-                                default: {
-                                    throw new Error("VMError: the virtual machine does not support this bytecode");
-                                }
-                            }
-                            break;
-                        }
-                        case "return": {
+                        case GSClassConstants.OP_RETURN: {
                             int retIp = frame.getIP() - 1;
                             GSExceptionMonitor finMonitor = frame.findReturnFinallyTarget(retIp);
                             if (finMonitor != null) {
@@ -498,39 +507,38 @@ public class GSInterpreter {
                             frame.destroy();
                             return;
                         }
-                        case "store": {
-                            String name = codes[1];
-                            GSValue value = stack.pop();
-                            frame.function.setVariableToScope(name, value);
+                        // ===== 对象创建 =====
+                        case GSClassConstants.OP_NEW: {
+                            byte sub = codes[1];
+                            if (sub == GSClassConstants.NEW_OBJECT) {
+                                stack.push(new GSObject());
+                            } else if (sub == GSClassConstants.NEW_ARRAY) {
+                                stack.push(new GSArray());
+                            } else {
+                                // TODO 抛出异常
+                            }
                             break;
                         }
-                        case "swap": {
-                            GSValue v1 = stack.pop();
-                            GSValue v2 = stack.pop();
-                            // 交换栈顶两个值：原栈顶 v1 应放到次顶，原次顶 v2 应放到栈顶
-                            stack.push(v1);
-                            stack.push(v2);
-                            break;
-                        }
-                        case "throw": {
+                        // ===== 异常处理 =====
+                        case GSClassConstants.OP_THROW: {
                             GSValue origin = stack.pop();
                             throw new GSException(frame.function.name, frame.getIP() - 1, origin);
                         }
-                        case "try_start": {
+                        case GSClassConstants.OP_TRY_START: {
                             // 往当前frame的异常监视表里面增加监视
-                            int tryStart = Integer.parseInt(codes[1]);
-                            int tryEnd = Integer.parseInt(codes[2]);
-                            int catchStart = Integer.parseInt(codes[3]);
-                            int finallyStart = Integer.parseInt(codes[4]);
+                            int tryStart = readS2(codes, 1);
+                            int tryEnd = readS2(codes, 3);
+                            int catchStart = readS2(codes, 5);
+                            int finallyStart = readS2(codes, 7);
                             frame.addGSExceptionMonitor(tryStart, tryEnd, catchStart, finallyStart);
                             break;
                         }
-                        case "try_end": {
+                        case GSClassConstants.OP_TRY_END: {
                             // 销毁当前监视表的当前异常监视
                             frame.tryEndCheck();
                             break;
                         }
-                        case "finally_check": {
+                        case GSClassConstants.OP_FINALLY_CHECK: {
                             int checkIp = frame.getIP() - 1;
                             // 检测是否向上抛出异常（finallyCheck 内部 pop monitor，若 throwException != null 则抛出）
                             frame.finallyCheck();
@@ -553,6 +561,8 @@ public class GSInterpreter {
                             }
                             break;
                         }
+                        case GSClassConstants.OP_NOP:
+                            break;
                         default: {  // 这里要报错，不支持的字节码
                             break;
                         }
@@ -590,7 +600,7 @@ public class GSInterpreter {
     }
 
     /**
-     * 执行字节码（带源码映射与文件路径，供调试器使用）。
+     * 执行字节码（二进制格式，带源码映射与文件路径，供调试器使用）。
      *
      * <p>创建顶级匿名函数并执行。源码映射数组 {@code sourceLines} 与 {@code src} 平行，
      * 存入匿名函数的 {@link org.gscript.vm.value.GSFunction#sourceLines} 字段；
@@ -600,26 +610,13 @@ public class GSInterpreter {
      * <p>多文件调试时，对同一 {@code GSInterpreter} 实例多次调用本方法，每次传入不同文件，
      * 共享 global env——后加载文件定义同名函数会覆盖先加载的（"后面覆盖前面"语义）。
      *
-     * @param src         字节码
-     * @param sourceLines 字节码索引对应的源码行号数组（与 src 平行，1-based，0=未设置），可为 null
-     * @param sourcePath  源文件路径（调试用，区分多文件），可为 null
+     * @param codes         二进制字节码（byte[][]，每条指令为 byte[]，code[0]=opcode）
+     * @param constantPool  常量池（Object[]，索引从 1 开始，0 不用）
+     * @param sourceLines   字节码索引对应的源码行号数组（与 codes 平行，1-based，0=未设置），可为 null
+     * @param sourcePath    源文件路径（调试用，区分多文件），可为 null
      */
-    public void eval(String[] src, int[] sourceLines, String sourcePath) {
-        String[][] codes = new String[src.length][];
-        for (int i = 0; i < src.length; i++) {
-            String code = src[i];
-            if (code.length() > 5 && "const".equals(code.substring(0, 5))) {
-                int start = code.indexOf(' ', 0);
-                start += 1;
-                String v1 = code.substring(start, start + 1);
-                start += 2;
-                String v2 = code.substring(start);
-                codes[i] = new String[]{"const", v1, v2};
-            } else {
-                codes[i] = code.split(" ");
-            }
-        }
-        GSFunction anonymous = new GSFunction("null", codes, global);
+    public void eval(byte[][] codes, Object[] constantPool, int[] sourceLines, String sourcePath) {
+        GSFunction anonymous = new GSFunction("null", codes, constantPool, global);
         anonymous.sourceLines = sourceLines;
         anonymous.sourcePath = sourcePath;
         anonymous.baseOffset = 0;
@@ -631,6 +628,22 @@ public class GSInterpreter {
         } catch (GSException e) {
             System.out.println(String.format("Uncaught Error: %s at <anonymous>:%d", e.origin.toStringValue(), e.getIp()));
         }
+    }
+
+    /**
+     * 执行字节码（文本 1D 格式，带源码映射与文件路径）。
+     *
+     * <p>内部用 {@link BytecodeEncoder} 将文本字节码编码为二进制内存表示后，
+     * 委托给 {@link #eval(byte[][], Object[], int[], String)} 执行。
+     *
+     * @param src         文本字节码（如 "const s hello world"、"arith_op plus"）
+     * @param sourceLines 字节码索引对应的源码行号数组（与 src 平行，1-based，0=未设置），可为 null
+     * @param sourcePath  源文件路径（调试用，区分多文件），可为 null
+     */
+    public void eval(String[] src, int[] sourceLines, String sourcePath) {
+        BytecodeEncoder encoder = new BytecodeEncoder();
+        EncodedBytecode encoded = encoder.encode(Arrays.asList(src));
+        eval(encoded.instructions, encoded.constantPool, sourceLines, sourcePath);
     }
 
     /**

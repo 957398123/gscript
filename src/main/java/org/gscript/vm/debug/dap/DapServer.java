@@ -8,6 +8,10 @@ import com.google.gson.JsonParser;
 import org.gscript.compile.Lexer;
 import org.gscript.compile.Parser;
 import org.gscript.compile.gen.ByteCodeGenerator;
+import org.gscript.compile.gclass.BytecodeEncoder;
+import org.gscript.compile.gclass.EncodedBytecode;
+import org.gscript.compile.gclass.GSClassData;
+import org.gscript.compile.gclass.GSClassReader;
 import org.gscript.compile.node.Node;
 import org.gscript.compile.token.GSToken;
 import org.gscript.vm.GSEnv;
@@ -31,6 +35,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -84,9 +89,14 @@ public class DapServer implements DebugController.SuspendListener {
     private final List<String> scriptPaths = new ArrayList<>();
     /**
      * 编译后的字节码列表（与 scriptPaths 一一对应，configurationDone 时填充）。
-     * 每个元素是一个文件编译后的字节码数组。
+     * 每个元素是一个文件编译后的二进制字节码数组（byte[][]，每条指令为 byte[]）。
+     * 统一使用二进制格式：.script 编译后用 BytecodeEncoder 编码，.gclass 加载后直接是 byte[][]。
      */
-    private final List<String[]> compiledBytecodes = new ArrayList<>();
+    private final List<byte[][]> compiledBytecodes = new ArrayList<>();
+    /**
+     * 常量池列表（与 compiledBytecodes 一一对应，同文件函数共享引用）。
+     */
+    private final List<Object[]> compiledConstantPools = new ArrayList<>();
     /**
      * 源码行号映射列表（与 scriptPaths 一一对应，与各自字节码平行）。
      */
@@ -445,6 +455,7 @@ public class DapServer implements DebugController.SuspendListener {
         started = true;
         log("[FLOW] configurationDone: 开始编译 scriptPaths=" + scriptPaths);
         compiledBytecodes.clear();
+        compiledConstantPools.clear();
         compiledSourceLines.clear();
         try {
             for (String path : scriptPaths) {
@@ -459,7 +470,7 @@ public class DapServer implements DebugController.SuspendListener {
             return;
         }
         int totalLen = 0;
-        for (String[] bc : compiledBytecodes) {
+        for (byte[][] bc : compiledBytecodes) {
             totalLen += bc.length;
         }
         log("[FLOW] 编译成功，共 " + compiledBytecodes.size() + " 个文件，总 bytecode 长度=" + totalLen + "，启动解释器线程");
@@ -705,8 +716,34 @@ public class DapServer implements DebugController.SuspendListener {
 
     /**
      * 编译脚本，生成字节码与源码行号映射，追加到编译列表（支持多文件）。
+     *
+     * <p>.gclass 缓存优先：若 .gclass 文件存在且比 .script 新（或 .script 不存在），
+     * 直接用 {@link GSClassReader} 反序列化加载，跳过编译；否则编译 .script 源码。
+     * 加载/编译后统一转为 {@code byte[][]} + {@code Object[]} 常量池，存入
+     * {@link #compiledBytecodes} 与 {@link #compiledConstantPools}。
      */
     private void compileScript(String path) throws Exception {
+        // .gclass 缓存检查：路径同目录，扩展名替换为 .gclass
+        String gclassPath = path.replaceAll("\\.script$", ".gclass");
+        File gclassFile = new File(gclassPath);
+        File scriptFile = new File(path);
+        if (gclassFile.exists() &&
+                (!scriptFile.exists() || gclassFile.lastModified() >= scriptFile.lastModified())) {
+            // 从 .gclass 加载
+            int gclassLen;
+            try (InputStream gin = Files.newInputStream(gclassFile.toPath())) {
+                GSClassReader reader = new GSClassReader();
+                GSClassData data = reader.deserialize(gin);
+                compiledBytecodes.add(data.src);           // byte[][] 直接用
+                compiledConstantPools.add(data.constantPool);  // 常量池
+                compiledSourceLines.add(data.sourceLines);
+                gclassLen = data.src.length;
+            }
+            log("[FLOW] 从 gclass 加载: " + gclassPath + "，bytecode 长度=" + gclassLen);
+            return;
+        }
+
+        // 回退：编译 .script 源码
         String content = new String(Files.readAllBytes(Paths.get(path)), StandardCharsets.UTF_8);
         Lexer lexer = new Lexer();
         List<GSToken> tokens = lexer.tokenize(content);
@@ -714,16 +751,20 @@ public class DapServer implements DebugController.SuspendListener {
         Node program = parser.parseProgram();
         ByteCodeGenerator gen = new ByteCodeGenerator();
         program.accept(gen);
-        String[] bc = gen.getByteCode().toArray(new String[0]);
+        String[] bc1d = gen.getByteCode().toArray(new String[0]);
+        // 用 BytecodeEncoder 编码为二进制（byte[][] + Object[] 常量池）
+        BytecodeEncoder encoder = new BytecodeEncoder();
+        EncodedBytecode encoded = encoder.encode(Arrays.asList(bc1d));
         ArrayList<Integer> sl = gen.getSourceLines();
         int[] slArr = new int[sl.size()];
         for (int i = 0; i < sl.size(); i++) {
             slArr[i] = sl.get(i);
         }
         // 追加到列表（与 scriptPaths 顺序一一对应）
-        compiledBytecodes.add(bc);
+        compiledBytecodes.add(encoded.instructions);
+        compiledConstantPools.add(encoded.constantPool);
         compiledSourceLines.add(slArr);
-        log("[FLOW] 编译完成: " + path + "，bytecode 长度=" + bc.length);
+        log("[FLOW] 编译完成: " + path + "，bytecode 长度=" + encoded.instructions.length);
     }
 
     /**
@@ -745,14 +786,16 @@ public class DapServer implements DebugController.SuspendListener {
             try {
                 // 捕获列表快照（避免 lambda 闭包直接捕获可变外部列表）
                 final List<String> paths = new ArrayList<>(scriptPaths);
-                final List<String[]> bcs = new ArrayList<>(compiledBytecodes);
+                final List<byte[][]> bcs = new ArrayList<>(compiledBytecodes);
+                final List<Object[]> cps = new ArrayList<>(compiledConstantPools);
                 final List<int[]> sls = new ArrayList<>(compiledSourceLines);
                 for (int i = 0; i < paths.size(); i++) {
-                    String[] bc = bcs.get(i);
+                    byte[][] bc = bcs.get(i);
+                    Object[] cp = cps.get(i);
                     int[] sl = sls.get(i);
                     String path = paths.get(i);
                     log("[FLOW] 解释器线程开始 eval 文件[" + i + "]: " + path + "，bytecode 长度=" + bc.length);
-                    interpreter.eval(bc, sl, path);
+                    interpreter.eval(bc, cp, sl, path);
                     log("[FLOW] 解释器文件[" + i + "] eval 正常结束: " + path);
                 }
                 log("[FLOW] 所有文件 eval 正常结束");

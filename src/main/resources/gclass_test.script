@@ -1,0 +1,43 @@
+// gclass 序列化测试脚本 - 覆盖各种常量类型与字符串含空格场景
+
+// 1. 字符串含空格（const s 核心测试点）
+var msg = "hello world with spaces";
+console.log(msg);
+
+// 2. 各种常量类型
+var i = 42;
+var f = 3.14;
+var b = true;
+var n = null;
+console.log(i);
+console.log(f);
+console.log(b);
+console.log(n);
+
+// 3. 负数与算术
+var neg = -5;
+var sum = 10 + neg;
+console.log(sum);
+
+// 4. 字符串拼接（含空格的字符串）
+var greeting = "A says: " + "world";
+console.log(greeting);
+
+// 5. 函数定义与调用
+function add(a, b) {
+    return a + b;
+}
+console.log(add(3, 4));
+
+// 6. 布尔运算
+var flag = 1 < 2;
+console.log(flag);
+var flag2 = !flag;
+console.log(flag2);
+
+// 7. try/catch
+try {
+    throw "error occurred";
+} catch (e) {
+    console.log(e);
+}

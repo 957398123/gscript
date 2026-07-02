@@ -15,9 +15,22 @@ public class GSFunction extends GSObject {
     public GSEnv env;
 
     /**
-     * 函数字节码
+     * 函数字节码（二进制格式：每条指令为 byte[]，code[0]=opcode，后续为操作数）。
+     *
+     * <p>由 {@link org.gscript.compile.gclass.BytecodeEncoder} 编码，
+     * 或由 {@link org.gscript.compile.gclass.GSClassReader} 从 .gclass 文件反序列化得到。
+     * 解释器主循环用 {@code switch(byte opcode)} 分发，操作数通过常量池索引读取。
      */
-    public String src[][];
+    public byte[][] src;
+
+    /**
+     * 常量池（Object[]，索引从 1 开始，0 不用）。
+     *
+     * <p>同文件所有函数共享同一个常量池引用——子函数通过 fundef 切片继承父函数的 cp。
+     * 元素类型：String（UTF8）/ Integer（Int）/ Float（Float）/ Boolean（Bool）。
+     * 解释器执行 const 系列/declare/store/fundef/fstore 时按 CP 索引取值。
+     */
+    public Object[] constantPool;
 
     /**
      * 本函数字节码在顶级字节码中的起始偏移（用于调试器把任意帧的 IP 映射回源码行）。
@@ -48,14 +61,16 @@ public class GSFunction extends GSObject {
     /**
      * 创建一个函数实例
      *
-     * @param name 函数名称
-     * @param env  函数创建时的静态作用域
-     * @param src  函数字节码
+     * @param name         函数名称
+     * @param src          函数字节码（二进制 byte[][]）
+     * @param constantPool 常量池（Object[]，同文件函数共享引用）
+     * @param env          函数创建时的静态作用域
      */
-    public GSFunction(String name, String[][] src, GSEnv env) {
+    public GSFunction(String name, byte[][] src, Object[] constantPool, GSEnv env) {
         this.type = 6;
         this.name = name;
         this.src = src;
+        this.constantPool = constantPool;
         this.env = env;
     }
 

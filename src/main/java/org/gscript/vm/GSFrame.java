@@ -46,11 +46,11 @@ public class GSFrame {
     }
 
     /**
-     * 返回当前要执行的字节码
+     * 返回当前要执行的字节码（二进制格式：byte[]，code[0]=opcode）
      *
-     * @return
+     * @return 二进制指令数组
      */
-    public String[] getCode() {
+    public byte[] getCode() {
         return this.function.src[ip];
     }
 
