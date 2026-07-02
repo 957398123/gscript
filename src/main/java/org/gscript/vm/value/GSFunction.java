@@ -37,6 +37,15 @@ public class GSFunction extends GSObject {
     public int[] sourceLines = null;
 
     /**
+     * 函数所属源文件路径（调试用，唯一标识文件）。
+     *
+     * <p>顶级匿名函数在 eval 时设置；子函数通过 fundef 继承父函数的 sourcePath。
+     * 非调试模式或单文件兼容场景为 null。调试器据此区分断点所属文件与 stackTrace 报告的源文件，
+     * 支持多文件调试（跨文件断点、跨文件调用栈、后加载文件覆盖前文件同名函数）。
+     */
+    public String sourcePath = null;
+
+    /**
      * 创建一个函数实例
      *
      * @param name 函数名称

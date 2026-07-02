@@ -80,17 +80,18 @@ class GscriptDebugConfigurationProvider {
      * @returns {Promise<vscode.DebugConfiguration>}
      */
     async resolveDebugConfiguration(folder, config, token) {
-        // 若用户直接按 F5 未选配置，补全为 launch 当前文件
+        // 若用户直接按 F5 未选配置，补全为 launch 当前文件（files 数组）
         if (!config.type && !config.request && !config.name) {
             config.type = 'gscript';
             config.request = 'launch';
             config.name = 'Launch gscript';
-            config.program = '${file}';
+            config.files = ['${file}'];
             config.stopOnEntry = false;
         }
         if (config.request === 'launch') {
-            if (!config.program) {
-                await vscode.window.showErrorMessage('请指定要调试的脚本路径 (program)');
+            // files 优先，回退 program（单文件兼容）；两者都没有则报错
+            if (!config.files && !config.program) {
+                await vscode.window.showErrorMessage('请指定要调试的脚本路径（files 数组或 program）');
                 return undefined;
             }
         }

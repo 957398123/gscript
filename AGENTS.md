@@ -12,7 +12,7 @@
 *   `/src/main/java/org/gscript/vm` - gscript运行时代码
 *   `/src/main/java/org/gscript/vm/GSInterpreter.java` - gscript运行时解释器类
 *   `/src/main/java/org/gscript/TestScript.java` - 测试类入口
-*   `/src/main/resources` - 测试script脚本目录
+*   `/src/main/resources` - vscode测试script脚本用例目录
 *   `/README.md` - 项目说明书，包括了语法定义和字节码定义
 
 ---

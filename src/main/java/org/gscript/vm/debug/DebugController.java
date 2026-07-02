@@ -5,7 +5,9 @@ import org.gscript.vm.GSFrame;
 import org.gscript.vm.value.GSFunction;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -44,8 +46,13 @@ public class DebugController {
     /** 单步模式：步出 */
     public static final int STEP_OUT = 3;
 
-    /** 当前断点行号集合（源码行，1-based） */
-    private final Set<Integer> breakpoints = new HashSet<>();
+    /**
+     * 当前断点集合：文件路径 → 该文件的断点行号集合（源码行，1-based）。
+     *
+     * <p>多文件调试时按文件路径区分断点，避免不同文件相同行号互相干扰。
+     * 单文件场景只有一个 key。key 为 null 时表示非多文件调试的兼容断点。
+     */
+    private final Map<String, Set<Integer>> breakpoints = new HashMap<>();
 
     /** 当前单步模式 */
     private int stepMode = STEP_NONE;
@@ -53,6 +60,8 @@ public class DebugController {
     private int stepDepth = 0;
     /** 单步起始时的源码行号（用于检测行号变化） */
     private int stepOriginLine = 0;
+    /** 单步起始时的源文件路径（用于检测跨文件行号相同的情况） */
+    private String stepOriginPath = null;
 
     /**
      * 每帧的"上一条已执行指令源码行号"（断点重触发避免）。
@@ -115,15 +124,17 @@ public class DebugController {
     // =========================================================================
 
     /**
-     * 设置断点行号集合（整体替换）。
+     * 设置指定文件的断点行号集合（整体替换该文件的断点）。
      *
-     * @param lines 断点行号集合（1-based），可为空
+     * @param path  源文件路径（断点所属文件，作为 key 区分多文件），可为 null
+     * @param lines 断点行号集合（1-based），可为空或 null（清空该文件断点）
      */
-    public void setBreakpoints(Collection<Integer> lines) {
+    public void setBreakpoints(String path, Collection<Integer> lines) {
         synchronized (lock) {
-            breakpoints.clear();
-            if (lines != null) {
-                breakpoints.addAll(lines);
+            if (lines == null || lines.isEmpty()) {
+                breakpoints.remove(path);
+            } else {
+                breakpoints.put(path, new HashSet<>(lines));
             }
         }
     }
@@ -163,6 +174,7 @@ public class DebugController {
             stepMode = mode;
             stepDepth = suspendedDepth;
             stepOriginLine = suspendedLine;
+            stepOriginPath = suspendedFrame != null ? suspendedFrame.function.sourcePath : null;
             suspended = false;
             lock.notifyAll();
         }
@@ -230,25 +242,37 @@ public class DebugController {
                 reason = "pause";
                 pauseRequested = false;
             }
-            // 3. 断点命中（行号变化 + 该行是断点）
-            else if (line > 0 && line != prevLine && breakpoints.contains(line)) {
-                shouldSuspend = true;
-                reason = "breakpoint";
+            // 3. 断点命中（行号变化 + 当前文件该行是断点）
+            //    按当前帧函数所属文件取断点集合，避免不同文件相同行号互相干扰
+            else if (line > 0 && line != prevLine) {
+                Set<Integer> bps = breakpoints.get(frame.function.sourcePath);
+                if (bps != null && bps.contains(line)) {
+                    shouldSuspend = true;
+                    reason = "breakpoint";
+                }
             }
             // 4. 单步命中
             else if (stepMode != STEP_NONE) {
                 switch (stepMode) {
                     case STEP_IN: {
-                        // 任意帧，行号变化即挂起
-                        if (line > 0 && line != stepOriginLine) {
+                        // 任意帧，行号变化或文件变化即挂起
+                        // （跨文件调用时行号可能相同，如 multi_b:9 → multi_a:9，需额外比较文件路径）
+                        String currentPath = frame.function.sourcePath;
+                        boolean pathChanged = (stepOriginPath == null) ? currentPath != null
+                                : !stepOriginPath.equals(currentPath);
+                        if (line > 0 && (line != stepOriginLine || pathChanged)) {
                             shouldSuspend = true;
                             reason = "step";
                         }
                         break;
                     }
                     case STEP_OVER: {
-                        // 深度不超过起始深度（跳过函数调用内部），且行号变化
-                        if (depth <= stepDepth && line > 0 && line != stepOriginLine) {
+                        // 深度不超过起始深度（跳过函数调用内部），且行号变化或文件变化
+                        String currentPath = frame.function.sourcePath;
+                        boolean pathChanged = (stepOriginPath == null) ? currentPath != null
+                                : !stepOriginPath.equals(currentPath);
+                        if (depth <= stepDepth && line > 0
+                                && (line != stepOriginLine || pathChanged)) {
                             shouldSuspend = true;
                             reason = "step";
                         }

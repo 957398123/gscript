@@ -31,13 +31,17 @@
         ],
         "configurationAttributes": {
           "launch": {
-            "required": [
-              "program"
-            ],
+            "required": [],
             "properties": {
               "program": {
                 "type": "string",
-                "description": "gscript 脚本文件的绝对路径"
+                "description": "gscript 脚本文件的绝对路径（单文件兼容，与 files 二选一，files 优先）"
+              },
+              "files": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "gscript 脚本文件路径数组（按顺序加载 eval，共享 global 域，后加载文件覆盖前文件同名函数）",
+                "default": []
               },
               "stopOnEntry": {
                 "type": "boolean",
@@ -76,8 +80,8 @@
           {
             "type": "gscript",
             "request": "launch",
-            "name": "Launch gscript",
-            "program": "${file}",
+            "name": "Launch gscript (current file)",
+            "files": ["${file}"],
             "stopOnEntry": false
           },
           {
@@ -90,13 +94,24 @@
         ],
         "configurationSnippets": [
           {
-            "label": "gscript: Launch Script",
-            "description": "启动并调试一个 gscript 脚本",
+            "label": "gscript: Launch Current File",
+            "description": "启动并调试当前 gscript 脚本",
             "body": {
               "type": "gscript",
               "request": "launch",
               "name": "Launch gscript",
-              "program": "^\"\\${file}\"",
+              "files": ["^\"\\${file}\""],
+              "stopOnEntry": false
+            }
+          },
+          {
+            "label": "gscript: Launch Multiple Files",
+            "description": "按顺序加载并调试多个 gscript 脚本（后文件覆盖前文件同名函数）",
+            "body": {
+              "type": "gscript",
+              "request": "launch",
+              "name": "Launch gscript (multi-file)",
+              "files": ["^\"\\${file}\""],
               "stopOnEntry": false
             }
           },

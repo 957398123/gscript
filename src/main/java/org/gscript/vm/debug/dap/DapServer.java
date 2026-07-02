@@ -77,12 +77,20 @@ public class DapServer implements DebugController.SuspendListener {
     private GSInterpreter interpreter;
     /** 调试控制器（launch/attach 时创建） */
     private DebugController controller;
-    /** 脚本文件路径（来自 launch/attach 参数） */
-    private String scriptPath;
-    /** 字节码（编译后） */
-    private String[] bytecode;
-    /** 源码行号映射（编译后，与字节码平行） */
-    private int[] sourceLines;
+    /**
+     * 脚本文件路径列表（来自 launch/attach 参数的 files 数组，或 program 单文件兼容）。
+     * 多文件按顺序加载 eval，共享同一 global 域，后加载文件覆盖前文件同名函数。
+     */
+    private final List<String> scriptPaths = new ArrayList<>();
+    /**
+     * 编译后的字节码列表（与 scriptPaths 一一对应，configurationDone 时填充）。
+     * 每个元素是一个文件编译后的字节码数组。
+     */
+    private final List<String[]> compiledBytecodes = new ArrayList<>();
+    /**
+     * 源码行号映射列表（与 scriptPaths 一一对应，与各自字节码平行）。
+     */
+    private final List<int[]> compiledSourceLines = new ArrayList<>();
 
     /** 变量引用映射：refId → GSEnv（作用域）或 GSObject（可展开变量） */
     private final Map<Integer, Object> varRefs = new HashMap<>();
@@ -367,11 +375,24 @@ public class DapServer implements DebugController.SuspendListener {
 
     /** launch / attach：记录脚本路径，创建调试控制器 */
     private void handleLaunchAttach(int requestSeq, JsonObject args, String command) {
-        // 获取脚本路径
-        if (args.has("program")) {
-            scriptPath = args.get("program").getAsString();
+        // 获取脚本路径列表：优先 files 数组（多文件），回退 program（单文件兼容）
+        // 路径规范化（canonicalize）确保与 setBreakpoints 的 source.path 匹配
+        // （VSCode 的 ${workspaceFolder} 解析后可能是混合斜杠，而 source.path 是规范化的反斜杠）
+        scriptPaths.clear();
+        if (args.has("files") && args.get("files").isJsonArray()) {
+            for (JsonElement fe : args.getAsJsonArray("files")) {
+                String p = fe.getAsString();
+                if (p != null && !p.isEmpty()) {
+                    scriptPaths.add(canonicalize(p));
+                }
+            }
+        } else if (args.has("program")) {
+            String p = args.get("program").getAsString();
+            if (p != null && !p.isEmpty()) {
+                scriptPaths.add(canonicalize(p));
+            }
         }
-        log("[FLOW] " + command + ": scriptPath=" + scriptPath + " args=" + gson.toJson(args));
+        log("[FLOW] " + command + ": scriptPaths=" + scriptPaths + " args=" + gson.toJson(args));
         // 创建调试控制器
         controller = new DebugController();
         controller.setSuspendListener(this);
@@ -382,8 +403,14 @@ public class DapServer implements DebugController.SuspendListener {
         sendResponse(requestSeq, command, new JsonObject());
     }
 
-    /** setBreakpoints：设置断点 */
+    /** setBreakpoints：设置指定文件的断点（按 source.path 区分多文件） */
     private void handleSetBreakpoints(int requestSeq, JsonObject args) {
+        // 从 args.source.path 取断点所属文件路径（DAP 协议：每个文件发一次 setBreakpoints）
+        // 规范化路径，确保与 launch 时存的 scriptPaths（sourcePath）匹配
+        String path = null;
+        if (args.has("source") && args.getAsJsonObject("source").has("path")) {
+            path = canonicalize(args.getAsJsonObject("source").get("path").getAsString());
+        }
         List<Integer> lines = new ArrayList<>();
         if (args.has("breakpoints")) {
             for (JsonElement be : args.getAsJsonArray("breakpoints")) {
@@ -394,7 +421,7 @@ public class DapServer implements DebugController.SuspendListener {
             }
         }
         if (controller != null) {
-            controller.setBreakpoints(lines);
+            controller.setBreakpoints(path, lines);
         }
         // 构造断点响应（全部标记为已验证）
         JsonObject body = new JsonObject();
@@ -409,16 +436,20 @@ public class DapServer implements DebugController.SuspendListener {
         sendResponse(requestSeq, "setBreakpoints", body);
     }
 
-    /** configurationDone：编译脚本并启动解释器 */
+    /** configurationDone：编译所有脚本文件并启动解释器 */
     private void handleConfigurationDone(int requestSeq, JsonObject args) {
         if (started) {
             sendResponse(requestSeq, "configurationDone", new JsonObject());
             return;
         }
         started = true;
-        log("[FLOW] configurationDone: 开始编译 scriptPath=" + scriptPath);
+        log("[FLOW] configurationDone: 开始编译 scriptPaths=" + scriptPaths);
+        compiledBytecodes.clear();
+        compiledSourceLines.clear();
         try {
-            compileScript(scriptPath);
+            for (String path : scriptPaths) {
+                compileScript(path);
+            }
         } catch (Exception e) {
             log("[ERROR] 编译失败: " + e);
             if (dapLog != null) {
@@ -427,7 +458,11 @@ public class DapServer implements DebugController.SuspendListener {
             sendErrorResponse(requestSeq, "configurationDone", "编译失败: " + e.getMessage());
             return;
         }
-        log("[FLOW] 编译成功，bytecode 长度=" + bytecode.length + "，启动解释器线程");
+        int totalLen = 0;
+        for (String[] bc : compiledBytecodes) {
+            totalLen += bc.length;
+        }
+        log("[FLOW] 编译成功，共 " + compiledBytecodes.size() + " 个文件，总 bytecode 长度=" + totalLen + "，启动解释器线程");
         startInterpreterThread();
         sendResponse(requestSeq, "configurationDone", new JsonObject());
     }
@@ -458,13 +493,11 @@ public class DapServer implements DebugController.SuspendListener {
         sendResponse(requestSeq, "pause", new JsonObject());
     }
 
-    /** stackTrace：返回调用栈 */
+    /** stackTrace：返回调用栈（每帧按其所属源文件报告 source.path，支持跨文件调试） */
     private void handleStackTrace(int requestSeq, JsonObject args) {
         // 刷新帧列表与变量引用
         frameList = new ArrayList<>(interpreter != null ? interpreter.getCallStack() : new ArrayList<>());
         varRefs.clear();
-
-        String sourceName = scriptPath != null ? Paths.get(scriptPath).getFileName().toString() : "script";
 
         JsonArray framesArray = new JsonArray();
         for (int i = 0; i < frameList.size(); i++) {
@@ -474,12 +507,18 @@ public class DapServer implements DebugController.SuspendListener {
             if ("null".equals(name) || name == null) {
                 name = "<anonymous>";
             }
+            // 每帧的源文件路径取自该帧函数的 sourcePath（多文件调试核心），
+            // 兼容 null（非调试模式或旧代码）回退到空串
+            String framePath = frame.function.sourcePath;
+            String frameName = framePath != null
+                    ? Paths.get(framePath).getFileName().toString()
+                    : "script";
             JsonObject frameObj = new JsonObject();
             frameObj.addProperty("id", i);
             frameObj.addProperty("name", name);
             JsonObject source = new JsonObject();
-            source.addProperty("name", sourceName);
-            source.addProperty("path", scriptPath != null ? scriptPath : "");
+            source.addProperty("name", frameName);
+            source.addProperty("path", framePath != null ? framePath : "");
             frameObj.add("source", source);
             frameObj.addProperty("line", line > 0 ? line : 1);
             frameObj.addProperty("column", 1);
@@ -644,7 +683,28 @@ public class DapServer implements DebugController.SuspendListener {
     // =========================================================================
 
     /**
-     * 编译脚本，生成字节码与源码行号映射。
+     * 规范化文件路径（统一斜杠方向、大小写、解析 ./ 和 ../）。
+     *
+     * <p>多文件调试中断点按文件路径（Map key）匹配：launch 的 files 数组路径设置为
+     * {@code GSFunction.sourcePath}，setBreakpoints 的 source.path 作为 breakpoints Map 的 key。
+     * 两者必须字符串完全一致才能命中断点。但 VSCode 的 {@code ${workspaceFolder}} 解析后
+     * 可能是混合斜杠（如 {@code e:\JProjects\gscript/src/...}），而 source.path 是规范化的
+     * Windows 路径（反斜杠）。用 {@code File.getCanonicalPath()} 统一格式避免不匹配。
+     *
+     * @param path 原始路径（可能含正斜杠、相对路径等）
+     * @return 规范化后的绝对路径，规范化失败时返回原始路径
+     */
+    private String canonicalize(String path) {
+        if (path == null) return null;
+        try {
+            return new File(path).getCanonicalPath();
+        } catch (Exception e) {
+            return path;
+        }
+    }
+
+    /**
+     * 编译脚本，生成字节码与源码行号映射，追加到编译列表（支持多文件）。
      */
     private void compileScript(String path) throws Exception {
         String content = new String(Files.readAllBytes(Paths.get(path)), StandardCharsets.UTF_8);
@@ -654,16 +714,24 @@ public class DapServer implements DebugController.SuspendListener {
         Node program = parser.parseProgram();
         ByteCodeGenerator gen = new ByteCodeGenerator();
         program.accept(gen);
-        this.bytecode = gen.getByteCode().toArray(new String[0]);
+        String[] bc = gen.getByteCode().toArray(new String[0]);
         ArrayList<Integer> sl = gen.getSourceLines();
-        this.sourceLines = new int[sl.size()];
+        int[] slArr = new int[sl.size()];
         for (int i = 0; i < sl.size(); i++) {
-            this.sourceLines[i] = sl.get(i);
+            slArr[i] = sl.get(i);
         }
+        // 追加到列表（与 scriptPaths 顺序一一对应）
+        compiledBytecodes.add(bc);
+        compiledSourceLines.add(slArr);
+        log("[FLOW] 编译完成: " + path + "，bytecode 长度=" + bc.length);
     }
 
     /**
      * 启动解释器线程。
+     *
+     * <p>多文件按 scriptPaths 顺序依次 eval，共享同一 {@link GSInterpreter} 实例的 global 域，
+     * 后加载文件定义的同名函数自然覆盖前文件（global 域变量被覆盖赋值）。
+     * 每个文件用各自的字节码与 sourceLines，并传入 sourcePath 供调试器区分文件。
      */
     private void startInterpreterThread() {
         interpreter = new GSInterpreter();
@@ -675,9 +743,19 @@ public class DapServer implements DebugController.SuspendListener {
 
         Thread t = new Thread(() -> {
             try {
-                log("[FLOW] 解释器线程开始 eval，bytecode 长度=" + bytecode.length);
-                interpreter.eval(bytecode, sourceLines);
-                log("[FLOW] 解释器 eval 正常结束");
+                // 捕获列表快照（避免 lambda 闭包直接捕获可变外部列表）
+                final List<String> paths = new ArrayList<>(scriptPaths);
+                final List<String[]> bcs = new ArrayList<>(compiledBytecodes);
+                final List<int[]> sls = new ArrayList<>(compiledSourceLines);
+                for (int i = 0; i < paths.size(); i++) {
+                    String[] bc = bcs.get(i);
+                    int[] sl = sls.get(i);
+                    String path = paths.get(i);
+                    log("[FLOW] 解释器线程开始 eval 文件[" + i + "]: " + path + "，bytecode 长度=" + bc.length);
+                    interpreter.eval(bc, sl, path);
+                    log("[FLOW] 解释器文件[" + i + "] eval 正常结束: " + path);
+                }
+                log("[FLOW] 所有文件 eval 正常结束");
             } catch (DebugAbortException e) {
                 log("[FLOW] 解释器被 DebugAbortException 终止（调试会话结束）");
             } catch (Throwable e) {

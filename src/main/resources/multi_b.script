@@ -1,0 +1,9 @@
+// 多文件调试测试 - 文件 B（后加载）
+// 覆盖 greet，调用 shared（跨文件调用）
+
+function greet(name) {
+    return "B says: " + name;
+}
+
+console.log(greet("fromB"));
+console.log(shared());

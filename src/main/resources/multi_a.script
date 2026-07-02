@@ -1,0 +1,12 @@
+// 多文件调试测试 - 文件 A（先加载）
+// 定义 greet 和 shared 函数，执行 setup
+
+function greet(name) {
+    return "A says: " + name;
+}
+
+function shared() {
+    return "shared from A";
+}
+
+console.log(greet("fromA"));
