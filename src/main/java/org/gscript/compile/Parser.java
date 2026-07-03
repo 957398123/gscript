@@ -1,7 +1,6 @@
 package org.gscript.compile;
 
 import org.gscript.compile.node.*;
-import org.gscript.compile.node.Literal;
 import org.gscript.compile.token.GSToken;
 import org.gscript.compile.token.GSTokenType;
 
@@ -265,14 +264,14 @@ public class Parser {
             boolean isCase = true;
             if (check(GSTokenType.DEFAULT)) {
                 if (hasDefault) {
-                    error("Uncaught SyntaxError: More than one default clause in switch statement");
+                    error("More than one default clause in switch statement");
                 } else {
                     isCase = false;
                     defaultOffset = offset;
                     hasDefault = true;
                 }
             } else if (!check(GSTokenType.CASE)) {
-                error("Uncaught SyntaxError: Unexpected token " + peek().value + ", expected 'case' or 'default'");
+                error("Unexpected token " + peek().value + ", expected 'case' or 'default'");
             }
             advance();  // 消费 case/default
             if (isCase) {
@@ -629,7 +628,7 @@ public class Parser {
                 finallyClause.line = finallyLine;
             }
         } else {
-            error(peek(), "Uncaught SyntaxError: Missing catch or finally after try");
+            error(peek(), "Missing catch or finally after try");
         }
         // 返回异常处理语句
         ExceptionStatement exceptionStatement = new ExceptionStatement(tryClause, catchClause, finallyClause);
@@ -724,7 +723,7 @@ public class Parser {
                 right = parseExpression();
             } else {
                 // 抛出无效左值异常
-                error("Uncaught SyntaxError: Invalid left-hand side in assignment");
+                error("Invalid left-hand side in assignment");
             }
         }
         // 返回解析表达式节点
@@ -1029,7 +1028,7 @@ public class Parser {
             if (isLeftHandSideExpression(operand)) {
                 return new UnaryExpression(operator, operand);
             } else {
-                error("Uncaught SyntaxError: Invalid left-hand side in assignment");
+                error("Invalid left-hand side in assignment");
             }
         }
         // 解析后缀表达式
@@ -1205,7 +1204,7 @@ public class Parser {
                 }
             } else if (match(GSTokenType.LBRACKET)) {  // 匹配到了数组访问
                 Expression expression = parseExpression();
-                consume(GSTokenType.RBRACKET, "");
+                consume(GSTokenType.RBRACKET, "Expected ']' to close computed member access");
                 expr = new MemberAccess(expr, expression);
             } else if (match(GSTokenType.LPAREN)) {  // 匹配到了函数调用
                 ArrayList args = new ArrayList();

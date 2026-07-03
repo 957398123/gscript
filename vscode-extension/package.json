@@ -1,7 +1,7 @@
 {
   "name": "gscript-debug",
   "displayName": "gscript Debug",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "gscript",
   "description": "gscript 语言调试器与语法高亮支持（Launch + Attach 模式）",
   "engines": {

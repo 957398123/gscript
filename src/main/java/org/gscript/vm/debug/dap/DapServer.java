@@ -8,7 +8,6 @@ import org.gscript.compile.gclass.EncodedBytecode;
 import org.gscript.compile.gclass.GSClassData;
 import org.gscript.compile.gclass.GSClassReader;
 import org.gscript.compile.node.Node;
-import org.gscript.compile.token.GSToken;
 import org.gscript.util.AtomicCounter;
 import org.gscript.vm.GSEnv;
 import org.gscript.vm.GSFrame;
@@ -22,7 +21,6 @@ import org.gscript.vm.debug.dap.json.JsonParser;
 import org.gscript.vm.debug.dap.json.JsonValue;
 import org.gscript.vm.debug.dap.json.JsonWriter;
 import org.gscript.vm.stdlib.Console;
-import org.gscript.vm.value.GSFunction;
 import org.gscript.vm.value.GSNull;
 import org.gscript.vm.value.GSObject;
 import org.gscript.vm.value.GSValue;
@@ -34,8 +32,11 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -101,8 +102,8 @@ public class DapServer implements DebugController.SuspendListener {
      */
     private final List compiledSourceLines = new ArrayList();
 
-    /** 变量引用映射：refId → GSEnv（作用域）或 GSObject（可展开变量） */
-    private final Map varRefs = new HashMap();
+    /** 变量引用映射：refId → GSEnv（作用域）或 GSObject（可展开变量）。DAP 线程与解释器线程均会读写，用同步 Map 防竞态 */
+    private final Map varRefs = Collections.synchronizedMap(new HashMap());
     /** 下一个变量引用 ID（从 1 开始，0 表示不可展开） */
     private int nextVarRef = 1;
 
@@ -174,7 +175,7 @@ public class DapServer implements DebugController.SuspendListener {
             try {
                 FileOutputStream fos = new FileOutputStream(path, true);  // 追加模式
                 dapLog = new PrintStream(fos, true, "UTF-8");
-                dapLog.println("\n==== DapServer 启动 " + new java.util.Date() + " ====");
+                dapLog.println("\n==== DapServer 启动 " + new Date() + " ====");
                 dapLog.println("user.dir=" + System.getProperty("user.dir"));
                 dapLog.println("日志文件: " + path);
                 dapLog.flush();
@@ -218,6 +219,9 @@ public class DapServer implements DebugController.SuspendListener {
             log("[ERROR] DapServer 主循环异常: " + e);
             if (dapLog != null) {
                 try { e.printStackTrace(dapLog); } catch (Exception ignore) {}
+            } else {
+                // dapLog 初始化失败时回退到 stderr，避免致命异常完全丢失
+                try { e.printStackTrace(); } catch (Exception ignore) {}
             }
         }
         // 退出前终止解释器（launch 模式）
@@ -304,7 +308,7 @@ public class DapServer implements DebugController.SuspendListener {
         byte[] bytes;
         try {
             bytes = json.getBytes("UTF-8");
-        } catch (java.io.UnsupportedEncodingException e) {
+        } catch (UnsupportedEncodingException e) {
             // UTF-8 是标准字符集，不会到达此分支
             throw new RuntimeException(e);
         }
@@ -374,17 +378,19 @@ public class DapServer implements DebugController.SuspendListener {
 
     private void handleMessage(String json) {
         log("<<< RECV " + json);
-        JsonObject msg = JsonParser.parseString(json).getAsJsonObject();
-        String type = msg.get("type").getAsString();
-        if (!"request".equals(type)) {
-            return;
-        }
-        String command = msg.get("command").getAsString();
-        int requestSeq = msg.get("seq").getAsInt();
-        JsonObject args = msg.has("arguments") && msg.get("arguments").isJsonObject()
-                ? msg.getAsJsonObject("arguments") : new JsonObject();
-
+        String command = null;
+        int requestSeq = 0;
         try {
+            JsonObject msg = JsonParser.parseString(json).getAsJsonObject();
+            String type = msg.get("type").getAsString();
+            if (!"request".equals(type)) {
+                return;
+            }
+            command = msg.get("command").getAsString();
+            requestSeq = msg.get("seq").getAsInt();
+            JsonObject args = msg.has("arguments") && msg.get("arguments").isJsonObject()
+                    ? msg.getAsJsonObject("arguments") : new JsonObject();
+
             if ("initialize".equals(command)) {
                 handleInitialize(requestSeq, args);
             } else if ("launch".equals(command) || "attach".equals(command)) {
@@ -429,7 +435,10 @@ public class DapServer implements DebugController.SuspendListener {
             if (dapLog != null) {
                 try { e.printStackTrace(dapLog); } catch (Exception ignore) {}
             }
-            sendErrorResponse(requestSeq, command, e.getMessage() != null ? e.getMessage() : e.toString());
+            // command==null 表示 JSON 解析失败（畸形消息），无 seq/command 可回复，仅记录日志后继续主循环
+            if (command != null) {
+                sendErrorResponse(requestSeq, command, e.getMessage() != null ? e.getMessage() : e.toString());
+            }
         }
     }
 
@@ -1135,7 +1144,7 @@ public class DapServer implements DebugController.SuspendListener {
             PrintStream stderr = new PrintStream(new DapOutputOutputStream(this, "stderr"), true, "UTF-8");
             System.setOut(stdout);
             System.setErr(stderr);
-        } catch (java.io.UnsupportedEncodingException e) {
+        } catch (UnsupportedEncodingException e) {
             // UTF-8 是标准字符集，不会到达此分支
             throw new RuntimeException(e);
         }
@@ -1283,7 +1292,7 @@ public class DapServer implements DebugController.SuspendListener {
                 String text;
                 try {
                     text = new String(buf.toByteArray(), "UTF-8");
-                } catch (java.io.UnsupportedEncodingException e) {
+                } catch (UnsupportedEncodingException e) {
                     // UTF-8 是标准字符集，不会到达此分支
                     throw new RuntimeException(e);
                 }

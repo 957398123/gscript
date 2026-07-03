@@ -34,11 +34,11 @@ public class BytecodeDecoder {
             Object value = cp != null ? cp[cpIdx] : "?" + cpIdx;
             String valueStr;
             if (opcode == GSClassConstants.OP_CONST_I) {
-                valueStr = Integer.toString(((Integer) value).intValue());
+                valueStr = value instanceof Integer ? Integer.toString(((Integer) value).intValue()) : String.valueOf(value);
             } else if (opcode == GSClassConstants.OP_CONST_F) {
-                valueStr = Float.toString(((Float) value).floatValue());
+                valueStr = value instanceof Float ? Float.toString(((Float) value).floatValue()) : String.valueOf(value);
             } else if (opcode == GSClassConstants.OP_CONST_B) {
-                valueStr = ((Boolean) value).toString();
+                valueStr = value instanceof Boolean ? ((Boolean) value).toString() : String.valueOf(value);
             } else {
                 valueStr = (String) value;  // const_a / const_s → UTF8
             }

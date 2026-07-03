@@ -58,20 +58,9 @@ public class GSClassWriter {
         byte[][] instructions = encoded.instructions;
         Object[] cp = encoded.constantPool;
 
-        // 2. sourcePath 加入 CP（sourcePath 不在指令流中，需单独追加到 CP 末尾）
-        int sourcePathCpIndex = 0;
-        if (sourcePath != null && sourcePath.length() != 0) {
-            sourcePathCpIndex = cp.length;  // 追加到末尾，新索引 = 当前数组长度
-            Object[] newCp = new Object[cp.length + 1];
-            System.arraycopy(cp, 0, newCp, 0, cp.length);
-            newCp[sourcePathCpIndex] = sourcePath;
-            cp = newCp;
-        }
-
-        // 2b. 扫描 fundef 指令，构建 FunctionTable 属性数据。
+        // 2. 扫描 fundef 指令，构建 FunctionTable 属性数据（不依赖 CP 扩展结果，先扫描）。
         // fundef 指令格式：OP_FUNDEF + u2 nameCp + u2 bodyLen（共 5 字节）。
         // startIp = fundef 指令索引 + 1（函数体紧随 fundef 指令）。
-        // 仅当存在函数定义时才生成属性段，并把 "FunctionTable" 属性名加入 CP。
         List funcEntries = new ArrayList();  // each: {nameCp, startIp, bodyLen}
         for (int i = 0; i < instructions.length; i++) {
             if (instructions[i].length > 0 && instructions[i][0] == GSClassConstants.OP_FUNDEF) {
@@ -83,23 +72,35 @@ public class GSClassWriter {
         }
         boolean hasSourceContentAttr = sourceContent != null && sourceContent.length() != 0;
         boolean hasAttributes = !funcEntries.isEmpty() || hasSourceContentAttr;
+
+        // 2b. 一次性扩展 CP：sourcePath + FunctionTable 属性名 + SourceContent 属性名
+        // （预计算总扩展槽位，单次 arraycopy 替代最多 3 次全量复制）
+        int sourcePathCpIndex = 0;
         int attrNameCpIndex = 0;  // FunctionTable 属性名 CP 索引
         int sourceContentAttrNameCpIndex = 0;  // SourceContent 属性名 CP 索引
-        if (!funcEntries.isEmpty()) {
-            // 把 "FunctionTable" 属性名追加到 CP 末尾
-            attrNameCpIndex = cp.length;
-            Object[] newCp = new Object[cp.length + 1];
-            System.arraycopy(cp, 0, newCp, 0, cp.length);
-            newCp[attrNameCpIndex] = GSClassConstants.ATTR_FUNCTION_TABLE;
+        boolean hasSourcePath = sourcePath != null && sourcePath.length() != 0;
+        int extraSlots = 0;
+        if (hasSourcePath) extraSlots++;
+        if (!funcEntries.isEmpty()) extraSlots++;
+        if (hasSourceContentAttr) extraSlots++;
+        if (extraSlots > 0) {
+            int origLen = cp.length;
+            Object[] newCp = new Object[origLen + extraSlots];
+            System.arraycopy(cp, 0, newCp, 0, origLen);
             cp = newCp;
-        }
-        if (hasSourceContentAttr) {
-            // 把 "SourceContent" 属性名追加到 CP 末尾
-            sourceContentAttrNameCpIndex = cp.length;
-            Object[] newCp = new Object[cp.length + 1];
-            System.arraycopy(cp, 0, newCp, 0, cp.length);
-            newCp[sourceContentAttrNameCpIndex] = GSClassConstants.ATTR_SOURCE_CONTENT;
-            cp = newCp;
+            int idx = origLen;
+            if (hasSourcePath) {
+                sourcePathCpIndex = idx;  // 追加到末尾，新索引 = 原数组长度
+                cp[idx++] = sourcePath;
+            }
+            if (!funcEntries.isEmpty()) {
+                attrNameCpIndex = idx;
+                cp[idx++] = GSClassConstants.ATTR_FUNCTION_TABLE;
+            }
+            if (hasSourceContentAttr) {
+                sourceContentAttrNameCpIndex = idx;
+                cp[idx++] = GSClassConstants.ATTR_SOURCE_CONTENT;
+            }
         }
 
         // 3. 写入主体（不含 CRC32 footer）到 buffer
@@ -107,7 +108,7 @@ public class GSClassWriter {
         DataOutputStream dos = new DataOutputStream(buf);
 
         boolean hasSourceMap = sourceLines != null && !sourceLines.isEmpty();
-        boolean hasSourcePath = sourcePathCpIndex > 0;
+        // hasSourcePath 已在 CP 扩展阶段定义（L81），此处直接复用
 
         // RLE 压缩源码映射：源码行号常有长游程（多条字节码对应同一源码行），
         // RLE 编码为 (count, line) 对（4 字节/对），原始格式为 2 字节/条。
@@ -168,7 +169,7 @@ public class GSClassWriter {
                 dos.writeByte(GSClassConstants.TAG_BOOL);
                 dos.writeByte(((Boolean) entry).booleanValue() ? 1 : 0);
             } else {
-                throw new IOException("Unknown CP entry type at index " + i + ": " + entry.getClass());
+                throw new IOException("Unknown CP entry type at index " + i + ": " + (entry == null ? "null" : String.valueOf(entry.getClass())));
             }
         }
 

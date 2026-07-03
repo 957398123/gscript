@@ -2,13 +2,12 @@ package org.gscript.compile.node;
 
 import org.gscript.compile.gen.Visitor;
 
-import java.util.List;
-
 public class NewExpression extends Node{
 
     public Expression constructor;
 
     public NewExpression(Expression constructor) {
+        type = "NewExpression";
         this.constructor = constructor;
     }
 

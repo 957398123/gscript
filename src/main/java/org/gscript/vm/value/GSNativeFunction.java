@@ -1,7 +1,5 @@
 package org.gscript.vm.value;
 
-import org.gscript.vm.GSFrame;
-
 import java.util.ArrayList;
 
 /**

@@ -37,9 +37,6 @@ public class JsonPrimitive extends JsonValue {
         if (value instanceof Boolean) {
             return ((Boolean) value).booleanValue() ? "true" : "false";
         }
-        if (value instanceof Number) {
-            return value.toString();
-        }
         return value.toString();
     }
 

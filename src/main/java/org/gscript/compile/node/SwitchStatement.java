@@ -21,6 +21,7 @@ public class SwitchStatement extends Node {
     public boolean hasDefault = false;
 
     public SwitchStatement(Expression condition, List cases, List blocks, int[] offsetMap, boolean hasDefault) {
+        type = "SwitchStatement";
         this.condition = condition;
         this.cases = cases;
         this.blocks = blocks;

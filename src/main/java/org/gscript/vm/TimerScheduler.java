@@ -1,7 +1,6 @@
 package org.gscript.vm;
 
 import org.gscript.vm.value.GSFunction;
-import org.gscript.vm.value.GSValue;
 import org.gscript.util.AtomicCounter;
 import org.gscript.util.MinPriorityQueue;
 import org.gscript.util.SimpleBlockingQueue;

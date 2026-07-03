@@ -9,14 +9,13 @@ import org.gscript.compile.gclass.GSClassConstants;
 import org.gscript.compile.gclass.GSClassData;
 import org.gscript.compile.gclass.GSClassReader;
 import org.gscript.compile.node.Node;
-import org.gscript.compile.token.GSToken;
 import org.gscript.vm.debug.DebugAbortException;
 import org.gscript.vm.debug.DebugAgent;
 import org.gscript.vm.debug.DebugController;
-import org.gscript.vm.stdlib.Console;
 import org.gscript.vm.stdlib.TimerLib;
 import org.gscript.vm.value.*;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -925,7 +924,7 @@ public class GSInterpreter {
         try {
             evalGclassStream(in);
         } finally {
-            try { in.close(); } catch (Exception e) {}
+            try { in.close(); } catch (Exception e) { /* close 失败忽略 */ }
         }
     }
 
@@ -974,14 +973,14 @@ public class GSInterpreter {
     private static byte[] readFileBytes(File f) throws IOException {
         long len = f.length();
         int capacity = (int) Math.min(len, 8192);
-        java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream(capacity);
+        ByteArrayOutputStream bos = new ByteArrayOutputStream(capacity);
         FileInputStream in = new FileInputStream(f);
         try {
             byte[] buf = new byte[4096];
             int n;
             while ((n = in.read(buf)) != -1) { bos.write(buf, 0, n); }
         } finally {
-            try { in.close(); } catch (Exception e) {}
+            try { in.close(); } catch (Exception e) { /* close 失败忽略 */ }
         }
         return bos.toByteArray();
     }
@@ -989,7 +988,7 @@ public class GSInterpreter {
     /** 读取流全部字节直到 EOF（1.4 兼容，替代 Java 9 InputStream.readAllBytes）。
      *  不关闭流（由调用方负责）。 */
     private static byte[] readStreamBytes(InputStream in) throws IOException {
-        java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
         byte[] buf = new byte[4096];
         int n;
         while ((n = in.read(buf)) != -1) { bos.write(buf, 0, n); }

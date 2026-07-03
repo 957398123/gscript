@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.WeakHashMap;
 
 /**
  * 调试控制器：管理断点、单步模式与解释器线程的挂起/恢复同步。
@@ -71,7 +72,7 @@ public class DebugController {
      * per-frame 方案确保函数调用不影响外层帧的断点判断。
      * WeakHashMap 允许帧被 GC 回收后自动清理条目，避免深度递归调试时的内存泄漏。
      */
-    private final java.util.WeakHashMap framePrevLines = new java.util.WeakHashMap();
+    private final WeakHashMap framePrevLines = new WeakHashMap();
 
     /** 解释器是否处于挂起状态 */
     private volatile boolean suspended = false;

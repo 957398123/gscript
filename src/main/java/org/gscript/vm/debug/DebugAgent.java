@@ -134,8 +134,9 @@ public class DebugAgent {
         interpreterAlreadyRunning = false;
         serverSocket = new ServerSocket(port);
         System.err.println("[DebugAgent] waitForDebugger 模式，监听端口 " + port + "，等待 VSCode 连接...");
-        Socket socket = serverSocket.accept();
+        Socket socket = null;
         try {
+            socket = serverSocket.accept();
             System.err.println("[DebugAgent] VSCode 已连接");
             // 注意：controller 不在此创建，由 DapServer.handleLaunchAttach 创建并通过
             // setController 共享，确保解释器拿到的是带 SuspendListener 的同一实例
@@ -144,9 +145,8 @@ public class DebugAgent {
                     new PrintStream(socket.getOutputStream(), true), this);
             dapServer.run();  // 阻塞直到 disconnect
         } finally {
-            try {
-                socket.close();
-            } catch (Exception e) {
+            if (socket != null) {
+                try { socket.close(); } catch (Exception e) { /* socket 关闭失败忽略 */ }
             }
             if (serverSocket != null && !serverSocket.isClosed()) {
                 serverSocket.close();

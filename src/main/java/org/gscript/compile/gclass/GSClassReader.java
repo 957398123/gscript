@@ -1,6 +1,7 @@
 package org.gscript.compile.gclass;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -221,7 +222,7 @@ public class GSClassReader {
 
     /** 读取输入流全部字节 */
     private byte[] readAllBytes(InputStream in) throws IOException {
-        java.io.ByteArrayOutputStream buf = new java.io.ByteArrayOutputStream();
+        ByteArrayOutputStream buf = new ByteArrayOutputStream();
         byte[] tmp = new byte[4096];
         int n;
         while ((n = in.read(tmp)) != -1) {

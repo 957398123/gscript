@@ -31,13 +31,6 @@ public class ByteCodeGenerator implements Visitor {
     private int currentLine = 0;
 
     /**
-     * 获取生成的字节码
-     */
-    public ArrayList getBytecode() {
-        return bytecode;
-    }
-
-    /**
      * 获取字节码索引对应的源码行号列表（与字节码平行）。
      *
      * @return 源码行号列表，第 i 项为字节码第 i 条对应的源码行号（1-based，0 表示未设置）
@@ -55,17 +48,6 @@ public class ByteCodeGenerator implements Visitor {
     private void line(Node node) {
         if (node != null && node.line > 0) {
             currentLine = node.line;
-        }
-    }
-
-    /**
-     * 打印字节码
-     */
-    public void print() {
-        int index = 0;
-        for (int i = 0; i < bytecode.size(); i++) {
-            String s = (String) bytecode.get(i);
-            System.out.println(index++ + ": " + s);
         }
     }
 

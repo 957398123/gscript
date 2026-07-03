@@ -1,6 +1,7 @@
 package org.gscript.vm.value;
 
 import java.util.HashMap;
+import java.util.Map;
 
 public class GSObject extends GSValue {
 
@@ -57,7 +58,7 @@ public class GSObject extends GSValue {
      *
      * @return 成员名 -> 值 的视图
      */
-    public java.util.Map getMembers() {
+    public Map getMembers() {
         return members;
     }
 }

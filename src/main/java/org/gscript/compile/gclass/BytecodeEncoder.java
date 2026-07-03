@@ -1,6 +1,5 @@
 package org.gscript.compile.gclass;
 
-import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
