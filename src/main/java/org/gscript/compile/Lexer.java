@@ -30,6 +30,11 @@ public class Lexer {
         return c >= '0' && c <= '9';
     }
 
+    // 是否是十六进制数字
+    private boolean isHexDigit(char c) {
+        return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+    }
+
     private boolean isSymbol(char c) {
         return "+-*/%=!><&|^~,[](){}?.:\";".indexOf(c) >= 0;
     }
@@ -59,8 +64,11 @@ public class Lexer {
         return pos < src.length() ? src.charAt(pos) : '\0';
     }
 
-    // 前进
+    // 前进，到达文尾时返回 \0（不抛越界异常）
     private char advance() {
+        if (pos >= src.length()) {
+            return '\0';
+        }
         char c = src.charAt(pos++);
         if (c == '\n') {
             ++line;
@@ -74,6 +82,9 @@ public class Lexer {
     // 将源代码解析为Token
     public List<GSToken> tokenize(String src) {
         this.src = src;
+        this.pos = 0;
+        this.line = 1;
+        this.column = 1;
         List<GSToken> tokens = new ArrayList<>();
         while (pos < src.length()) {
             char c = peek();
@@ -93,11 +104,14 @@ public class Lexer {
                     // 添加token
                     tokens.add(new GSToken(GSTokenType.FLOAT, number.toString(), line, column));
                 } else if ((number.length() == 1 && number.charAt(0) == '0') && (peek() == 'x' | peek() == 'X')) {
-                    do {
+                    // 十六进制字面量 0x...：读取 x/X 后继续读取十六进制数字
+                    advance();
+                    number.append('x');
+                    while (isHexDigit(c = peek())) {
                         advance();
                         number.append(c);
-                    } while (isDigit(c = peek()));
-                    // 添加token
+                    }
+                    // 添加token（值为原始 "0xFF" 字符串，由 ByteCodeGenerator 解析）
                     tokens.add(new GSToken(GSTokenType.INTEGER_HEX, number.toString(), line, column));
                 } else {
                     // 添加token
@@ -153,17 +167,34 @@ public class Lexer {
                         }
                         break;
                     }
-                    case '/': {  // 有可能是注释
+                    case '/': {  // 有可能是注释或除法
                         switch (peek()) {
                             case '=': {
                                 advance();
                                 tokens.add(new GSToken(GSTokenType.SLASH_EQUAL, line, column));
                                 break;
                             }
-                            case '/': {
+                            case '/': {  // 单行注释 //
                                 do {
                                     advance();
                                 } while (peek() != '\n' && peek() != '\0');
+                                break;
+                            }
+                            case '*': {  // 多行注释 /* ... */
+                                advance();  // 消费 '*'
+                                boolean closed = false;
+                                char prev = '\0';
+                                while (peek() != '\0') {
+                                    char ch = advance();
+                                    if (prev == '*' && ch == '/') {
+                                        closed = true;
+                                        break;
+                                    }
+                                    prev = ch;
+                                }
+                                if (!closed) {
+                                    throw new RuntimeException("failed to parse comment: unclosed block comment, line:" + line + ", column:" + column);
+                                }
                                 break;
                             }
                             default: {
@@ -373,6 +404,32 @@ public class Lexer {
                                         str.append('\f');
                                         break;
                                     }
+                                    case 'v': {  // 垂直制表符
+                                        str.append('\u000B');
+                                        break;
+                                    }
+                                    case '\'': {  // 单引号
+                                        str.append('\'');
+                                        break;
+                                    }
+                                    case '0': {  // 空字符
+                                        str.append('\0');
+                                        break;
+                                    }
+                                    case 'u': {  // Unicode 转义 uXXXX
+                                        StringBuilder hex = new StringBuilder();
+                                        for (int i = 0; i < 4; i++) {
+                                            char h = peek();
+                                            if (isHexDigit(h)) {
+                                                advance();
+                                                hex.append(h);
+                                            } else {
+                                                throw new RuntimeException("invalid unicode escape: expected 4 hex digits, line:" + line + ", column:" + column);
+                                            }
+                                        }
+                                        str.append((char) Integer.parseInt(hex.toString(), 16));
+                                        break;
+                                    }
                                     default: {
                                         throw new RuntimeException("unable to find the corresponding escape symbol, line:" + line + ", column:" + column);
                                     }
@@ -504,7 +561,7 @@ public class Lexer {
             }
         }
         // 增加结尾
-        tokens.add(new GSToken(GSTokenType.EOF, line, 3));
+        tokens.add(new GSToken(GSTokenType.EOF, line, column));
         return tokens;
     }
 }

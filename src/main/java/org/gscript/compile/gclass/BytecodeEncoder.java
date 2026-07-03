@@ -54,7 +54,7 @@ public class BytecodeEncoder {
      * 与 GSClassWriter.parseBytecode / GSInterpreter.eval 逻辑一致。
      */
     private String[] parseInstruction(String code) {
-        if (code.length() > 5 && "const".equals(code.substring(0, 5))) {
+        if (code.startsWith("const ") && code.length() > 6) {
             int start = code.indexOf(' ', 0) + 1;
             String typeChar = code.substring(start, start + 1);
             String value = code.substring(start + 2);

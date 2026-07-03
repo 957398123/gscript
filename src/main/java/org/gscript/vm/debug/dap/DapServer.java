@@ -39,6 +39,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * DAP（Debug Adapter Protocol）适配器。
@@ -75,8 +76,8 @@ public class DapServer implements DebugController.SuspendListener {
     /** Gson 实例（JSON 序列化/反序列化） */
     private final Gson gson = new Gson();
 
-    /** 消息序列号计数器 */
-    private int seq = 0;
+    /** 消息序列号计数器（DAP 线程与解释器线程均会发送消息，用原子类型保证线程安全） */
+    private final AtomicInteger seq = new AtomicInteger(0);
 
     /** 解释器实例（configurationDone 时创建） */
     private GSInterpreter interpreter;
@@ -188,6 +189,17 @@ public class DapServer implements DebugController.SuspendListener {
         if (controller != null) {
             controller.terminate();
         }
+        // 关闭 DAP 通信日志文件（释放 FileOutputStream）
+        if (dapLog != null) {
+            try {
+                dapLog.println("[FLOW] DapServer 主循环退出，关闭日志");
+                dapLog.flush();
+                dapLog.close();
+            } catch (Exception ignore) {
+            } finally {
+                dapLog = null;
+            }
+        }
     }
 
     /**
@@ -264,7 +276,7 @@ public class DapServer implements DebugController.SuspendListener {
     /** 发送成功响应 */
     private void sendResponse(int requestSeq, String command, JsonObject body) {
         JsonObject msg = new JsonObject();
-        msg.addProperty("seq", ++seq);
+        msg.addProperty("seq", seq.incrementAndGet());
         msg.addProperty("type", "response");
         msg.addProperty("request_seq", requestSeq);
         msg.addProperty("success", true);
@@ -278,7 +290,7 @@ public class DapServer implements DebugController.SuspendListener {
     /** 发送错误响应 */
     private void sendErrorResponse(int requestSeq, String command, String message) {
         JsonObject msg = new JsonObject();
-        msg.addProperty("seq", ++seq);
+        msg.addProperty("seq", seq.incrementAndGet());
         msg.addProperty("type", "response");
         msg.addProperty("request_seq", requestSeq);
         msg.addProperty("success", false);
@@ -290,7 +302,7 @@ public class DapServer implements DebugController.SuspendListener {
     /** 发送事件 */
     private void sendEvent(String event, JsonObject body) {
         JsonObject msg = new JsonObject();
-        msg.addProperty("seq", ++seq);
+        msg.addProperty("seq", seq.incrementAndGet());
         msg.addProperty("type", "event");
         msg.addProperty("event", event);
         if (body != null) {
@@ -332,12 +344,14 @@ public class DapServer implements DebugController.SuspendListener {
                 case "launch":               handleLaunchAttach(requestSeq, args, command); break;
                 case "attach":               handleLaunchAttach(requestSeq, args, command); break;
                 case "setBreakpoints":       handleSetBreakpoints(requestSeq, args); break;
+                case "setExceptionBreakpoints": handleSetExceptionBreakpoints(requestSeq, args); break;
                 case "configurationDone":    handleConfigurationDone(requestSeq, args); break;
                 case "continue":             handleContinue(requestSeq, args); break;
                 case "next":                 handleStep(requestSeq, "next", DebugController.STEP_OVER); break;
                 case "stepIn":               handleStep(requestSeq, "stepIn", DebugController.STEP_IN); break;
                 case "stepOut":              handleStep(requestSeq, "stepOut", DebugController.STEP_OUT); break;
                 case "pause":                handlePause(requestSeq, args); break;
+                case "terminate":            handleTerminate(requestSeq, args); break;
                 case "stackTrace":           handleStackTrace(requestSeq, args); break;
                 case "scopes":               handleScopes(requestSeq, args); break;
                 case "variables":            handleVariables(requestSeq, args); break;
@@ -374,6 +388,19 @@ public class DapServer implements DebugController.SuspendListener {
         body.addProperty("supportsSetVariable", false);
         body.addProperty("supportsTerminateRequest", true);
         body.addProperty("supportsLoadedSourcesRequest", false);
+        // 异常断点过滤器：VSCode 据此在断点面板显示"被捕获的异常/未捕获的异常"勾选项
+        JsonArray excFilters = new JsonArray();
+        JsonObject caughtFilter = new JsonObject();
+        caughtFilter.addProperty("filter", "caught");
+        caughtFilter.addProperty("label", "Caught Exceptions");
+        caughtFilter.addProperty("default", false);
+        excFilters.add(caughtFilter);
+        JsonObject uncaughtFilter = new JsonObject();
+        uncaughtFilter.addProperty("filter", "uncaught");
+        uncaughtFilter.addProperty("label", "Uncaught Exceptions");
+        uncaughtFilter.addProperty("default", false);
+        excFilters.add(uncaughtFilter);
+        body.add("exceptionBreakpointFilters", excFilters);
         // 行号/列号从 1 开始（与 gscript 源码行号一致）
         body.addProperty("linesStartAt1", true);
         body.addProperty("columnsStartAt1", true);
@@ -444,6 +471,31 @@ public class DapServer implements DebugController.SuspendListener {
         }
         body.add("breakpoints", bpArray);
         sendResponse(requestSeq, "setBreakpoints", body);
+    }
+
+    /**
+     * setExceptionBreakpoints：根据客户端勾选的异常过滤器开启/关闭异常断点。
+     *
+     * <p>过滤器：{@code caught}（被捕获的异常）/ {@code uncaught}（未捕获的异常）。
+     * 任一勾选即开启 {@code pauseOnException}（当前实现简化为：所有 throw 均挂起，
+     * 不区分是否被捕获）。全部取消则关闭。
+     */
+    private void handleSetExceptionBreakpoints(int requestSeq, JsonObject args) {
+        boolean pauseOnException = false;
+        if (args.has("filters") && args.get("filters").isJsonArray()) {
+            for (JsonElement f : args.getAsJsonArray("filters")) {
+                String filter = f.getAsString();
+                if ("caught".equals(filter) || "uncaught".equals(filter)) {
+                    pauseOnException = true;
+                    break;
+                }
+            }
+        }
+        if (controller != null) {
+            controller.setPauseOnException(pauseOnException);
+        }
+        log("[FLOW] setExceptionBreakpoints: pauseOnException=" + pauseOnException);
+        sendResponse(requestSeq, "setExceptionBreakpoints", new JsonObject());
     }
 
     /** configurationDone：编译所有脚本文件并启动解释器 */
@@ -653,6 +705,22 @@ public class DapServer implements DebugController.SuspendListener {
             controller.terminate();
         }
         sendResponse(requestSeq, "disconnect", new JsonObject());
+    }
+
+    /**
+     * terminate：终止脚本执行。
+     *
+     * <p>initialize 已声明 {@code supportsTerminateRequest=true}，VSCode 点击"停止"按钮时
+     * 发送 terminate 请求（而非 disconnect）。原实现未处理该请求，落入 default 分支仅回复
+     * 空响应却不调用 {@code controller.terminate()}，导致脚本无法被真正终止。
+     * 此处调用 terminate 后，解释器线程会在下一次 suspendCheck 抛出 DebugAbortException，
+     * 随后由 {@link #startInterpreterThread} 发送 terminated 事件。
+     */
+    private void handleTerminate(int requestSeq, JsonObject args) {
+        if (controller != null) {
+            controller.terminate();
+        }
+        sendResponse(requestSeq, "terminate", new JsonObject());
     }
 
     /** threads：返回线程列表（gscript 单线程） */

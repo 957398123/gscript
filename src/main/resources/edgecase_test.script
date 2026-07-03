@@ -1,0 +1,156 @@
+// gscript 边界用例测试脚本
+// 目的：主动探测语言实现中的潜在缺陷（空栈、类型转换、递归、异常路径等）
+// 输出格式："标签 : 实际值"，由 Python 测试校验
+
+function check(label, actual) {
+    console.log(label + " : " + actual);
+}
+
+// ============ 1. NaN 语义 ============
+console.log("=== [1] NaN 语义 ===");
+check("NaN==NaN", NaN == NaN);            // JS预期 false
+check("NaN===NaN", NaN === NaN);          // 预期 false
+check("NaN!=NaN", NaN != NaN);            // 预期 true
+check("NaN+1", NaN + 1);                  // 预期 NaN
+check("NaN*0", NaN * 0);                  // 预期 NaN
+check("10/0", 10 / 0);                    // 预期 NaN
+check("0/0", 0 / 0);                      // 预期 NaN
+check("if(NaN)", (function(){ if(NaN){return "进";} return "未"; })());  // 预期 未
+check("!NaN", !NaN);                      // 预期 true
+
+// ============ 2. 异常 throw 各种类型 ============
+console.log("=== [2] throw 各种类型 ===");
+function throwType(v) {
+    try { throw v; }
+    catch (e) { return e; }
+}
+check("throw字符串", throwType("err"));          // 预期 err
+check("throw数字", throwType(42));               // 预期 42
+check("throw对象", throwType({code: 1}).code);   // 预期 1
+check("throw null", throwType(null));            // 预期 null
+check("throw true", throwType(true));            // 预期 true
+check("throw数组", throwType([1, 2])[1]);        // 预期 2
+
+// ============ 3. switch fall-through ============
+console.log("=== [3] switch fall-through ===");
+function swFall(x) {
+    var r = "";
+    switch (x) {
+        case 1: { r = r + "A"; }
+        case 2: { r = r + "B"; break; }
+        case 3: { r = r + "C"; }
+        default: { r = r + "D"; }
+    }
+    return r;
+}
+check("sw(1)穿透", swFall(1));     // 预期 AB
+check("sw(2)", swFall(2));         // 预期 B
+check("sw(3)穿透", swFall(3));     // 预期 CD
+check("sw(9)default", swFall(9));  // 预期 D
+
+// ============ 4. 闭包捕获循环变量 ============
+console.log("=== [4] 闭包捕获 ===");
+var fns = [];
+for (var i = 0; i < 3; i = i + 1) {
+    fns[i] = function() { return i; };
+}
+check("闭包[0]", fns[0]());   // 预期 3 (var共享)
+check("闭包[1]", fns[1]());   // 预期 3
+check("闭包[2]", fns[2]());   // 预期 3
+
+// ============ 5. 深嵌套对象/数组 ============
+console.log("=== [5] 深嵌套 ===");
+var deep = {a: {b: {c: {d: {e: 42}}}}};
+check("深嵌套5层", deep.a.b.c.d.e);           // 预期 42
+var deepArr = [[[[[5]]]]];
+check("深嵌套数组", deepArr[0][0][0][0][0]);  // 预期 5
+
+// ============ 6. 空容器 ============
+console.log("=== [6] 空容器 ===");
+check("空数组[0]", [][0]);              // 预期 null
+check("空对象.x", {}.x);               // 预期 null
+check("空数组foo", [].foo);            // 预期 null
+check("空数组if", (function(){ if([]){return "truthy";} return "falsy"; })());  // 预期 truthy
+
+// ============ 7. 字符串边界 ============
+console.log("=== [7] 字符串边界 ===");
+check("空串", "");
+check("空串+null", "" + null);          // 预期 null
+check("空串+true", "" + true);          // 预期 true
+check("空串+0", "" + 0);                // 预期 0
+check("数字+空串", 0 + "");             // 预期 0
+
+// ============ 8. 位运算类型转换 ============
+console.log("=== [8] 位运算 ===");
+check("5.7&3", 5.7 & 3);               // 预期 1 (浮点截断)
+check("true&1", true & 1);             // 预期 1
+check("null&1", null & 1);             // 预期 0
+check("~0", ~0);                       // 预期 -1
+check("1<<31", 1 << 31);               // 预期 -2147483648
+
+// ============ 9. 比较运算边界 ============
+console.log("=== [9] 比较边界 ===");
+check("null==0", null == 0);
+check("null==false", null == false);
+check("NaN==0", NaN == 0);             // 预期 false
+check("空串==0", "" == 0);
+
+// ============ 10. 函数边界 ============
+console.log("=== [10] 函数边界 ===");
+function noArgs() { return 42; }
+check("无参函数()", noArgs());
+check("无参函数多余参", noArgs(1, 2));  // 预期 42
+function threeArgs(a, b, c) { return a + b + c; }
+check("少参函数", threeArgs(1, 2));     // c 未定义
+
+// ============ 11. 递归深度 ============
+console.log("=== [11] 递归 ===");
+function sumTo(n) {
+    if (n <= 0) { return 0; }
+    return n + sumTo(n - 1);
+}
+check("sumTo(100)", sumTo(100));        // 预期 5050
+check("sumTo(500)", sumTo(500));        // 预期 125250
+
+// ============ 12. 异常 finally 嵌套 ============
+console.log("=== [12] finally 嵌套 ===");
+function complexTry() {
+    var log = "";
+    try {
+        log = log + "T";
+        try {
+            log = log + "t";
+            throw "e1";
+        } catch (e) {
+            log = log + "c" + e;
+            throw "e2";
+        } finally {
+            log = log + "f1";
+        }
+    } catch (e2) {
+        log = log + "C" + e2;
+    } finally {
+        log = log + "F";
+    }
+    return log;
+}
+check("复杂try嵌套", complexTry());  // 预期 Ttc e1f1C e2F
+
+// ============ 13. 赋值表达式返回值 ============
+console.log("=== [13] 赋值返回值 ===");
+var x;
+check("赋值表达式值", x = 5);           // 预期 5
+var y;
+check("链式赋值", y = x = 10);         // 预期 10
+check("x链式后", x);                   // 预期 10
+
+// ============ 14. 三元嵌套 ============
+console.log("=== [14] 三元嵌套 ===");
+function tern(n) {
+    return n > 0 ? (n > 10 ? "big" : "small") : "neg";
+}
+check("tern(5)", tern(5));     // 预期 small
+check("tern(20)", tern(20));   // 预期 big
+check("tern(-1)", tern(-1));   // 预期 neg
+
+console.log("=== 测试结束 ===");

@@ -418,4 +418,155 @@ check("赋值自字面量", fromObj);                    // 预期 99
 function echo(v) { return v; }
 check("字面量作实参", echo({a: 7}.a));             // 预期 7
 
+// ============ 16. 多行注释 ============
+console.log("=== [16] 多行注释 ===");
+/* 这是块注释，应被完全忽略 */
+check("块注释后", 1 + 1);                          // 预期 2
+/* 跨越多行的
+   块注释
+   结束 */
+check("多行块注释后", 2 + 2);                      // 预期 4
+var x = 5; /* 行内块注释 */ check("行内块注释", x);  // 预期 5
+/* 块注释含 / 字符路径 e:/foo/bar */
+check("含斜杠块注释", 3 + 3);                      // 预期 6
+// 单行注释仍正常
+check("单行注释后", 4 + 4);                        // 预期 8
+
+// ============ 17. JS 风格 if-else（单语句体无需大括号）============
+console.log("=== [17] JS风格 if-else ===");
+if (1 < 2) check("if无括号-true", "yes");          // 预期 yes
+if (1 > 2) check("if无括号-false", "yes"); else check("if无括号-else", "no");  // 预期 no
+var r1;
+if (true) r1 = "a"; else r1 = "b";
+check("if-else单语句", r1);                        // 预期 a
+var r2;
+if (false) r2 = "a"; else r2 = "b";
+check("if-else单语句-false", r2);                  // 预期 b
+// else if 链（单语句）
+function classify(n) {
+    if (n < 0) return "neg";
+    else if (n == 0) return "zero";
+    else return "pos";
+}
+check("classify(-1)", classify(-1));               // 预期 neg
+check("classify(0)", classify(0));                 // 预期 zero
+check("classify(5)", classify(5));                 // 预期 pos
+// 嵌套 if 无括号
+var r3;
+if (true) if (false) r3 = "x"; else r3 = "y";
+check("嵌套if无括号", r3);                         // 预期 y
+
+// ============ 18. JS 风格 switch ============
+console.log("=== [18] JS风格 switch ===");
+// case 体无需大括号
+function dayName(n) {
+    switch (n) {
+        case 1: return "Mon";
+        case 2: return "Tue";
+        case 3: return "Wed";
+        default: return "Other";
+    }
+}
+check("switch(1)", dayName(1));                    // 预期 Mon
+check("switch(2)", dayName(2));                    // 预期 Tue
+check("switch(3)", dayName(3));                    // 预期 Wed
+check("switch(9)", dayName(9));                    // 预期 Other
+// 无 default 的 switch（不匹配时安全跳过）
+function noDefault(n) {
+    var r = "none";
+    switch (n) {
+        case 1: r = "one"; break;
+        case 2: r = "two"; break;
+    }
+    return r;
+}
+check("switch无default(1)", noDefault(1));         // 预期 one
+check("switch无default(2)", noDefault(2));         // 预期 two
+check("switch无default(9)", noDefault(9));         // 预期 none
+// fall-through（无 break）
+function fallthrough(n) {
+    var r = "";
+    switch (n) {
+        case 1: r = r + "1";
+        case 2: r = r + "2";
+        case 3: r = r + "3"; break;
+        case 4: r = "4"; break;
+    }
+    return r;
+}
+check("fallthrough(1)", fallthrough(1));           // 预期 123
+check("fallthrough(2)", fallthrough(2));           // 预期 23
+check("fallthrough(3)", fallthrough(3));           // 预期 3
+check("fallthrough(4)", fallthrough(4));           // 预期 4
+// 空 switch（不崩溃）
+function emptySwitch(n) {
+    switch (n) {}
+    return "ok";
+}
+check("空switch", emptySwitch(1));                 // 预期 ok
+
+// ============ 19. 十六进制字面量 ============
+console.log("=== [19] 十六进制字面量 ===");
+check("0xFF", 0xFF);                              // 预期 255
+check("0x10", 0x10);                             // 预期 16
+check("0xAB", 0xAB);                             // 预期 171
+check("0xff", 0xff);                             // 预期 255 (小写x)
+check("0x0", 0x0);                               // 预期 0
+check("0xFF+1", 0xFF + 1);                       // 预期 256
+check("0x10*2", 0x10 * 2);                       // 预期 32
+
+// ============ 20. 字符串方法与 length ============
+console.log("=== [20] 字符串方法 ===");
+check("'hello'.length", "hello".length);           // 预期 5
+check("''.length", "".length);                    // 预期 0
+check("'hello'.charAt(0)", "hello".charAt(0));     // 预期 h
+check("'hello'.charAt(4)", "hello".charAt(4));     // 预期 o
+check("'hello'.charAt(10)", "hello".charAt(10));   // 预期 (空串)
+check("'hello'.indexOf('ll')", "hello".indexOf("ll"));  // 预期 2
+check("'hello'.indexOf('xyz')", "hello".indexOf("xyz")); // 预期 -1
+check("'hello'.substring(1,3)", "hello".substring(1, 3));  // 预期 el
+check("'hello'.substring(2)", "hello".substring(2));       // 预期 llo
+check("'hello'.toUpperCase()", "hello".toUpperCase());     // 预期 HELLO
+check("'Hello'.toLowerCase()", "Hello".toLowerCase());     // 预期 hello
+// 字符串方法链式
+check("链式", "hello".toUpperCase().charAt(0));    // 预期 H
+
+// ============ 21. 数组 toString 与 length ============
+console.log("=== [21] 数组 toString/length ===");
+check("[1,2,3].length", [1, 2, 3].length);        // 预期 3
+check("[].length", [].length);                    // 预期 0
+check("[1,2,3]拼接", [1, 2, 3]);                  // 预期 1,2,3
+check("['a','b']拼接", ["a", "b"]);               // 预期 a,b
+check("空数组拼接", []);                          // 预期 (空串)
+check("含null数组", [1, null, 3]);                // 预期 1,,3
+check("数组+字符串", "v=" + [1, 2]);               // 预期 v=1,2
+
+// ============ 22. 相等性语义修复 ============
+console.log("=== [22] 相等性语义 ===");
+check("NaN==NaN", NaN == NaN);                    // 预期 false (IEEE754)
+check("NaN!=NaN", NaN != NaN);                    // 预期 true
+check("NaN===NaN", NaN === NaN);                  // 预期 false
+check("null=='null'", null == "null");            // 预期 false (null 仅等于 null)
+check("null==0", null == 0);                      // 预期 false
+check("null==null", null == null);                // 预期 true
+check("null===null", null === null);              // 预期 true
+check("'a'==='a'", "a" === "a");                  // 预期 true (值比较非引用)
+check("'a'==='b'", "a" === "b");                  // 预期 false
+check("1===1.0", 1 === 1.0);                      // 预期 true (int/float 互比)
+check("1===2", 1 === 2);                          // 预期 false
+check("'1'===1", "1" === 1);                      // 预期 false (类型不同)
+// NaN 加法传播
+check("1+NaN", 1 + NaN);                          // 预期 NaN
+check("'x'+NaN", "x" + NaN);                      // 预期 xNaN (字符串优先)
+
+// ============ 23. 空函数体与 console.log 多参数 ============
+console.log("=== [23] 空函数体/多参数 ===");
+var emptyFn = function() {};
+check("空函数体调用", emptyFn());                  // 预期 null
+function emptyDecl() {}
+check("空声明函数调用", emptyDecl());              // 预期 null
+console.log("多参数", "a", "b", "c");             // 预期 多参数 a b c
+console.log("数值多参数", 1, 2, 3);               // 预期 数值多参数 1 2 3
+console.log("混合多参数", "x", 42, true);         // 预期 混合多参数 x 42 true
+
 console.log("=== 测试结束 ===");

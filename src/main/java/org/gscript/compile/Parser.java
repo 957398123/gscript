@@ -199,18 +199,17 @@ public class Parser {
         Expression condition = parseExpression();
         // 条件表达式后面必须是)
         consume(GSTokenType.RPAREN, "Expected ')' after condition.");
-        // 初始化then分支
-        BlockStatement thenBranch;
-        // 初始化else分支
+        // then分支：支持 { } 块或单语句（JS 风格）
+        BlockStatement thenBranch = parseStatementOrBlock();
+        // else分支
         Node elseBranch = null;
-        // 匹配if为true语句
-        thenBranch = parseBlockStatement();
-        // 如果匹配到了else
         if (match(GSTokenType.ELSE)) {
-            if (check(GSTokenType.LBRACE)) {  // 如果是if else这种
+            if (check(GSTokenType.LBRACE)) {  // else { ... }
                 elseBranch = parseBlockStatement();
-            } else if (check(GSTokenType.IF)) {  //如果是if else if语句
+            } else if (check(GSTokenType.IF)) {  // else if ...
                 elseBranch = parseIfStatement();
+            } else {  // else 单语句（JS 风格）
+                elseBranch = parseStatementOrBlock();
             }
         }
         // 返回if语句节点
@@ -220,9 +219,27 @@ public class Parser {
     }
 
     /**
+     * 解析语句或块：若当前为 '{' 则解析块语句，否则解析单条语句并包装为 BlockStatement。
+     * 用于支持 JS 风格的 if/else/for/while 单语句体。
+     */
+    private BlockStatement parseStatementOrBlock() {
+        if (check(GSTokenType.LBRACE)) {
+            return parseBlockStatement();
+        }
+        final int startLine = peek().line;
+        Node stmt = parseStatement();
+        List<Node> stmts = new ArrayList<>();
+        stmts.add(stmt);
+        BlockStatement block = new BlockStatement(stmts);
+        block.line = startLine;
+        return block;
+    }
+
+    /**
      * 解析switch语句<br/>
+     * JS 风格：case 体无需大括号，支持 fall-through，default 可选，允许空 switch。<br/>
      * {@literal 语法定义：SwitchStatement
-     * = "switch", "(", Expression, ")", "{", { "case", Expression, ":", "{" Statement } }, [ "default", ":", { Statement } ], "}";
+     * = "switch", "(", Expression, ")", "{", { ( "case", Expression, ":" | "default", ":" ), { Statement } }, "}";}
      *
      * @return switch语句
      */
@@ -238,58 +255,58 @@ public class Parser {
         consume(GSTokenType.RPAREN, "Expected ')' after condition.");
         // 块语句必须"{"开头
         consume(GSTokenType.LBRACE, "Expected '{' before block statement");
-        List<Expression> cases = null;
-        List<BlockStatement> blocks = null;
-        int[] offsetMap = null;
+        List<Expression> cases = new ArrayList<>();
+        List<BlockStatement> blocks = new ArrayList<>();
+        int[] offsetMap = new int[0];
         boolean hasDefault = false;
-        // 这里判断是不是空的switch
-        if (!match(GSTokenType.RBRACE)) {
-            cases = new ArrayList<>();
-            blocks = new ArrayList<>();
-            int offset = 0;
-            int defaultOffset = 0;
-            if (!(check(GSTokenType.CASE) || check(GSTokenType.DEFAULT))) {
-                error(String.format("Uncaught SyntaxError: Unexpected token %s", advance().value));
-            }
-            // 只能case或者default
-            while (check(GSTokenType.CASE) || check(GSTokenType.DEFAULT)) {
-                boolean isCase = true;
-                if (check(GSTokenType.DEFAULT)) {
-                    if (hasDefault) {
-                        error("Uncaught SyntaxError: More than one default clause in switch statement");
-                    } else {
-                        isCase = false;
-                        defaultOffset = offset;
-                        hasDefault = true;
-                    }
-                }
-                advance();
-                if (isCase) {
-                    // 获取表达式
-                    cases.add(parseExpression());
+        int defaultOffset = 0;
+        int offset = 0;
+        // 循环解析 case/default 子句，直到遇到 '}'
+        while (!check(GSTokenType.RBRACE) && !check(GSTokenType.EOF)) {
+            boolean isCase = true;
+            if (check(GSTokenType.DEFAULT)) {
+                if (hasDefault) {
+                    error("Uncaught SyntaxError: More than one default clause in switch statement");
                 } else {
-                    cases.add(null);
+                    isCase = false;
+                    defaultOffset = offset;
+                    hasDefault = true;
                 }
-                consume(GSTokenType.COLON, "Expected ':' after case expression.");
-                // 解析块语句
-                blocks.add(parseBlockStatement());
-                ++offset;
+            } else if (!check(GSTokenType.CASE)) {
+                error(String.format("Uncaught SyntaxError: Unexpected token %s, expected 'case' or 'default'", peek().value));
             }
-            offsetMap = new int[offset];
-            // 格式化offset，这个时候offset是一一对应的
-            for (int i = 0; i < offset; i++) {
-                offsetMap[i] = i;
+            advance();  // 消费 case/default
+            if (isCase) {
+                // case 后跟表达式
+                cases.add(parseExpression());
+            } else {
+                cases.add(null);  // default 占位
             }
-            // 只有有default并且case大于1才交换
-            if (hasDefault && offset > 1 && defaultOffset != offset - 1) {
-                // 将case里面的default放到最后面
-                Collections.swap(cases, defaultOffset, offset - 1);
-                offsetMap[defaultOffset] = offset - 1;
-                offsetMap[offset - 1] = defaultOffset;
+            consume(GSTokenType.COLON, "Expected ':' after case expression.");
+            // 解析 case 体：JS 风格，无需大括号，持续解析语句直到下一个 case/default/}
+            List<Node> bodyStmts = new ArrayList<>();
+            while (!check(GSTokenType.CASE) && !check(GSTokenType.DEFAULT)
+                    && !check(GSTokenType.RBRACE) && !check(GSTokenType.EOF)) {
+                bodyStmts.add(parseStatement());
             }
-            // 块语句必须"{"开头
-            consume(GSTokenType.RBRACE, "Expected '}' before block statement");
+            BlockStatement body = new BlockStatement(bodyStmts);
+            body.line = startLine;
+            blocks.add(body);
+            ++offset;
         }
+        // 构建 offsetMap
+        offsetMap = new int[offset];
+        for (int i = 0; i < offset; i++) {
+            offsetMap[i] = i;
+        }
+        // 只有有default并且case大于1才交换（将 default 移到末尾）
+        if (hasDefault && offset > 1 && defaultOffset != offset - 1) {
+            Collections.swap(cases, defaultOffset, offset - 1);
+            offsetMap[defaultOffset] = offset - 1;
+            offsetMap[offset - 1] = defaultOffset;
+        }
+        // 消费 '}'
+        consume(GSTokenType.RBRACE, "Expected '}' to close switch statement");
         SwitchStatement switchStatement = new SwitchStatement(condition, cases, blocks, offsetMap, hasDefault);
         switchStatement.line = startLine;
         return switchStatement;
@@ -334,21 +351,16 @@ public class Parser {
             update = parseExpression();
             consume(GSTokenType.RPAREN, "Expected ')' after for statement 'update'.");
         }
-        // 解析body，body可以为空
+        // 解析body：支持 { } 块、空体 ; 或单语句（JS 风格）
         if (!match(GSTokenType.SEMICOLON)) {
-            // 初始化循环体
-            body = new ArrayList<>();
-            // 块语句必须"{"开头
-            consume(GSTokenType.LBRACE, "Expect '{' before block statement");
-            // 如果不是空语句
-            if (!check(GSTokenType.RBRACE)) {
-                // 循环解析语句，直到遇到当前块语句结束符号
-                do {
-                    body.add(parseStatement());
-                } while (!check(GSTokenType.RBRACE));
+            if (check(GSTokenType.LBRACE)) {
+                BlockStatement block = parseBlockStatement();
+                body = block.stmts != null ? block.stmts : new ArrayList<>();
+            } else {
+                // 单语句体（JS 风格）
+                body = new ArrayList<>();
+                body.add(parseStatement());
             }
-            // 块语句必须"}"结尾
-            consume(GSTokenType.RBRACE, "Expect '}' after block statement");
         }
         // 返回for语句节点
         ForStatement forStatement = new ForStatement(init, condition, update, body);
@@ -412,23 +424,18 @@ public class Parser {
         Expression condition = parseExpression();
         // 匹配符号")"
         consume(GSTokenType.RPAREN, "Expected ')' after 'while'");
-        // 解析循环体
+        // 解析循环体：支持 { } 块、空体 ; 或单语句（JS 风格）
         List<Node> body = null;
-        // 空循环
-        if (!match(GSTokenType.SEMICOLON)) {
-            if (match(GSTokenType.LBRACE)) {
-                // 如果不是空语句
-                if (!check(GSTokenType.RBRACE)) {
-                    body = new ArrayList<>();
-                    // 循环解析语句，直到遇到当前块语句结束符号
-                    do {
-                        body.add(parseStatement());
-                    } while (!check(GSTokenType.RBRACE));
-                }
-                consume(GSTokenType.RBRACE, "Expect '}' after block statement");
-            } else {
-                error(peek(), "Expected ';' or '{' after 'while'");
-            }
+        if (match(GSTokenType.SEMICOLON)) {
+            // 空循环体
+            body = null;
+        } else if (check(GSTokenType.LBRACE)) {
+            BlockStatement block = parseBlockStatement();
+            body = block.stmts != null ? block.stmts : new ArrayList<>();
+        } else {
+            // 单语句体（JS 风格）
+            body = new ArrayList<>();
+            body.add(parseStatement());
         }
         // 返回while语句节点
         WhileStatement whileStatement = new WhileStatement(condition, body);
@@ -1261,6 +1268,10 @@ public class Parser {
         }
         // 解析块语句
         BlockStatement body = parseBlockStatement();
+        // 空函数体时 stmts 为 null，初始化为空列表避免 NPE
+        if (body.stmts == null) {
+            body.stmts = new ArrayList<>();
+        }
         // 这里需要判断，如果函数最后一行不是return，需要显式加上return null;
         if (!body.havingReturn()) {
             ReturnStatement implicitReturn = new ReturnStatement(null);

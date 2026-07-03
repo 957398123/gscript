@@ -448,7 +448,7 @@ public class GSInterpreter {
                                 GSValue r = nativeFunction.eval(callArgs);
                                 stack.push(r);
                             } else {  // 函数引用为空
-                                throw new GSException(frame.function.name, frame.getIP() - 1, new GSString("TypeError: function not exit."));
+                                throw new GSException(frame.function.name, frame.getIP() - 1, new GSString("TypeError: function not exist."));
                             }
                             break;
                         }
@@ -494,7 +494,7 @@ public class GSInterpreter {
                                 // 否则返回默认对象
                                 stack.push(object);
                             } else {
-                                throw new GSException(frame.function.name, frame.getIP() - 1, new GSString("TypeError: constructor function not exit."));
+                                throw new GSException(frame.function.name, frame.getIP() - 1, new GSString("TypeError: constructor function not exist."));
                             }
                             break;
                         }
@@ -569,11 +569,17 @@ public class GSInterpreter {
                         }
                         case GSClassConstants.OP_NOP:
                             break;
-                        default: {  // 这里要报错，不支持的字节码
-                            break;
+                        default: {  // 不支持的字节码：抛出虚拟机错误，避免静默忽略导致后续状态错乱
+                            throw new Error("VMError: unknown opcode 0x" + Integer.toHexString(opcode & 0xFF)
+                                    + " in function " + frame.function.name + " at ip " + (frame.getIP() - 1));
                         }
                     }
                 } catch (GSException e) {  // 如果是包装好的异常
+                    // 异常断点：若开启 pauseOnException，在异常抛出时挂起（S7 接线）
+                    // checkException 内部会阻塞等待 DAP 线程唤醒，唤醒后继续正常异常处理
+                    if (debugController != null) {
+                        debugController.checkException(frame, callStack.size(), e);
+                    }
                     // 进行异常处理，异常可能抛到上一个frame
                     GSValue value = frame.handleException(e.getIp(), e);
                     // 这里判断null的原因是如果是try或者catch转finally的话，是不需要往栈顶放异常对象

@@ -88,7 +88,8 @@ public class GSClassWriter {
         boolean hasSourcePath = sourcePathCpIndex > 0;
 
         // RLE 压缩源码映射：源码行号常有长游程（多条字节码对应同一源码行），
-        // RLE 编码为 (count, line) 对。仅在压缩率 > 25% 时启用，否则写原始格式（向后兼容）。
+        // RLE 编码为 (count, line) 对（4 字节/对），原始格式为 2 字节/条。
+        // 仅当 RLE 对数 < 原始长度的 50% 时启用（4M < 2N → M < N/2），否则 RLE 反而更大。
         List<int[]> rlePairs = null;
         boolean useRle = false;
         if (hasSourceMap) {
@@ -106,8 +107,8 @@ public class GSClassWriter {
                 }
             }
             rlePairs.add(new int[]{count, prev});
-            // 压缩率 > 25%（RLE 对数 < 原始长度的 75%）才启用 RLE
-            useRle = rlePairs.size() < sourceLines.size() * 0.75;
+            // 仅当 RLE 体积确实更小时启用：对数 < 原始长度的 50%（4 字节/对 vs 2 字节/条）
+            useRle = rlePairs.size() < sourceLines.size() * 0.5;
         }
 
         short flags = 0;

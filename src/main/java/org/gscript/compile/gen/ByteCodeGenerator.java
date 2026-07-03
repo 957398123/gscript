@@ -217,8 +217,16 @@ public class ByteCodeGenerator implements Visitor {
     @Override
     public void visit(SwitchStatement node) {
         line(node);
-        // 首先计算表达式
+        // 使用临时变量保存 switch 条件值，避免条件值长期滞留共享栈。
+        // 原实现将条件值留在栈上、各 case 用 copy 复制比较、末尾 pop 清理；
+        // 但 case 体内的 return/throw 会提前退出函数，跳过末尾 pop，导致条件值
+        // 残留在共享栈上、破坏调用者栈对齐（引发 "function not exist" 等运行时错误）。
+        // 改为：declare 临时变量 → 求值条件 → store 入临时变量；各 case 用 const a 重新加载。
+        final String switchTemp = "__switch_cond__";
+        emit(String.format("declare %s", switchTemp));
+        // 首先计算表达式并存入临时变量（store 会从栈上消费条件值，栈保持干净）
         node.condition.accept(this);
+        emit(String.format("store %s", switchTemp));
         // 接下来看case条件列表
         List<Expression> cases = node.cases;
         List<BlockStatement> blocks = node.blocks;
@@ -231,8 +239,8 @@ public class ByteCodeGenerator implements Visitor {
             for (int i = 0; i < cases.size(); ++i) {
                 Expression expr = cases.get(i);
                 if (expr != null) {  // case
-                    // 首先获取表达式值
-                    emit("copy");
+                    // 从临时变量加载条件值（每次比较独立加载，comp eq 会消费两值，栈保持干净）
+                    emit(String.format("const a %s", switchTemp));
                     // 访问当前条件值
                     expr.accept(this);
                     // 进行比对
@@ -248,6 +256,12 @@ public class ByteCodeGenerator implements Visitor {
                 }
                 // 赋值offset方便修改false_jump
                 caseOffset[i] = size() - 1;
+            }
+            // 无 default 时，所有 case 都不匹配则跳到 switch 结束（避免 fall-through 到第一个 case 体）
+            int noDefaultJumpAddr = -1;
+            if (defaultOffset == -1) {
+                noDefaultJumpAddr = size();
+                emit("");  // 预填 jump，目标稍后回填
             }
             int bodyStart = size();
             // 接下来解析case体，case体是按照声明顺序
@@ -265,10 +279,15 @@ public class ByteCodeGenerator implements Visitor {
                 block.accept(this);
             }
             int bodyEnd = size();
+            // 回填无 default 时的跳转
+            if (noDefaultJumpAddr >= 0) {
+                emit(noDefaultJumpAddr, String.format("jump %d", bodyEnd - noDefaultJumpAddr));
+            }
             // 最后处理语句中的break
             handleSwitchJump(bodyStart, bodyEnd, bodyEnd);
         }
-        emit("pop");
+        // 条件值已存入临时变量，共享栈上无残留，无需末尾 pop。
+        // 这样 case 体内的 return/throw 提前退出函数时也不会破坏调用者栈对齐。
     }
 
     /**
@@ -997,6 +1016,16 @@ public class ByteCodeGenerator implements Visitor {
                 emit(String.format("const i %s", token.value));
                 break;
             }
+            case INTEGER_HEX: {
+                // 十六进制字面量：解析为十进制整数值后生成 const i
+                String hexValue = token.value;
+                int dotIndex = hexValue.indexOf('x');
+                if (dotIndex < 0) dotIndex = hexValue.indexOf('X');
+                String hexPart = (dotIndex >= 0) ? hexValue.substring(dotIndex + 1) : hexValue;
+                int decimal = Integer.parseInt(hexPart, 16);
+                emit(String.format("const i %d", decimal));
+                break;
+            }
             case FLOAT: {
                 emit(String.format("const f %s", token.value));
                 break;
@@ -1357,7 +1386,9 @@ public class ByteCodeGenerator implements Visitor {
         }
         // 函数末尾自动 return null：确保没有显式 return 的函数也返回 null 到栈顶
         // （JS 语义：无 return 的函数返回 undefined，gscript 用 null 表示）
-        // currentLine=0 避免隐式返回误触发调试器断点（sourceLine=0 不会命中断点）
+        // currentLine=0 避免隐式返回与紧随其后的 store 指令误触发调试器断点
+        // （sourceLine=0 不会命中断点；store 是函数声明的簿记指令，不属于任何源码行。
+        //  下一条语句会通过 line(node) 重置 currentLine，因此不存在污染问题。）
         currentLine = 0;
         emit("lda_null");
         emit("return");

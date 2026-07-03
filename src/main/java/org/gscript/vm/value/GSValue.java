@@ -93,7 +93,15 @@ public abstract class GSValue {
      * @return 计算结果
      */
     public static final boolean eq(GSValue v1, GSValue v2) {
-        if (v1.type <= 3 && v2.type <= 3) {  // 数值类型
+        // NaN 与任何值都不相等（IEEE 754 规范）
+        if (v1.type == 10 || v2.type == 10) {
+            return false;
+        }
+        // null 仅与 null 宽松相等（不与 "null" 字符串等相等）
+        if (v1.type == 8 || v2.type == 8) {
+            return v1.type == 8 && v2.type == 8;
+        }
+        if (v1.type <= 3 && v2.type <= 3) {  // 数值类型（含 bool）
             if (v1.type == 3 || v2.type == 3) {
                 return v1.toFloatValue() == v2.toFloatValue();
             } else {
@@ -116,20 +124,28 @@ public abstract class GSValue {
      * @return 计算结果
      */
     public static final boolean seq(GSValue v1, GSValue v2) {
-        if (v1.type <= 3 && v2.type <= 3) {
-            if (v1.type != 1 && v2.type != 1) {
-                if (v1.type == 3 || v2.type == 3) {
-                    return v1.toFloatValue() == v2.toFloatValue();
-                } else {
-                    return v1.toIntValue() == v2.toIntValue();
-                }
-            } else {
-                return v1.toBoolean() == v2.toBoolean();
-            }
-        } else if (v1.type == v2.type) {
-            return v1 == v2;
-        } else {
+        // NaN 与任何值都不严格相等
+        if (v1.type == 10 || v2.type == 10) {
             return false;
+        }
+        // 类型不同则严格不相等（int/float 同属数值可互比）
+        if (v1.type != v2.type) {
+            if ((v1.type == 2 || v1.type == 3) && (v2.type == 2 || v2.type == 3)) {
+                return v1.toFloatValue() == v2.toFloatValue();
+            }
+            return false;
+        }
+        // 类型相同
+        if (v1.type == 3) {  // float
+            return v1.toFloatValue() == v2.toFloatValue();
+        } else if (v1.type == 2) {  // int
+            return v1.toIntValue() == v2.toIntValue();
+        } else if (v1.type == 1) {  // bool
+            return v1.toBoolean() == v2.toBoolean();
+        } else if (v1.type == 5) {  // 字符串：值比较（非引用比较）
+            return v1.toStringValue().equals(v2.toStringValue());
+        } else {
+            return v1 == v2;  // object/array/function/null：引用比较
         }
     }
 
@@ -249,6 +265,14 @@ public abstract class GSValue {
      * @return 结果
      */
     public static final GSValue plus(GSValue v1, GSValue v2) {
+        // 字符串拼接优先：任一操作数为字符串时走拼接（JS 语义）
+        if (v1.type == 5 || v2.type == 5) {
+            return new GSString(v1.toStringValue() + v2.toStringValue());
+        }
+        // NaN 传播：任一操作数为 NaN 且无字符串时结果为 NaN
+        if (v1.type == 10 || v2.type == 10) {
+            return GSNaN.NAN;
+        }
         if (v1.type <= 3 && v2.type <= 3) {  // 数值类型计算
             // float类型提升
             if (v1.type == 3 || v2.type == 3) {

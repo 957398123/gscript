@@ -66,11 +66,12 @@ public class DebugController {
     /**
      * 每帧的"上一条已执行指令源码行号"（断点重触发避免）。
      *
-     * <p>用 IdentityHashMap 而非全局变量，因为函数调用会改变当前行号，
-     * 返回后若用全局 prevLine 会误判"行号变化"导致断点重触发。
+     * <p>用 WeakHashMap（GSFrame 未重写 equals/hashCode，故等同身份比较）而非全局变量，
+     * 因为函数调用会改变当前行号，返回后若用全局 prevLine 会误判"行号变化"导致断点重触发。
      * per-frame 方案确保函数调用不影响外层帧的断点判断。
+     * WeakHashMap 允许帧被 GC 回收后自动清理条目，避免深度递归调试时的内存泄漏。
      */
-    private final java.util.IdentityHashMap<GSFrame, Integer> framePrevLines = new java.util.IdentityHashMap<>();
+    private final java.util.WeakHashMap<GSFrame, Integer> framePrevLines = new java.util.WeakHashMap<>();
 
     /** 解释器是否处于挂起状态 */
     private volatile boolean suspended = false;
@@ -251,8 +252,11 @@ public class DebugController {
                     reason = "breakpoint";
                 }
             }
-            // 4. 单步命中
-            else if (stepMode != STEP_NONE) {
+
+            // 4. 单步命中（独立判断，不与断点 else-if 互斥）
+            //    修复 D17：原 else if 链导致"行号变化但无断点"时单步检查被短路，
+            //    stepOver/stepIn 在 if-else/switch 分支跳转时失效
+            if (!shouldSuspend && stepMode != STEP_NONE) {
                 switch (stepMode) {
                     case STEP_IN: {
                         // 任意帧，行号变化或文件变化即挂起
