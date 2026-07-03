@@ -10,6 +10,7 @@ import org.gscript.compile.gclass.GSClassWriter;
 import org.gscript.compile.node.Node;
 import org.gscript.compile.token.GSToken;
 import org.gscript.vm.GSInterpreter;
+import org.gscript.vm.debug.DebugAgent;
 import org.gscript.vm.stdlib.Console;
 import org.gscript.vm.value.GSNull;
 import org.gscript.vm.value.GSValue;
@@ -52,9 +53,15 @@ public class TestScript {
         } else if ("hosttest".equals(mode)) {
             // 新增：宿主交互 API 测试（Java 调用 gscript 解释器）
             TestScript.hostTest();
+        } else if ("debugagent".equals(mode)) {
+            // 新增：DebugAgent waitForDebugger 模式（debug 模式启用）
+            TestScript.debugAgent(name, false);
+        } else if ("debugagent-attach".equals(mode)) {
+            // 新增：DebugAgent attachReady 模式（运行时附加）
+            TestScript.debugAgent(name, true);
         } else {
             System.err.println("Unknown mode: " + mode);
-            System.err.println("Usage: TestScript <name> [run|dump|compile|rungclass|dumpgclass|hosttest]");
+            System.err.println("Usage: TestScript <name> [run|dump|compile|rungclass|dumpgclass|hosttest|debugagent|debugagent-attach]");
         }
     }
 
@@ -96,7 +103,9 @@ public class TestScript {
             ArrayList<String> src =  byteCodeGenerator.getByteCode();
             // 增加控制台输出
             interpreter.addVariableToGlobal("console", new Console());
+            interpreter.installTimerGlobals();
             interpreter.eval(src.toArray(new String[src.size()]));
+            interpreter.runEventLoop();
         }
     }
 
@@ -131,17 +140,19 @@ public class TestScript {
 
         // 序列化为 .gclass
         // sourcePath 设为 name + ".script"（调试用标识，非绝对路径）
+        // sourceContent 传入完整源码文本（attach 调试模式通过 source 请求返回）
         String sourcePath = name + ".script";
         Path gclassPath = Paths.get(rootUrl.toURI()).resolve("gtxt").resolve(name + ".gclass");
         File gclassFile = gclassPath.toFile();
         gclassFile.getParentFile().mkdirs();  // 确保 gtxt 目录存在
         GSClassWriter writer = new GSClassWriter();
         try (OutputStream out = new FileOutputStream(gclassFile)) {
-            writer.write(bytecode, sourceLines, sourcePath, out);
+            writer.write(bytecode, sourceLines, sourcePath, content, out);
         }
         System.err.println("gclass written: " + gclassPath);
         System.err.println("  bytecode instructions: " + bytecode.size());
         System.err.println("  source lines: " + (sourceLines != null ? sourceLines.size() : 0));
+        System.err.println("  source content: " + (content != null ? content.length() + " chars" : "null"));
     }
 
     /**
@@ -154,7 +165,9 @@ public class TestScript {
 
         GSInterpreter interpreter = new GSInterpreter();
         interpreter.addVariableToGlobal("console", new Console());
-        interpreter.eval(data.src, data.constantPool, data.sourceLines, data.sourcePath);
+        interpreter.installTimerGlobals();
+        interpreter.eval(data.src, data.constantPool, data.sourceLines, data.sourcePath, data.sourceContent);
+        interpreter.runEventLoop();
     }
 
     /**
@@ -260,5 +273,53 @@ public class TestScript {
         // 6. 表达式运行时出错（调用非函数值）→ 返回 GSNull.NULL
         GSValue err = interpreter.evalExpression("x()");
         System.out.println("err_is_null=" + (err == GSNull.NULL));
+    }
+
+    // =========================================================================
+    //  DebugAgent 调试模式（debugagent / debugagent-attach）
+    // =========================================================================
+
+    /**
+     * DebugAgent 演示：加载 gclass + 启动调试代理。
+     *
+     * <p>验证 attach 调试两种启用方式：
+     * <ul>
+     *   <li>attachReady=false：waitForDebugger 模式，阻塞等待 VSCode 连接后执行（"debug 模式启用"）</li>
+     *   <li>attachReady=true：attachReady 模式，解释器先运行，VSCode 随后附加（"运行时 attach"）</li>
+     * </ul>
+     *
+     * @param name 脚本名（不含扩展名，需先 compile 生成 gclass）
+     * @param attachReady true=运行时附加模式，false=等待调试器模式
+     */
+    public static void debugAgent(String name, boolean attachReady) throws Exception {
+        GSClassData data = loadGclass(name);
+        if (data == null) return;
+        if (data.sourceContent == null) {
+            System.err.println("警告: gclass 不含源码内容，attach 模式无法在 VSCode 显示源码");
+            System.err.println("请重新编译: TestScript " + name + " compile");
+        }
+        int port = 4711;
+        DebugAgent agent = new DebugAgent(port);
+        if (attachReady) {
+            // 模式 2：先启动解释器运行，再监听附加
+            GSInterpreter interpreter = new GSInterpreter();
+            interpreter.addVariableToGlobal("console", new Console());
+            interpreter.installTimerGlobals();
+            agent.setInterpreter(interpreter);
+            agent.addGclass(data);
+            agent.startAttachListener();  // 后台监听，立即返回
+            System.err.println("[测试] 解释器开始运行，VSCode 可随时附加（端口 " + port + "）");
+            // 主线程运行解释器（VSCode 连接后因 controller 设置而挂起）
+            interpreter.eval(data.src, data.constantPool, data.sourceLines,
+                    data.sourcePath, data.sourceContent);
+            interpreter.runEventLoop();
+            System.err.println("[测试] 解释器运行结束");
+            agent.stop();
+        } else {
+            // 模式 1：等待 VSCode 连接后运行
+            agent.addGclass(data);
+            agent.waitForDebuggerAndRun();  // 阻塞直到调试会话结束
+            System.err.println("[测试] 调试会话结束");
+        }
     }
 }

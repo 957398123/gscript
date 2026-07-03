@@ -1,6 +1,5 @@
 package org.gscript.vm.stdlib;
 
-import org.gscript.vm.GSInterpreter;
 import org.gscript.vm.value.GSNativeFunction;
 import org.gscript.vm.value.GSObject;
 import org.gscript.vm.value.GSValue;

@@ -37,6 +37,14 @@ public class GSClassData {
     public final FunctionEntry[] functions;
 
     /**
+     * 完整源码文本（来自 Attributes 段的 SourceContent 属性），可为 null。
+     *
+     * <p>attach 调试模式下，VSCode 通过 DAP {@code source} 请求从服务端获取源码，
+     * 无需本地源文件。launch 模式下 VSCode 直接从磁盘读源码，此字段不被使用。
+     */
+    public final String sourceContent;
+
+    /**
      * 函数表条目：记录单个函数的元数据。
      */
     public static class FunctionEntry {
@@ -60,14 +68,19 @@ public class GSClassData {
     }
 
     public GSClassData(byte[][] src, Object[] constantPool, int[] sourceLines, String sourcePath) {
-        this(src, constantPool, sourceLines, sourcePath, null);
+        this(src, constantPool, sourceLines, sourcePath, null, null);
     }
 
     public GSClassData(byte[][] src, Object[] constantPool, int[] sourceLines, String sourcePath, FunctionEntry[] functions) {
+        this(src, constantPool, sourceLines, sourcePath, functions, null);
+    }
+
+    public GSClassData(byte[][] src, Object[] constantPool, int[] sourceLines, String sourcePath, FunctionEntry[] functions, String sourceContent) {
         this.src = src;
         this.constantPool = constantPool;
         this.sourceLines = sourceLines;
         this.sourcePath = sourcePath;
         this.functions = functions;
+        this.sourceContent = sourceContent;
     }
 }

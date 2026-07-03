@@ -10,6 +10,7 @@ import org.gscript.compile.node.Node;
 import org.gscript.compile.token.GSToken;
 import org.gscript.vm.debug.DebugAbortException;
 import org.gscript.vm.debug.DebugController;
+import org.gscript.vm.stdlib.TimerLib;
 import org.gscript.vm.value.*;
 
 import java.util.ArrayDeque;
@@ -40,8 +41,19 @@ public class GSInterpreter {
 
     /**
      * 调试控制器（null 表示非调试模式，解释器全速运行不做挂起检查）。
+     *
+     * <p>volatile：attachReady 模式下，DAP 线程设置 controller、解释器线程读取，
+     * 必须保证跨线程可见性。setDebugController(null) 可清除（disconnect 分离调试器）。
      */
-    private DebugController debugController;
+    private volatile DebugController debugController;
+
+    /**
+     * 定时器调度器（lazy 初始化，首次 schedule 时创建）。
+     *
+     * <p>方案 B：守护线程只计时，到期任务入 readyQueue，由 {@link #runEventLoop()}
+     * 在主线程串行执行回调。null 表示无定时器任务、或调度器已 shutdown。
+     */
+    private TimerScheduler timerScheduler;
 
     public GSInterpreter() {
     }
@@ -71,6 +83,19 @@ public class GSInterpreter {
      */
     public ArrayDeque<GSFrame> getCallStack() {
         return callStack;
+    }
+
+    /**
+     * 获取调用栈的线程安全快照（栈顶在前）。
+     *
+     * <p>调试器挂起期间，DAP 线程通过此方法读取调用栈生成 stackTrace 响应。
+     * 解释器线程在挂起期间（{@code lock.wait()}）不会修改 callStack，故快照本身安全；
+     * {@code synchronized} 提供内存可见性的防御性保证（ArrayDeque 非线程安全）。
+     *
+     * @return 调用栈快照（ArrayList，栈顶在前），非调试模式返回空列表
+     */
+    public synchronized ArrayList<GSFrame> getCallStackSnapshot() {
+        return new ArrayList<>(callStack);
     }
 
     /**
@@ -105,8 +130,10 @@ public class GSInterpreter {
                 // 操作码
                 byte opcode = codes[0];
                 // 调试器挂起检查（命中断点/单步/暂停请求时阻塞，直至 DAP 线程唤醒）
-                if (debugController != null) {
-                    debugController.suspendCheck(frame, callStack.size());
+                // 本地变量捕获避免 check-then-act 竞态（attach disconnect 时 DAP 线程可能置 null）
+                DebugController dc = this.debugController;
+                if (dc != null) {
+                    dc.suspendCheck(frame, callStack.size());
                 }
                 try {
                     switch (opcode) {
@@ -398,6 +425,7 @@ public class GSInterpreter {
                             // baseOffset = 父函数.baseOffset + 切片起始IP，使任意帧 IP 可映射回源码行
                             function.sourceLines = frame.function.sourceLines;
                             function.sourcePath = frame.function.sourcePath;
+                            function.sourceContent = frame.function.sourceContent;
                             function.baseOffset = frame.function.baseOffset + ip;
                             stack.push(function);
                             // 加载定义函数后要移动程序计数器
@@ -628,9 +656,26 @@ public class GSInterpreter {
      * @param sourcePath    源文件路径（调试用，区分多文件），可为 null
      */
     public void eval(byte[][] codes, Object[] constantPool, int[] sourceLines, String sourcePath) {
+        eval(codes, constantPool, sourceLines, sourcePath, null);
+    }
+
+    /**
+     * 执行字节码（二进制格式，带源码映射、文件路径与源码内容）。
+     *
+     * <p>attach 调试模式下，sourceContent 随函数继承，供 DAP source 请求返回。
+     * 详见 {@link #eval(byte[][], Object[], int[], String)} 的多文件说明。
+     *
+     * @param codes         二进制字节码（byte[][]，每条指令为 byte[]，code[0]=opcode）
+     * @param constantPool  常量池（Object[]，索引从 1 开始，0 不用）
+     * @param sourceLines   字节码索引对应的源码行号数组（与 codes 平行，1-based，0=未设置），可为 null
+     * @param sourcePath    源文件路径（调试用，区分多文件），可为 null
+     * @param sourceContent 完整源码文本（attach 调试模式用，可为 null）
+     */
+    public void eval(byte[][] codes, Object[] constantPool, int[] sourceLines, String sourcePath, String sourceContent) {
         GSFunction anonymous = new GSFunction("null", codes, constantPool, global);
         anonymous.sourceLines = sourceLines;
         anonymous.sourcePath = sourcePath;
+        anonymous.sourceContent = sourceContent;
         anonymous.baseOffset = 0;
         GSFrame frame = new GSFrame(anonymous);
         try {
@@ -764,5 +809,119 @@ public class GSInterpreter {
      */
     public void setVariable(String name, Object value) {
         addVariableToGlobal(name, GSValue.fromJavaObject(value));
+    }
+
+    // ===== 定时器与事件循环（方案 B：单线程 + 守护定时器线程）=====
+
+    /**
+     * 调用 gscript 函数（native 回调 gscript 的唯一入口）。
+     *
+     * <p>供 {@link TimerLib} 在主线程执行定时器回调使用：new GSFrame → eval。
+     * eval 内部走 {@code callStack.push/pop} + 每条指令 {@code suspendCheck}，
+     * 故回调里的断点/单步/变量查看与普通调用完全一致。
+     *
+     * <p>异常处理：传播 {@link GSException} 和 {@link DebugAbortException} 给调用方
+     * （{@link #runEventLoop()} 决定如何处理）。回调无 return 时栈不增长，返回 GSNull.NULL。
+     *
+     * @param fn   目标函数（已在 setTimeout/setInterval 时捕获）
+     * @param args 参数列表（OP_INVOKE 约定：args[0]=this，args[1..]=实际参数）
+     * @return 函数返回值（无 return 返回 GSNull.NULL）
+     */
+    public GSValue callFunction(GSFunction fn, ArrayList<GSValue> args) {
+        GSFrame frame = new GSFrame(fn);
+        int stackMark = stack.size();
+        eval(frame, args);
+        return stack.size() > stackMark ? stack.pop() : GSNull.NULL;
+    }
+
+    /** 调度一次性定时器（setTimeout），返回 timer id。 */
+    public int scheduleTimeout(GSFunction cb, long delay, ArrayList<GSValue> args) {
+        ensureTimerScheduler();
+        return timerScheduler.schedule(cb, delay, args);
+    }
+
+    /** 调度周期性定时器（setInterval），返回 timer id。 */
+    public int scheduleInterval(GSFunction cb, long period, ArrayList<GSValue> args) {
+        ensureTimerScheduler();
+        return timerScheduler.scheduleAtFixedRate(cb, period, args);
+    }
+
+    /** 取消定时器（clearTimeout/clearInterval 共用）。 */
+    public void cancelTimer(int id) {
+        if (timerScheduler != null) {
+            timerScheduler.cancel(id);
+        }
+    }
+
+    private void ensureTimerScheduler() {
+        if (timerScheduler == null) {
+            timerScheduler = new TimerScheduler();
+        }
+    }
+
+    /**
+     * 事件循环：在主脚本 eval 返回后，pump 定时器任务队列直到排空。
+     *
+     * <p>循环退出条件：{@link TimerScheduler#hasPending()} 为 false
+     * （timerQueue + readyQueue 都空，即所有 setTimeout 已执行、所有 setInterval 已 cancel）。
+     * 纯 setInterval 脚本永不退出——attach 模式 disconnect 仅分离调试器（程序继续运行，
+     * 如同 node --inspect），需宿主 kill 进程或调用 terminate 请求终止；
+     * terminate 触发的 {@link DebugAbortException} 会传播出本循环。
+     *
+     * <p>异常策略（类 JS）：
+     * <ul>
+     *   <li>{@link DebugAbortException}（terminate 请求 / launch 模式 disconnect）：传播出循环，终止事件循环</li>
+     *   <li>{@link GSException}（gscript 未捕获异常）：打印 stderr，继续下一个任务</li>
+     *   <li>其他 Throwable：打印栈，继续下一个任务</li>
+     * </ul>
+     */
+    public void runEventLoop() {
+        if (timerScheduler == null) {
+            return;  // 无定时器任务，直接返回
+        }
+        try {
+            while (timerScheduler.hasPending()) {
+                long timeout = timerScheduler.nextDelayMs();
+                if (timeout < 0) {
+                    break;  // 队列空（不应发生，hasPending 已检查）
+                }
+                TimerScheduler.TimerTask task;
+                try {
+                    task = timerScheduler.pollReady(timeout);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+                if (task == null) {
+                    continue;  // 超时，重新检查 hasPending
+                }
+                try {
+                    callFunction(task.callback, task.args);
+                } catch (DebugAbortException e) {
+                    throw e;  // 调试会话终止，传播
+                } catch (GSException e) {
+                    System.err.println(String.format("Uncaught Error: %s",
+                            e.origin != null ? e.origin.toStringValue() : "?"));
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                }
+            }
+        } finally {
+            timerScheduler.shutdown();
+        }
+    }
+
+    /**
+     * 注册定时器全局函数（setTimeout/setInterval/clearTimeout/clearInterval）到 global 域。
+     *
+     * <p>在各入口（TestScript.gen/runGclass/debugAgent、DebugAgent 解释器创建处）
+     * 创建 interpreter 后、eval 之前调用，与 {@code addVariableToGlobal("console", ...)} 并列。
+     */
+    public void installTimerGlobals() {
+        TimerLib lib = new TimerLib(this);
+        addVariableToGlobal("setTimeout", lib.setTimeout());
+        addVariableToGlobal("setInterval", lib.setInterval());
+        addVariableToGlobal("clearTimeout", lib.clearTimeout());
+        addVariableToGlobal("clearInterval", lib.clearInterval());
     }
 }

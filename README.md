@@ -840,3 +840,58 @@ System.out.println(first.toIntValue());  // 1
 - `evalExpression` 先 `stack.clear()` 清空残留值，确保返回值是本次表达式的结果；表达式出错时捕获异常并返回 `GSNull.NULL`
 - top-level `return` 合法（EBNF: `Program = { Statement }`，`ReturnStatement` 属于 `Statement`），`OP_RETURN` 将返回值留在共享栈上供 `evalExpression` 弹出
 - `getVariable` 基于 `global.getVariableValue(name)`——top-level `var` 声明直接落入 global（`ProgramNode` 不 emit `pushenv`）
+
+## 定时器 API（setTimeout / setInterval）
+
+gscript 提供 JS 风格的定时器，采用**单线程事件循环**语义：守护线程 `gscript-timer` 只负责计时（不执行字节码），到期任务入队后由主线程串行执行回调。回调内设置的断点/单步天然工作。
+
+### 全局函数
+
+| 函数 | 说明 | 返回值 |
+|------|------|--------|
+| `setTimeout(callback, delayMs, ...args)` | 延迟 `delayMs` 毫秒后执行一次 `callback` | timer id（整数） |
+| `setInterval(callback, periodMs, ...args)` | 每隔 `periodMs` 毫秒重复执行 `callback` | timer id（整数） |
+| `clearTimeout(id)` | 取消尚未触发的 setTimeout | `null` |
+| `clearInterval(id)` | 取消 setInterval | `null` |
+
+- `callback` 必须是 function，否则打印 TypeError 并返回 `null`
+- `delayMs` / `periodMs` 为整数毫秒；负数延迟当 0 处理，`periodMs < 1` 当 1 处理（避免忙等）
+- `...args` 透传给回调（回调内从第 1 个参数起取，`this` 为 `null`）
+
+### 事件循环
+
+主脚本 `eval` 返回后，解释器自动进入事件循环 `runEventLoop`，pump 定时器队列直到排空（`hasPending() == false`）：
+
+- **纯 setTimeout 脚本**：所有回调执行完后队列排空，事件循环退出，进程正常终止
+- **纯 setInterval 脚本**：永不退出（需 `clearInterval` 或进程终止）
+- **异常策略（类 JS）**：回调内未捕获异常打印到 stderr 后继续下一个任务；`DebugAbortException`（调试终止请求）传播出循环终止事件循环
+
+### 调试器交互
+
+- 回调在主线程执行（`callFunction` 复用 `callStack.push/pop` + `suspendCheck`），断点/单步/变量查看与普通函数调用一致
+- `terminated` 事件时机延后到事件循环返回后（即所有定时器排空才发 terminated）
+- **attach 模式 disconnect**：仅分离调试器（如同 `node --inspect`），setInterval 程序继续运行；需发送 `terminate` 请求或 kill 进程终止
+
+### 示例
+
+```javascript
+// setTimeout：延迟后执行一次
+setTimeout(function() {
+    console.log("hello after 500ms");
+}, 500);
+
+// setInterval：周期执行 + clearInterval 终止
+var counter = 0;
+var id = setInterval(function() {
+    counter = counter + 1;
+    console.log("tick " + counter);
+    if (counter >= 3) {
+        clearInterval(id);
+    }
+}, 100);
+
+// 透传参数
+setTimeout(function(a, b) {
+    console.log("sum=" + (a + b));
+}, 0, 10, 20);  // 输出 sum=30
+```

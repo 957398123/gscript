@@ -59,6 +59,15 @@ public class GSFunction extends GSObject {
     public String sourcePath = null;
 
     /**
+     * 函数所属源文件的完整源码内容（attach 调试模式用，供 DAP source 请求返回）。
+     *
+     * <p>顶级匿名函数在 eval 时设置；子函数通过 fundef 继承父函数的 sourceContent。
+     * 非 attach 调试模式为 null。attach 模式下 VSCode 通过 source 请求从服务端获取源码，
+     * 无需本地源文件。
+     */
+    public String sourceContent = null;
+
+    /**
      * 创建一个函数实例
      *
      * @param name         函数名称

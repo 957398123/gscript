@@ -18,6 +18,7 @@ import org.gscript.vm.GSEnv;
 import org.gscript.vm.GSFrame;
 import org.gscript.vm.GSInterpreter;
 import org.gscript.vm.debug.DebugAbortException;
+import org.gscript.vm.debug.DebugAgent;
 import org.gscript.vm.debug.DebugController;
 import org.gscript.vm.stdlib.Console;
 import org.gscript.vm.value.GSFunction;
@@ -108,6 +109,23 @@ public class DapServer implements DebugController.SuspendListener {
     /** 下一个变量引用 ID（从 1 开始，0 表示不可展开） */
     private int nextVarRef = 1;
 
+    /** 源码引用映射：sourceReference → sourcePath（attach 模式 stackTrace 用） */
+    private final Map<Integer, String> sourceRefs = new HashMap<>();
+    /** 下一个源码引用 ID（从 1 开始，0 表示按 path 读） */
+    private int nextSourceRef = 1;
+
+    /**
+     * 调试代理（attach 模式非 null，launch 模式 null）。
+     * 非 null 时表示 DapServer 由 DebugAgent 创建，解释器由 agent/宿主管理，
+     * DapServer 不自建解释器、不编译本地脚本，源码通过 source 请求返回。
+     */
+    private DebugAgent agent = null;
+
+    /** attach 模式路径映射：本地根目录（VSCode 端，规范化后）。null 表示未配置。 */
+    private String localRoot = null;
+    /** attach 模式路径映射：远程根目录（gclass sourcePath 前缀）。null 表示未配置。 */
+    private String remoteRoot = null;
+
     /** 栈帧列表（stackTrace 请求时填充，供 scopes 按 frameId 查找） */
     private List<GSFrame> frameList = new ArrayList<>();
 
@@ -124,8 +142,23 @@ public class DapServer implements DebugController.SuspendListener {
     private PrintStream dapLog = null;
 
     public DapServer(InputStream in, PrintStream rawOut) {
+        this(in, rawOut, null);
+    }
+
+    /**
+     * 构造 DAP 适配器（attach 模式，带 DebugAgent）。
+     *
+     * <p>agent 非 null 时为 attach 模式：解释器由 agent/宿主管理，DapServer 不自建解释器、
+     * 不编译本地脚本，源码通过 source 请求从 agent.getSourceContents() 返回。
+     *
+     * @param in    传输层输入流
+     * @param rawOut 传输层输出流
+     * @param agent 调试代理（attach 模式非 null，launch 模式 null）
+     */
+    public DapServer(InputStream in, PrintStream rawOut, DebugAgent agent) {
         this.in = in;
         this.rawOut = rawOut;
+        this.agent = agent;
         initDapLog();
     }
 
@@ -184,8 +217,15 @@ public class DapServer implements DebugController.SuspendListener {
             }
         } catch (Exception e) {
             // 主循环异常（如传输层断开），静默退出
+            log("[ERROR] DapServer 主循环异常: " + e);
+            if (dapLog != null) {
+                try { e.printStackTrace(dapLog); } catch (Exception ignore) {}
+            }
         }
-        // 退出前终止解释器
+        // 退出前终止解释器（launch 模式）
+        // attach 模式：disconnect 已分离调试器（setDebugController(null)），
+        //   controller.terminate() 仅设置旧 controller 的 terminated 标志，
+        //   解释器不再引用该 controller，故无影响——解释器继续运行
         if (controller != null) {
             controller.terminate();
         }
@@ -412,6 +452,34 @@ public class DapServer implements DebugController.SuspendListener {
 
     /** launch / attach：记录脚本路径，创建调试控制器 */
     private void handleLaunchAttach(int requestSeq, JsonObject args, String command) {
+        // attach 模式（带 agent）：不编译本地脚本，仅记录路径映射 + 创建 controller
+        // 解释器由 agent/宿主管理，源码通过 source 请求从 agent.getSourceContents() 返回
+        if (agent != null && "attach".equals(command)) {
+            localRoot = args.has("localRoot") ? args.get("localRoot").getAsString() : null;
+            remoteRoot = args.has("remoteRoot") ? args.get("remoteRoot").getAsString() : null;
+            // 规范化 localRoot（与 setBreakpoints 的 source.path 规范化一致，便于前缀匹配）
+            if (localRoot != null && !localRoot.isEmpty()) {
+                localRoot = canonicalize(localRoot);
+            } else {
+                localRoot = null;
+            }
+            if (remoteRoot == null) {
+                remoteRoot = "";
+            }
+            controller = new DebugController();
+            controller.setSuspendListener(this);
+            if (args.has("stopOnEntry") && args.get("stopOnEntry").getAsBoolean()) {
+                controller.setStopOnEntry(true);
+            }
+            // 共享 controller 给 agent：attachReady 模式下立即设置到已运行的解释器，
+            // waitForDebugger 模式下由 agent.onConfigurationDone 启动解释器时设置。
+            // 统一 controller 实例，避免解释器拿到无 SuspendListener 的副本导致死锁。
+            agent.setController(controller);
+            log("[FLOW] attach(agent): localRoot=" + localRoot + " remoteRoot=" + remoteRoot);
+            sendResponse(requestSeq, command, new JsonObject());
+            return;
+        }
+        // 以下为 launch 模式（含无 agent 的伪 attach）：编译本地脚本文件
         // 获取脚本路径列表：优先 files 数组（多文件），回退 program（单文件兼容）
         // 路径规范化（canonicalize）确保与 setBreakpoints 的 source.path 匹配
         // （VSCode 的 ${workspaceFolder} 解析后可能是混合斜杠，而 source.path 是规范化的反斜杠）
@@ -447,6 +515,12 @@ public class DapServer implements DebugController.SuspendListener {
         String path = null;
         if (args.has("source") && args.getAsJsonObject("source").has("path")) {
             path = canonicalize(args.getAsJsonObject("source").get("path").getAsString());
+            // attach 模式：本地路径 → 远程 sourcePath（gclass 中的 sourcePath）
+            // 例如 localRoot=e:\JProjects\gscript\src\main\resources，remoteRoot=""
+            // 本地 e:\...\resources\debug_attach_test.script → 远程 debug_attach_test.script
+            if (agent != null && localRoot != null && path != null) {
+                path = mapToRemotePath(path);
+            }
         }
         List<Integer> lines = new ArrayList<>();
         if (args.has("breakpoints")) {
@@ -498,13 +572,21 @@ public class DapServer implements DebugController.SuspendListener {
         sendResponse(requestSeq, "setExceptionBreakpoints", new JsonObject());
     }
 
-    /** configurationDone：编译所有脚本文件并启动解释器 */
+    /** configurationDone：编译所有脚本文件并启动解释器（launch），或委托 agent（attach） */
     private void handleConfigurationDone(int requestSeq, JsonObject args) {
         if (started) {
             sendResponse(requestSeq, "configurationDone", new JsonObject());
             return;
         }
         started = true;
+        // attach 模式（带 agent）：委托 agent 处理（启动解释器或仅确认附加）
+        if (agent != null) {
+            log("[FLOW] configurationDone(attach): 委托 DebugAgent");
+            agent.onConfigurationDone();
+            sendResponse(requestSeq, "configurationDone", new JsonObject());
+            return;
+        }
+        // launch 模式：编译本地脚本 + 启动解释器线程
         log("[FLOW] configurationDone: 开始编译 scriptPaths=" + scriptPaths);
         compiledBytecodes.clear();
         compiledConstantPools.clear();
@@ -559,8 +641,16 @@ public class DapServer implements DebugController.SuspendListener {
     /** stackTrace：返回调用栈（每帧按其所属源文件报告 source.path，支持跨文件调试） */
     private void handleStackTrace(int requestSeq, JsonObject args) {
         // 刷新帧列表与变量引用
-        frameList = new ArrayList<>(interpreter != null ? interpreter.getCallStack() : new ArrayList<>());
+        // attach 模式下 interpreter 字段可能为 null，从 agent 获取
+        GSInterpreter interp = interpreter;
+        if (interp == null && agent != null) {
+            interp = agent.getInterpreter();
+        }
+        // 使用同步快照：DAP 线程读取 callStack 时解释器线程已挂起（lock.wait），
+        // 但 ArrayDeque 非线程安全，防御性同步保证内存可见性与并发安全
+        frameList = interp != null ? interp.getCallStackSnapshot() : new ArrayList<>();
         varRefs.clear();
+        sourceRefs.clear();
 
         JsonArray framesArray = new JsonArray();
         for (int i = 0; i < frameList.size(); i++) {
@@ -581,7 +671,19 @@ public class DapServer implements DebugController.SuspendListener {
             frameObj.addProperty("name", name);
             JsonObject source = new JsonObject();
             source.addProperty("name", frameName);
-            source.addProperty("path", framePath != null ? framePath : "");
+            // attach 模式：若该 sourcePath 有源码内容，设置 sourceReference，
+            // VSCode 将通过 source 请求获取源码（不从磁盘读）
+            String srcContent = (agent != null && framePath != null)
+                    ? agent.getSourceContents().get(framePath) : null;
+            if (srcContent != null) {
+                int ref = nextSourceRef++;
+                sourceRefs.put(ref, framePath);
+                source.addProperty("reference", ref);
+                source.addProperty("path", framePath);
+            } else {
+                // launch 模式或无源码内容：VSCode 从磁盘读
+                source.addProperty("path", framePath != null ? framePath : "");
+            }
             frameObj.add("source", source);
             frameObj.addProperty("line", line > 0 ? line : 1);
             frameObj.addProperty("column", 1);
@@ -614,10 +716,14 @@ public class DapServer implements DebugController.SuspendListener {
             scopesArray.add(localScope);
         }
 
-        // Global 作用域
-        if (interpreter != null) {
+        // Global 作用域（attach 模式下从 agent 获取 interpreter）
+        GSInterpreter interp = interpreter;
+        if (interp == null && agent != null) {
+            interp = agent.getInterpreter();
+        }
+        if (interp != null) {
             int globalRef = nextVarRef++;
-            varRefs.put(globalRef, interpreter.global);
+            varRefs.put(globalRef, interp.global);
             JsonObject globalScope = new JsonObject();
             globalScope.addProperty("name", "Global");
             globalScope.addProperty("variablesReference", globalRef);
@@ -699,8 +805,24 @@ public class DapServer implements DebugController.SuspendListener {
         sendResponse(requestSeq, "evaluate", body);
     }
 
-    /** disconnect：终止调试会话 */
+    /** disconnect：终止调试会话（launch）或分离调试器（attach） */
     private void handleDisconnect(int requestSeq, JsonObject args) {
+        if (agent != null) {
+            // attach 模式：分离调试器，不终止解释器（程序继续运行）
+            // 1. 先 continueRun 唤醒可能挂起的解释器线程（suspended=false + notifyAll）
+            // 2. 再清除 debugController（volatile），后续 suspendCheck 跳过
+            if (controller != null) {
+                controller.continueRun();
+            }
+            GSInterpreter interp = agent.getInterpreter();
+            if (interp != null) {
+                interp.setDebugController(null);
+            }
+            log("[FLOW] disconnect(attach): 分离调试器，解释器继续运行");
+            sendResponse(requestSeq, "disconnect", new JsonObject());
+            return;
+        }
+        // launch 模式：终止解释器
         if (controller != null) {
             controller.terminate();
         }
@@ -735,9 +857,36 @@ public class DapServer implements DebugController.SuspendListener {
         sendResponse(requestSeq, "threads", body);
     }
 
-    /** source：返回源码内容（按需加载，此处返回空表示不支持） */
+    /**
+     * source：返回源码内容（attach 模式按 sourceReference 从 agent 获取）。
+     *
+     * <p>attach 模式下 stackTrace 响应中设置了 source.reference > 0，VSCode 据此
+     * 发送 source 请求获取源码（不从磁盘读）。launch 模式 source.reference 为 0，
+     * VSCode 直接按 source.path 从磁盘读，不会发送 source 请求。
+     */
     private void handleSource(int requestSeq, JsonObject args) {
-        sendErrorResponse(requestSeq, "source", "source request not supported");
+        int ref = args.has("sourceReference") ? args.get("sourceReference").getAsInt() : 0;
+        String path = sourceRefs.get(ref);
+        if (path != null && agent != null) {
+            String content = agent.getSourceContents().get(path);
+            if (content != null) {
+                JsonObject body = new JsonObject();
+                body.addProperty("content", content);
+                body.addProperty("mimeType", "text/x-gscript");
+                sendResponse(requestSeq, "source", body);
+                return;
+            }
+        }
+        sendErrorResponse(requestSeq, "source", "source not available");
+    }
+
+    /**
+     * 通知解释器线程结束（供 DebugAgent 回调）。
+     * 发送 terminated 事件，VSCode 据此结束调试会话。
+     */
+    public void notifyInterpreterTerminated() {
+        log("[FLOW] 解释器线程结束，发送 terminated 事件");
+        sendEvent("terminated", new JsonObject());
     }
 
     // =========================================================================
@@ -780,6 +929,36 @@ public class DapServer implements DebugController.SuspendListener {
         } catch (Exception e) {
             return path;
         }
+    }
+
+    /**
+     * 本地路径 → 远程 sourcePath（attach 模式断点路径映射）。
+     *
+     * <p>将 VSCode 端的本地绝对路径剥离 localRoot 前缀后拼接 remoteRoot，
+     * 得到 gclass 中存储的 sourcePath。例如：
+     * <pre>
+     * localRoot = "e:\JProjects\gscript\src\main\resources"
+     * remoteRoot = ""
+     * 本地路径 = "e:\JProjects\gscript\src\main\resources\debug_attach_test.script"
+     * → 远程 sourcePath = "debug_attach_test.script"
+     * </pre>
+     *
+     * <p>路径分隔符统一为正斜杠比较，结果保留远程风格（remoteRoot + 相对路径）。
+     * 若本地路径不以 localRoot 开头，返回原路径（不映射）。
+     */
+    private String mapToRemotePath(String localPath) {
+        if (localRoot == null) return localPath;
+        String normLocal = localPath.replace('\\', '/');
+        String normRoot = localRoot.replace('\\', '/');
+        if (normLocal.startsWith(normRoot)) {
+            String rel = normLocal.substring(normRoot.length());
+            // 去掉前导斜杠
+            while (rel.startsWith("/")) {
+                rel = rel.substring(1);
+            }
+            return remoteRoot != null ? remoteRoot + rel : rel;
+        }
+        return localPath;
     }
 
     /**
@@ -845,6 +1024,7 @@ public class DapServer implements DebugController.SuspendListener {
     private void startInterpreterThread() {
         interpreter = new GSInterpreter();
         interpreter.addVariableToGlobal("console", new Console());
+        interpreter.installTimerGlobals();
         interpreter.setDebugController(controller);
 
         // 重定向 System.out/err 到 DAP output 事件
@@ -867,6 +1047,7 @@ public class DapServer implements DebugController.SuspendListener {
                     log("[FLOW] 解释器文件[" + i + "] eval 正常结束: " + path);
                 }
                 log("[FLOW] 所有文件 eval 正常结束");
+                interpreter.runEventLoop();
             } catch (DebugAbortException e) {
                 log("[FLOW] 解释器被 DebugAbortException 终止（调试会话结束）");
             } catch (Throwable e) {

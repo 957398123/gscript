@@ -262,6 +262,8 @@ public final class GSClassConstants {
     // ===== 属性名常量 =====
     /** 函数表属性名：记录文件中所有函数的元数据 */
     public static final String ATTR_FUNCTION_TABLE = "FunctionTable";
+    /** 源码内容属性名：存储完整源码文本（UTF-8），供 attach 调试模式通过 source 请求返回 */
+    public static final String ATTR_SOURCE_CONTENT = "SourceContent";
 
     /**
      * 返回指定操作码的指令总字节数（含 opcode 字节本身）。

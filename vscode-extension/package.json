@@ -72,6 +72,20 @@
                 "type": "string",
                 "description": "调试适配器主机地址",
                 "default": "localhost"
+              },
+              "localRoot": {
+                "type": "string",
+                "description": "本地源码根目录（VSCode 端），用于映射断点路径到远程 sourcePath。例如 ${workspaceFolder}/src/main/resources"
+              },
+              "remoteRoot": {
+                "type": "string",
+                "description": "远程源码根目录（gclass sourcePath 的前缀），默认空串表示 sourcePath 为相对路径",
+                "default": ""
+              },
+              "stopOnEntry": {
+                "type": "boolean",
+                "description": "连接后是否在当前位置暂停（attachReady 模式自动暂停，此选项用于 waitForDebugger 模式）",
+                "default": false
               }
             }
           }
@@ -87,9 +101,21 @@
           {
             "type": "gscript",
             "request": "attach",
-            "name": "Attach to gscript",
+            "name": "Attach to gscript (debug mode)",
             "host": "localhost",
-            "port": 4711
+            "port": 4711,
+            "localRoot": "${workspaceFolder}/src/main/resources",
+            "remoteRoot": "",
+            "stopOnEntry": false
+          },
+          {
+            "type": "gscript",
+            "request": "attach",
+            "name": "Attach to gscript (runtime)",
+            "host": "localhost",
+            "port": 4711,
+            "localRoot": "${workspaceFolder}/src/main/resources",
+            "remoteRoot": ""
           }
         ],
         "configurationSnippets": [
@@ -117,13 +143,15 @@
           },
           {
             "label": "gscript: Attach (socket)",
-            "description": "附加到已运行的 gscript 调试适配器（socket 模式）",
+            "description": "附加到已运行的 gscript 调试适配器（socket 模式，源码来自 gclass）",
             "body": {
               "type": "gscript",
               "request": "attach",
               "name": "Attach to gscript",
               "host": "localhost",
-              "port": 4711
+              "port": 4711,
+              "localRoot": "^\"\\${workspaceFolder}/src/main/resources\"",
+              "remoteRoot": ""
             }
           }
         ]

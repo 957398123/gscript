@@ -32,7 +32,7 @@ import java.util.zip.CRC32;
 public class GSClassWriter {
 
     /**
-     * 序列化并写入输出流。
+     * 序列化并写入输出流（向后兼容重载，不写源码内容）。
      *
      * @param bytecode   1D 文本字节码（如 "const s hello world"、"arith_op plus"）
      * @param sourceLines 与 bytecode 平行的源码行号列表（1-based，0=未设置），可为 null
@@ -40,6 +40,19 @@ public class GSClassWriter {
      * @param out         输出流
      */
     public void write(List<String> bytecode, List<Integer> sourceLines, String sourcePath, OutputStream out) throws IOException {
+        write(bytecode, sourceLines, sourcePath, null, out);
+    }
+
+    /**
+     * 序列化并写入输出流。
+     *
+     * @param bytecode      1D 文本字节码（如 "const s hello world"、"arith_op plus"）
+     * @param sourceLines   与 bytecode 平行的源码行号列表（1-based，0=未设置），可为 null
+     * @param sourcePath    源文件路径，可为 null
+     * @param sourceContent 完整源码文本（attach 调试模式用，null/空串表示不写入），可为 null
+     * @param out           输出流
+     */
+    public void write(List<String> bytecode, List<Integer> sourceLines, String sourcePath, String sourceContent, OutputStream out) throws IOException {
         // 1. 用 BytecodeEncoder 编码（内存 byte[][] + Object[] CP）
         BytecodeEncoder encoder = new BytecodeEncoder();
         EncodedBytecode encoded = encoder.encode(bytecode);
@@ -69,14 +82,24 @@ public class GSClassWriter {
                 funcEntries.add(new int[]{nameCp, i + 1, bodyLen});
             }
         }
-        boolean hasAttributes = !funcEntries.isEmpty();
-        int attrNameCpIndex = 0;
-        if (hasAttributes) {
+        boolean hasSourceContentAttr = sourceContent != null && !sourceContent.isEmpty();
+        boolean hasAttributes = !funcEntries.isEmpty() || hasSourceContentAttr;
+        int attrNameCpIndex = 0;  // FunctionTable 属性名 CP 索引
+        int sourceContentAttrNameCpIndex = 0;  // SourceContent 属性名 CP 索引
+        if (!funcEntries.isEmpty()) {
             // 把 "FunctionTable" 属性名追加到 CP 末尾
             attrNameCpIndex = cp.length;
             Object[] newCp = new Object[cp.length + 1];
             System.arraycopy(cp, 0, newCp, 0, cp.length);
             newCp[attrNameCpIndex] = GSClassConstants.ATTR_FUNCTION_TABLE;
+            cp = newCp;
+        }
+        if (hasSourceContentAttr) {
+            // 把 "SourceContent" 属性名追加到 CP 末尾
+            sourceContentAttrNameCpIndex = cp.length;
+            Object[] newCp = new Object[cp.length + 1];
+            System.arraycopy(cp, 0, newCp, 0, cp.length);
+            newCp[sourceContentAttrNameCpIndex] = GSClassConstants.ATTR_SOURCE_CONTENT;
             cp = newCp;
         }
 
@@ -176,17 +199,28 @@ public class GSClassWriter {
         // Attributes 段（可选，位于 SourceMap 之后）
         // 格式：u2 attrCount + attrCount × (u2 nameCpIndex, u4 length, byte[length] data)
         if (hasAttributes) {
-            dos.writeShort(1);  // attrCount = 1（仅 FunctionTable）
-            // FunctionTable 属性
-            dos.writeShort(attrNameCpIndex);
-            // 属性数据长度 = u2 funcCount + funcCount × (u2 nameCp + u4 startIp + u4 bodyLen)
-            int attrDataLen = 2 + funcEntries.size() * 10;
-            dos.writeInt(attrDataLen);
-            dos.writeShort(funcEntries.size());
-            for (int[] fe : funcEntries) {
-                dos.writeShort(fe[0]);  // nameCpIndex
-                dos.writeInt(fe[1]);    // startIp
-                dos.writeInt(fe[2]);    // bodyLen
+            // 动态计算 attrCount：FunctionTable + SourceContent
+            int attrCount = (!funcEntries.isEmpty() ? 1 : 0) + (hasSourceContentAttr ? 1 : 0);
+            dos.writeShort(attrCount);
+            // FunctionTable 属性（若有）
+            if (!funcEntries.isEmpty()) {
+                dos.writeShort(attrNameCpIndex);
+                // 属性数据长度 = u2 funcCount + funcCount × (u2 nameCp + u4 startIp + u4 bodyLen)
+                int attrDataLen = 2 + funcEntries.size() * 10;
+                dos.writeInt(attrDataLen);
+                dos.writeShort(funcEntries.size());
+                for (int[] fe : funcEntries) {
+                    dos.writeShort(fe[0]);  // nameCpIndex
+                    dos.writeInt(fe[1]);    // startIp
+                    dos.writeInt(fe[2]);    // bodyLen
+                }
+            }
+            // SourceContent 属性（若有）：u4 长度 + UTF-8 源码字节（u4 长度无 65535 限制）
+            if (hasSourceContentAttr) {
+                dos.writeShort(sourceContentAttrNameCpIndex);
+                byte[] srcBytes = sourceContent.getBytes(StandardCharsets.UTF_8);
+                dos.writeInt(srcBytes.length);  // u4 长度，可存大源码
+                dos.write(srcBytes);
             }
         }
 

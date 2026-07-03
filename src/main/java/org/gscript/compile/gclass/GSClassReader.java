@@ -175,6 +175,7 @@ public class GSClassReader {
         // 13. 解析 Attributes 段（可选，位于 SourceMap 之后）
         // 格式：u2 attrCount + attrCount × (u2 nameCpIndex, u4 length, byte[length] data)
         GSClassData.FunctionEntry[] functions = null;
+        String sourceContent = null;
         if (hasAttributes) {
             int attrCount = dis.readUnsignedShort();
             for (int a = 0; a < attrCount; a++) {
@@ -185,12 +186,14 @@ public class GSClassReader {
                 String attrName = (nameCp > 0 && nameCp < cp.length) ? (String) cp[nameCp] : "";
                 if (GSClassConstants.ATTR_FUNCTION_TABLE.equals(attrName)) {
                     functions = parseFunctionTable(attrData, cp);
+                } else if (GSClassConstants.ATTR_SOURCE_CONTENT.equals(attrName)) {
+                    sourceContent = new String(attrData, StandardCharsets.UTF_8);
                 }
                 // 未知属性：跳过（前向兼容，旧 reader 不崩溃）
             }
         }
 
-        return new GSClassData(src, cp, sourceLines, sourcePath, functions);
+        return new GSClassData(src, cp, sourceLines, sourcePath, functions, sourceContent);
     }
 
     /**

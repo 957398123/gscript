@@ -10,9 +10,11 @@
 ## 3. 目录结构映射 (关键)
 *   `/src/main/java/org/gscript/compile` - 编译gscript到字节码格式的java代码
 *   `/src/main/java/org/gscript/vm` - gscript运行时代码
+*   `/src/main/java/org/gscript/debug` - gscript调试器代码
 *   `/src/main/java/org/gscript/vm/GSInterpreter.java` - gscript运行时解释器类
 *   `/src/main/java/org/gscript/TestScript.java` - 测试类入口
 *   `/src/main/resources` - vscode测试script脚本用例目录
+*   `/tests` - 测试py脚本目录
 *   `/README.md` - 项目说明书，包括了语法定义和字节码定义
 
 ---
