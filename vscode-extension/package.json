@@ -1,7 +1,7 @@
 {
   "name": "gscript-debug",
   "displayName": "gscript Debug",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "gscript",
   "description": "gscript 语言调试器与语法高亮支持（Launch + Attach 模式）",
   "engines": {
@@ -48,9 +48,18 @@
                 "description": "是否在脚本入口处暂停（执行首条指令前挂起）",
                 "default": false
               },
+              "localRoot": {
+                "type": "string",
+                "description": "本地源码根目录（VSCode 端）。launch 模式下一般无需配置（源码已在本地），保留此字段以兼容带路径映射的启动场景。"
+              },
+              "remoteRoot": {
+                "type": "string",
+                "description": "远程源码根目录前缀（仅 attach 路径映射时使用）。launch 模式下一般留空。",
+                "default": ""
+              },
               "jarPath": {
                 "type": "string",
-                "description": "gscript 调试适配器 fat jar 路径（覆盖 gscript.jarPath 设置）"
+                "description": "gscript 调试适配器 jar 路径（覆盖 gscript.jarPath 设置；由 mvn package 生成，纯项目 jar 无外部依赖）"
               },
               "javaPath": {
                 "type": "string",
@@ -185,7 +194,7 @@
         "gscript.jarPath": {
           "type": "string",
           "default": "",
-          "description": "gscript 调试适配器 fat jar 的绝对路径（由 mvn package 生成，包含 Gson）。可在 launch.json 中用 jarPath 字段覆盖。"
+          "description": "gscript 调试适配器 jar 的绝对路径（由 mvn package 生成，纯项目 jar 无外部依赖）。可在 launch.json 中用 jarPath 字段覆盖。"
         },
         "gscript.javaPath": {
           "type": "string",

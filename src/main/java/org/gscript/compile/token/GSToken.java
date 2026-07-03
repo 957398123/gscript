@@ -3,9 +3,9 @@ package org.gscript.compile.token;
 public class GSToken {
 
     /**
-     * token类型
+     * token类型（int 常量，见 GSTokenType）
      */
-    public GSTokenType type;
+    public int type;
 
     /**
      * token的值
@@ -29,9 +29,9 @@ public class GSToken {
      * @param line
      * @param column
      */
-    public GSToken(GSTokenType type, int line, int column) {
+    public GSToken(int type, int line, int column) {
         this.type = type;
-        this.value = type.getValue();
+        this.value = GSTokenType.getValue(type);
         this.line = line;
         this.column = column - value.length();
     }
@@ -43,7 +43,7 @@ public class GSToken {
      * @param line
      * @param column
      */
-    public GSToken(GSTokenType type, String value, int line, int column) {
+    public GSToken(int type, String value, int line, int column) {
         this.type = type;
         this.value = value;
         this.line = line;

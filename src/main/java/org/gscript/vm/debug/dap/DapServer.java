@@ -1,10 +1,5 @@
 package org.gscript.vm.debug.dap;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import org.gscript.compile.Lexer;
 import org.gscript.compile.Parser;
 import org.gscript.compile.gen.ByteCodeGenerator;
@@ -14,12 +9,18 @@ import org.gscript.compile.gclass.GSClassData;
 import org.gscript.compile.gclass.GSClassReader;
 import org.gscript.compile.node.Node;
 import org.gscript.compile.token.GSToken;
+import org.gscript.util.AtomicCounter;
 import org.gscript.vm.GSEnv;
 import org.gscript.vm.GSFrame;
 import org.gscript.vm.GSInterpreter;
 import org.gscript.vm.debug.DebugAbortException;
 import org.gscript.vm.debug.DebugAgent;
 import org.gscript.vm.debug.DebugController;
+import org.gscript.vm.debug.dap.json.JsonArray;
+import org.gscript.vm.debug.dap.json.JsonObject;
+import org.gscript.vm.debug.dap.json.JsonParser;
+import org.gscript.vm.debug.dap.json.JsonValue;
+import org.gscript.vm.debug.dap.json.JsonWriter;
 import org.gscript.vm.stdlib.Console;
 import org.gscript.vm.value.GSFunction;
 import org.gscript.vm.value.GSNull;
@@ -28,19 +29,17 @@ import org.gscript.vm.value.GSValue;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * DAP（Debug Adapter Protocol）适配器。
@@ -74,11 +73,9 @@ public class DapServer implements DebugController.SuspendListener {
     private final PrintStream rawOut;
     /** 写锁：DAP 线程与解释器线程均可能写传输层，需同步 */
     private final Object writeLock = new Object();
-    /** Gson 实例（JSON 序列化/反序列化） */
-    private final Gson gson = new Gson();
 
     /** 消息序列号计数器（DAP 线程与解释器线程均会发送消息，用原子类型保证线程安全） */
-    private final AtomicInteger seq = new AtomicInteger(0);
+    private final AtomicCounter seq = new AtomicCounter(0);
 
     /** 解释器实例（configurationDone 时创建） */
     private GSInterpreter interpreter;
@@ -88,29 +85,29 @@ public class DapServer implements DebugController.SuspendListener {
      * 脚本文件路径列表（来自 launch/attach 参数的 files 数组，或 program 单文件兼容）。
      * 多文件按顺序加载 eval，共享同一 global 域，后加载文件覆盖前文件同名函数。
      */
-    private final List<String> scriptPaths = new ArrayList<>();
+    private final List scriptPaths = new ArrayList();
     /**
      * 编译后的字节码列表（与 scriptPaths 一一对应，configurationDone 时填充）。
      * 每个元素是一个文件编译后的二进制字节码数组（byte[][]，每条指令为 byte[]）。
      * 统一使用二进制格式：.script 编译后用 BytecodeEncoder 编码，.gclass 加载后直接是 byte[][]。
      */
-    private final List<byte[][]> compiledBytecodes = new ArrayList<>();
+    private final List compiledBytecodes = new ArrayList();
     /**
      * 常量池列表（与 compiledBytecodes 一一对应，同文件函数共享引用）。
      */
-    private final List<Object[]> compiledConstantPools = new ArrayList<>();
+    private final List compiledConstantPools = new ArrayList();
     /**
      * 源码行号映射列表（与 scriptPaths 一一对应，与各自字节码平行）。
      */
-    private final List<int[]> compiledSourceLines = new ArrayList<>();
+    private final List compiledSourceLines = new ArrayList();
 
     /** 变量引用映射：refId → GSEnv（作用域）或 GSObject（可展开变量） */
-    private final Map<Integer, Object> varRefs = new HashMap<>();
+    private final Map varRefs = new HashMap();
     /** 下一个变量引用 ID（从 1 开始，0 表示不可展开） */
     private int nextVarRef = 1;
 
     /** 源码引用映射：sourceReference → sourcePath（attach 模式 stackTrace 用） */
-    private final Map<Integer, String> sourceRefs = new HashMap<>();
+    private final Map sourceRefs = new HashMap();
     /** 下一个源码引用 ID（从 1 开始，0 表示按 path 读） */
     private int nextSourceRef = 1;
 
@@ -127,7 +124,7 @@ public class DapServer implements DebugController.SuspendListener {
     private String remoteRoot = null;
 
     /** 栈帧列表（stackTrace 请求时填充，供 scopes 按 frameId 查找） */
-    private List<GSFrame> frameList = new ArrayList<>();
+    private List frameList = new ArrayList();
 
     /** DAP 线程 ID（gscript 单线程，固定为 1） */
     private static final int THREAD_ID = 1;
@@ -172,7 +169,8 @@ public class DapServer implements DebugController.SuspendListener {
             "e:" + File.separator + "JProjects" + File.separator + "gscript" + File.separator + "dap_debug.log",
             System.getProperty("java.io.tmpdir") + File.separator + "gscript_dap_debug.log",
         };
-        for (String path : candidates) {
+        for (int ci = 0; ci < candidates.length; ci++) {
+            String path = candidates[ci];
             try {
                 FileOutputStream fos = new FileOutputStream(path, true);  // 追加模式
                 dapLog = new PrintStream(fos, true, "UTF-8");
@@ -268,11 +266,13 @@ public class DapServer implements DebugController.SuspendListener {
         if (b == -1 && headerBuf.size() == 0) {
             return null;
         }
-        String headers = new String(headerBuf.toByteArray(), StandardCharsets.UTF_8);
+        String headers = new String(headerBuf.toByteArray(), "UTF-8");
 
         // 解析 Content-Length
         int contentLength = 0;
-        for (String line : headers.split("\r\n")) {
+        String[] lines = headers.split("\r\n");
+        for (int li = 0; li < lines.length; li++) {
+            String line = lines[li];
             if (line.toLowerCase().startsWith("content-length:")) {
                 contentLength = Integer.parseInt(line.substring(15).trim());
             }
@@ -292,16 +292,22 @@ public class DapServer implements DebugController.SuspendListener {
             }
             read += n;
         }
-        return new String(body, 0, read, StandardCharsets.UTF_8);
+        return new String(body, 0, read, "UTF-8");
     }
 
     /**
      * 写一条 DAP 消息（加 Content-Length 帧）。
      */
     private void sendMessage(JsonObject msg) {
-        String json = gson.toJson(msg);
+        String json = JsonWriter.toJson(msg);
         log(">>> SEND " + json);
-        byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
+        byte[] bytes;
+        try {
+            bytes = json.getBytes("UTF-8");
+        } catch (java.io.UnsupportedEncodingException e) {
+            // UTF-8 是标准字符集，不会到达此分支
+            throw new RuntimeException(e);
+        }
         synchronized (writeLock) {
             rawOut.print("Content-Length: " + bytes.length + "\r\n\r\n");
             rawOut.write(bytes, 0, bytes.length);
@@ -379,29 +385,44 @@ public class DapServer implements DebugController.SuspendListener {
                 ? msg.getAsJsonObject("arguments") : new JsonObject();
 
         try {
-            switch (command) {
-                case "initialize":           handleInitialize(requestSeq, args); break;
-                case "launch":               handleLaunchAttach(requestSeq, args, command); break;
-                case "attach":               handleLaunchAttach(requestSeq, args, command); break;
-                case "setBreakpoints":       handleSetBreakpoints(requestSeq, args); break;
-                case "setExceptionBreakpoints": handleSetExceptionBreakpoints(requestSeq, args); break;
-                case "configurationDone":    handleConfigurationDone(requestSeq, args); break;
-                case "continue":             handleContinue(requestSeq, args); break;
-                case "next":                 handleStep(requestSeq, "next", DebugController.STEP_OVER); break;
-                case "stepIn":               handleStep(requestSeq, "stepIn", DebugController.STEP_IN); break;
-                case "stepOut":              handleStep(requestSeq, "stepOut", DebugController.STEP_OUT); break;
-                case "pause":                handlePause(requestSeq, args); break;
-                case "terminate":            handleTerminate(requestSeq, args); break;
-                case "stackTrace":           handleStackTrace(requestSeq, args); break;
-                case "scopes":               handleScopes(requestSeq, args); break;
-                case "variables":            handleVariables(requestSeq, args); break;
-                case "evaluate":             handleEvaluate(requestSeq, args); break;
-                case "disconnect":           handleDisconnect(requestSeq, args); break;
-                case "threads":              handleThreads(requestSeq); break;
-                case "source":               handleSource(requestSeq, args); break;
-                default:
-                    sendResponse(requestSeq, command, new JsonObject());
-                    break;
+            if ("initialize".equals(command)) {
+                handleInitialize(requestSeq, args);
+            } else if ("launch".equals(command) || "attach".equals(command)) {
+                handleLaunchAttach(requestSeq, args, command);
+            } else if ("setBreakpoints".equals(command)) {
+                handleSetBreakpoints(requestSeq, args);
+            } else if ("setExceptionBreakpoints".equals(command)) {
+                handleSetExceptionBreakpoints(requestSeq, args);
+            } else if ("configurationDone".equals(command)) {
+                handleConfigurationDone(requestSeq, args);
+            } else if ("continue".equals(command)) {
+                handleContinue(requestSeq, args);
+            } else if ("next".equals(command)) {
+                handleStep(requestSeq, "next", DebugController.STEP_OVER);
+            } else if ("stepIn".equals(command)) {
+                handleStep(requestSeq, "stepIn", DebugController.STEP_IN);
+            } else if ("stepOut".equals(command)) {
+                handleStep(requestSeq, "stepOut", DebugController.STEP_OUT);
+            } else if ("pause".equals(command)) {
+                handlePause(requestSeq, args);
+            } else if ("terminate".equals(command)) {
+                handleTerminate(requestSeq, args);
+            } else if ("stackTrace".equals(command)) {
+                handleStackTrace(requestSeq, args);
+            } else if ("scopes".equals(command)) {
+                handleScopes(requestSeq, args);
+            } else if ("variables".equals(command)) {
+                handleVariables(requestSeq, args);
+            } else if ("evaluate".equals(command)) {
+                handleEvaluate(requestSeq, args);
+            } else if ("disconnect".equals(command)) {
+                handleDisconnect(requestSeq, args);
+            } else if ("threads".equals(command)) {
+                handleThreads(requestSeq);
+            } else if ("source".equals(command)) {
+                handleSource(requestSeq, args);
+            } else {
+                sendResponse(requestSeq, command, new JsonObject());
             }
         } catch (Exception e) {
             log("[ERROR] handle " + command + " 异常: " + e);
@@ -458,7 +479,7 @@ public class DapServer implements DebugController.SuspendListener {
             localRoot = args.has("localRoot") ? args.get("localRoot").getAsString() : null;
             remoteRoot = args.has("remoteRoot") ? args.get("remoteRoot").getAsString() : null;
             // 规范化 localRoot（与 setBreakpoints 的 source.path 规范化一致，便于前缀匹配）
-            if (localRoot != null && !localRoot.isEmpty()) {
+            if (localRoot != null && localRoot.length() > 0) {
                 localRoot = canonicalize(localRoot);
             } else {
                 localRoot = null;
@@ -485,19 +506,20 @@ public class DapServer implements DebugController.SuspendListener {
         // （VSCode 的 ${workspaceFolder} 解析后可能是混合斜杠，而 source.path 是规范化的反斜杠）
         scriptPaths.clear();
         if (args.has("files") && args.get("files").isJsonArray()) {
-            for (JsonElement fe : args.getAsJsonArray("files")) {
-                String p = fe.getAsString();
-                if (p != null && !p.isEmpty()) {
+            JsonArray filesArr = args.getAsJsonArray("files");
+            for (int fi = 0; fi < filesArr.size(); fi++) {
+                String p = filesArr.get(fi).getAsString();
+                if (p != null && p.length() > 0) {
                     scriptPaths.add(canonicalize(p));
                 }
             }
         } else if (args.has("program")) {
             String p = args.get("program").getAsString();
-            if (p != null && !p.isEmpty()) {
+            if (p != null && p.length() > 0) {
                 scriptPaths.add(canonicalize(p));
             }
         }
-        log("[FLOW] " + command + ": scriptPaths=" + scriptPaths + " args=" + gson.toJson(args));
+        log("[FLOW] " + command + ": scriptPaths=" + scriptPaths + " args=" + JsonWriter.toJson(args));
         // 创建调试控制器
         controller = new DebugController();
         controller.setSuspendListener(this);
@@ -522,12 +544,13 @@ public class DapServer implements DebugController.SuspendListener {
                 path = mapToRemotePath(path);
             }
         }
-        List<Integer> lines = new ArrayList<>();
+        List lines = new ArrayList();
         if (args.has("breakpoints")) {
-            for (JsonElement be : args.getAsJsonArray("breakpoints")) {
-                JsonObject bo = be.getAsJsonObject();
+            JsonArray bpArr = args.getAsJsonArray("breakpoints");
+            for (int bi = 0; bi < bpArr.size(); bi++) {
+                JsonObject bo = bpArr.get(bi).getAsJsonObject();
                 if (bo.has("line")) {
-                    lines.add(bo.get("line").getAsInt());
+                    lines.add(new Integer(bo.get("line").getAsInt()));
                 }
             }
         }
@@ -537,7 +560,8 @@ public class DapServer implements DebugController.SuspendListener {
         // 构造断点响应（全部标记为已验证）
         JsonObject body = new JsonObject();
         JsonArray bpArray = new JsonArray();
-        for (int line : lines) {
+        for (int i = 0; i < lines.size(); i++) {
+            int line = ((Integer) lines.get(i)).intValue();
             JsonObject bp = new JsonObject();
             bp.addProperty("line", line);
             bp.addProperty("verified", true);
@@ -557,8 +581,9 @@ public class DapServer implements DebugController.SuspendListener {
     private void handleSetExceptionBreakpoints(int requestSeq, JsonObject args) {
         boolean pauseOnException = false;
         if (args.has("filters") && args.get("filters").isJsonArray()) {
-            for (JsonElement f : args.getAsJsonArray("filters")) {
-                String filter = f.getAsString();
+            JsonArray filtersArr = args.getAsJsonArray("filters");
+            for (int fi = 0; fi < filtersArr.size(); fi++) {
+                String filter = filtersArr.get(fi).getAsString();
                 if ("caught".equals(filter) || "uncaught".equals(filter)) {
                     pauseOnException = true;
                     break;
@@ -592,7 +617,8 @@ public class DapServer implements DebugController.SuspendListener {
         compiledConstantPools.clear();
         compiledSourceLines.clear();
         try {
-            for (String path : scriptPaths) {
+            for (int si = 0; si < scriptPaths.size(); si++) {
+                String path = (String) scriptPaths.get(si);
                 compileScript(path);
             }
         } catch (Exception e) {
@@ -604,7 +630,8 @@ public class DapServer implements DebugController.SuspendListener {
             return;
         }
         int totalLen = 0;
-        for (byte[][] bc : compiledBytecodes) {
+        for (int bi = 0; bi < compiledBytecodes.size(); bi++) {
+            byte[][] bc = (byte[][]) compiledBytecodes.get(bi);
             totalLen += bc.length;
         }
         log("[FLOW] 编译成功，共 " + compiledBytecodes.size() + " 个文件，总 bytecode 长度=" + totalLen + "，启动解释器线程");
@@ -647,14 +674,14 @@ public class DapServer implements DebugController.SuspendListener {
             interp = agent.getInterpreter();
         }
         // 使用同步快照：DAP 线程读取 callStack 时解释器线程已挂起（lock.wait），
-        // 但 ArrayDeque 非线程安全，防御性同步保证内存可见性与并发安全
-        frameList = interp != null ? interp.getCallStackSnapshot() : new ArrayList<>();
+        // 但 LinkedList 非线程安全，防御性同步保证内存可见性与并发安全
+        frameList = interp != null ? interp.getCallStackSnapshot() : new ArrayList();
         varRefs.clear();
         sourceRefs.clear();
 
         JsonArray framesArray = new JsonArray();
         for (int i = 0; i < frameList.size(); i++) {
-            GSFrame frame = frameList.get(i);
+            GSFrame frame = (GSFrame) frameList.get(i);
             int line = DebugController.currentLine(frame);
             String name = frame.function.name;
             if ("null".equals(name) || name == null) {
@@ -664,7 +691,7 @@ public class DapServer implements DebugController.SuspendListener {
             // 兼容 null（非调试模式或旧代码）回退到空串
             String framePath = frame.function.sourcePath;
             String frameName = framePath != null
-                    ? Paths.get(framePath).getFileName().toString()
+                    ? new File(framePath).getName()
                     : "script";
             JsonObject frameObj = new JsonObject();
             frameObj.addProperty("id", i);
@@ -674,10 +701,10 @@ public class DapServer implements DebugController.SuspendListener {
             // attach 模式：若该 sourcePath 有源码内容，设置 sourceReference，
             // VSCode 将通过 source 请求获取源码（不从磁盘读）
             String srcContent = (agent != null && framePath != null)
-                    ? agent.getSourceContents().get(framePath) : null;
+                    ? (String) agent.getSourceContents().get(framePath) : null;
             if (srcContent != null) {
                 int ref = nextSourceRef++;
-                sourceRefs.put(ref, framePath);
+                sourceRefs.put(new Integer(ref), framePath);
                 // DAP 规范 Source 对象字段名为 sourceReference（非 reference），
                 // VSCode 据此发 source 请求时回填顶层 sourceReference，handleSource 用它查 sourceRefs
                 source.addProperty("sourceReference", ref);
@@ -703,14 +730,14 @@ public class DapServer implements DebugController.SuspendListener {
     /** scopes：返回某帧的变量作用域 */
     private void handleScopes(int requestSeq, JsonObject args) {
         int frameId = args.has("frameId") ? args.get("frameId").getAsInt() : 0;
-        GSFrame frame = (frameId >= 0 && frameId < frameList.size()) ? frameList.get(frameId) : null;
+        GSFrame frame = (frameId >= 0 && frameId < frameList.size()) ? (GSFrame) frameList.get(frameId) : null;
 
         JsonArray scopesArray = new JsonArray();
 
         if (frame != null) {
             // Local 作用域：当前帧的 env 链（到 global 之前）
             int localRef = nextVarRef++;
-            varRefs.put(localRef, frame.function.env);
+            varRefs.put(new Integer(localRef), frame.function.env);
             JsonObject localScope = new JsonObject();
             localScope.addProperty("name", "Local");
             localScope.addProperty("variablesReference", localRef);
@@ -725,7 +752,7 @@ public class DapServer implements DebugController.SuspendListener {
         }
         if (interp != null) {
             int globalRef = nextVarRef++;
-            varRefs.put(globalRef, interp.global);
+            varRefs.put(new Integer(globalRef), interp.global);
             JsonObject globalScope = new JsonObject();
             globalScope.addProperty("name", "Global");
             globalScope.addProperty("variablesReference", globalRef);
@@ -741,7 +768,7 @@ public class DapServer implements DebugController.SuspendListener {
     /** variables：返回某变量引用下的变量列表 */
     private void handleVariables(int requestSeq, JsonObject args) {
         int refId = args.has("variablesReference") ? args.get("variablesReference").getAsInt() : 0;
-        Object target = varRefs.get(refId);
+        Object target = varRefs.get(new Integer(refId));
 
         JsonArray varsArray = new JsonArray();
 
@@ -753,12 +780,14 @@ public class DapServer implements DebugController.SuspendListener {
                 addEnvVariables(varsArray, env);
             } else {
                 // Local：沿 env 链向上收集到 global 之前（内层遮蔽外层）
-                Map<String, GSValue> merged = new HashMap<>();
+                Map merged = new HashMap();
                 GSEnv cur = env;
                 while (cur != null && !"global".equals(cur.name)) {
-                    Map<String, GSValue> vals = cur.getValues();
+                    Map vals = cur.getValues();
                     if (vals != null) {
-                        for (Map.Entry<String, GSValue> e : vals.entrySet()) {
+                        Iterator it = vals.entrySet().iterator();
+                        while (it.hasNext()) {
+                            Map.Entry e = (Map.Entry) it.next();
                             if (!merged.containsKey(e.getKey())) {
                                 merged.put(e.getKey(), e.getValue());
                             }
@@ -766,16 +795,20 @@ public class DapServer implements DebugController.SuspendListener {
                     }
                     cur = cur.parent;
                 }
-                for (Map.Entry<String, GSValue> e : merged.entrySet()) {
-                    varsArray.add(formatVariable(e.getKey(), e.getValue()));
+                Iterator it = merged.entrySet().iterator();
+                while (it.hasNext()) {
+                    Map.Entry e = (Map.Entry) it.next();
+                    varsArray.add(formatVariable((String) e.getKey(), (GSValue) e.getValue()));
                 }
             }
         } else if (target instanceof GSObject) {
             GSObject obj = (GSObject) target;
-            Map<String, GSValue> members = obj.getMembers();
+            Map members = obj.getMembers();
             if (members != null) {
-                for (Map.Entry<String, GSValue> e : members.entrySet()) {
-                    varsArray.add(formatVariable(e.getKey(), e.getValue()));
+                Iterator it = members.entrySet().iterator();
+                while (it.hasNext()) {
+                    Map.Entry e = (Map.Entry) it.next();
+                    varsArray.add(formatVariable((String) e.getKey(), (GSValue) e.getValue()));
                 }
             }
         }
@@ -789,7 +822,7 @@ public class DapServer implements DebugController.SuspendListener {
     private void handleEvaluate(int requestSeq, JsonObject args) {
         String expression = args.has("expression") ? args.get("expression").getAsString() : "";
         int frameId = args.has("frameId") ? args.get("frameId").getAsInt() : 0;
-        GSFrame frame = (frameId >= 0 && frameId < frameList.size()) ? frameList.get(frameId) : null;
+        GSFrame frame = (frameId >= 0 && frameId < frameList.size()) ? (GSFrame) frameList.get(frameId) : null;
 
         JsonObject body = new JsonObject();
         if (frame != null) {
@@ -868,9 +901,9 @@ public class DapServer implements DebugController.SuspendListener {
      */
     private void handleSource(int requestSeq, JsonObject args) {
         int ref = args.has("sourceReference") ? args.get("sourceReference").getAsInt() : 0;
-        String path = sourceRefs.get(ref);
+        String path = (String) sourceRefs.get(new Integer(ref));
         if (path != null && agent != null) {
-            String content = agent.getSourceContents().get(path);
+            String content = (String) agent.getSourceContents().get(path);
             if (content != null) {
                 JsonObject body = new JsonObject();
                 body.addProperty("content", content);
@@ -895,7 +928,6 @@ public class DapServer implements DebugController.SuspendListener {
     //  SuspendListener 实现
     // =========================================================================
 
-    @Override
     public void onSuspended(String reason, GSFrame frame, int depth, int line) {
         log("[FLOW] onSuspended: reason=" + reason + " depth=" + depth + " line=" + line
                 + " frame.func=" + (frame != null && frame.function != null ? frame.function.name : "null"));
@@ -979,35 +1011,56 @@ public class DapServer implements DebugController.SuspendListener {
         if (gclassFile.exists() &&
                 (!scriptFile.exists() || gclassFile.lastModified() >= scriptFile.lastModified())) {
             // 从 .gclass 加载
+            InputStream gin = null;
             int gclassLen;
-            try (InputStream gin = Files.newInputStream(gclassFile.toPath())) {
+            try {
+                gin = new FileInputStream(gclassFile);
                 GSClassReader reader = new GSClassReader();
                 GSClassData data = reader.deserialize(gin);
                 compiledBytecodes.add(data.src);           // byte[][] 直接用
                 compiledConstantPools.add(data.constantPool);  // 常量池
                 compiledSourceLines.add(data.sourceLines);
                 gclassLen = data.src.length;
+            } finally {
+                if (gin != null) {
+                    try { gin.close(); } catch (Exception ignore) {}
+                }
             }
             log("[FLOW] 从 gclass 加载: " + gclassPath + "，bytecode 长度=" + gclassLen);
             return;
         }
 
         // 回退：编译 .script 源码
-        String content = new String(Files.readAllBytes(Paths.get(path)), StandardCharsets.UTF_8);
+        FileInputStream fis = null;
+        String content;
+        try {
+            fis = new FileInputStream(path);
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            byte[] buf = new byte[4096];
+            int n;
+            while ((n = fis.read(buf)) != -1) {
+                bos.write(buf, 0, n);
+            }
+            content = new String(bos.toByteArray(), "UTF-8");
+        } finally {
+            if (fis != null) {
+                try { fis.close(); } catch (Exception ignore) {}
+            }
+        }
         Lexer lexer = new Lexer();
-        List<GSToken> tokens = lexer.tokenize(content);
+        List tokens = lexer.tokenize(content);
         Parser parser = new Parser(tokens);
         Node program = parser.parseProgram();
         ByteCodeGenerator gen = new ByteCodeGenerator();
         program.accept(gen);
-        String[] bc1d = gen.getByteCode().toArray(new String[0]);
+        String[] bc1d = (String[]) gen.getByteCode().toArray(new String[0]);
         // 用 BytecodeEncoder 编码为二进制（byte[][] + Object[] 常量池）
         BytecodeEncoder encoder = new BytecodeEncoder();
         EncodedBytecode encoded = encoder.encode(Arrays.asList(bc1d));
-        ArrayList<Integer> sl = gen.getSourceLines();
+        ArrayList sl = gen.getSourceLines();
         int[] slArr = new int[sl.size()];
         for (int i = 0; i < sl.size(); i++) {
-            slArr[i] = sl.get(i);
+            slArr[i] = ((Integer) sl.get(i)).intValue();
         }
         // 追加到列表（与 scriptPaths 顺序一一对应）
         compiledBytecodes.add(encoded.instructions);
@@ -1024,44 +1077,48 @@ public class DapServer implements DebugController.SuspendListener {
      * 每个文件用各自的字节码与 sourceLines，并传入 sourcePath 供调试器区分文件。
      */
     private void startInterpreterThread() {
-        interpreter = new GSInterpreter();
-        interpreter.addVariableToGlobal("console", new Console());
-        interpreter.installTimerGlobals();
-        interpreter.setDebugController(controller);
+        final GSInterpreter interp = new GSInterpreter();
+        interp.addVariableToGlobal("console", new Console());
+        interp.installTimerGlobals();
+        interp.setDebugController(controller);
+        this.interpreter = interp;
 
         // 重定向 System.out/err 到 DAP output 事件
         redirectSystemOutput();
 
-        Thread t = new Thread(() -> {
-            try {
-                // 捕获列表快照（避免 lambda 闭包直接捕获可变外部列表）
-                final List<String> paths = new ArrayList<>(scriptPaths);
-                final List<byte[][]> bcs = new ArrayList<>(compiledBytecodes);
-                final List<Object[]> cps = new ArrayList<>(compiledConstantPools);
-                final List<int[]> sls = new ArrayList<>(compiledSourceLines);
-                for (int i = 0; i < paths.size(); i++) {
-                    byte[][] bc = bcs.get(i);
-                    Object[] cp = cps.get(i);
-                    int[] sl = sls.get(i);
-                    String path = paths.get(i);
-                    log("[FLOW] 解释器线程开始 eval 文件[" + i + "]: " + path + "，bytecode 长度=" + bc.length);
-                    interpreter.eval(bc, cp, sl, path);
-                    log("[FLOW] 解释器文件[" + i + "] eval 正常结束: " + path);
+        // 捕获列表快照（避免匿名类闭包直接捕获可变外部列表）
+        final List paths = new ArrayList(scriptPaths);
+        final List bcs = new ArrayList(compiledBytecodes);
+        final List cps = new ArrayList(compiledConstantPools);
+        final List sls = new ArrayList(compiledSourceLines);
+
+        Thread t = new Thread(new Runnable() {
+            public void run() {
+                try {
+                    for (int i = 0; i < paths.size(); i++) {
+                        byte[][] bc = (byte[][]) bcs.get(i);
+                        Object[] cp = (Object[]) cps.get(i);
+                        int[] sl = (int[]) sls.get(i);
+                        String path = (String) paths.get(i);
+                        log("[FLOW] 解释器线程开始 eval 文件[" + i + "]: " + path + "，bytecode 长度=" + bc.length);
+                        interp.eval(bc, cp, sl, path);
+                        log("[FLOW] 解释器文件[" + i + "] eval 正常结束: " + path);
+                    }
+                    log("[FLOW] 所有文件 eval 正常结束");
+                    interp.runEventLoop();
+                } catch (DebugAbortException e) {
+                    log("[FLOW] 解释器被 DebugAbortException 终止（调试会话结束）");
+                } catch (Throwable e) {
+                    log("[ERROR] 解释器抛出异常: " + e);
+                    if (dapLog != null) {
+                        try { e.printStackTrace(dapLog); } catch (Exception ignore) {}
+                    }
+                    sendOutput(e.toString() + "\n", "stderr");
                 }
-                log("[FLOW] 所有文件 eval 正常结束");
-                interpreter.runEventLoop();
-            } catch (DebugAbortException e) {
-                log("[FLOW] 解释器被 DebugAbortException 终止（调试会话结束）");
-            } catch (Throwable e) {
-                log("[ERROR] 解释器抛出异常: " + e);
-                if (dapLog != null) {
-                    try { e.printStackTrace(dapLog); } catch (Exception ignore) {}
-                }
-                sendOutput(e.toString() + "\n", "stderr");
+                // 解释器结束，发送 terminated 事件
+                log("[FLOW] 发送 terminated 事件");
+                sendEvent("terminated", new JsonObject());
             }
-            // 解释器结束，发送 terminated 事件
-            log("[FLOW] 发送 terminated 事件");
-            sendEvent("terminated", new JsonObject());
         }, "gscript-interpreter");
         t.setDaemon(true);
         t.start();
@@ -1091,11 +1148,13 @@ public class DapServer implements DebugController.SuspendListener {
     /**
      * 将环境中的变量添加到变量数组。
      */
-    private void addEnvVariables(com.google.gson.JsonArray varsArray, GSEnv env) {
-        Map<String, GSValue> vals = env.getValues();
+    private void addEnvVariables(JsonArray varsArray, GSEnv env) {
+        Map vals = env.getValues();
         if (vals != null) {
-            for (Map.Entry<String, GSValue> e : vals.entrySet()) {
-                varsArray.add(formatVariable(e.getKey(), e.getValue()));
+            Iterator it = vals.entrySet().iterator();
+            while (it.hasNext()) {
+                Map.Entry e = (Map.Entry) it.next();
+                varsArray.add(formatVariable((String) e.getKey(), (GSValue) e.getValue()));
             }
         }
     }
@@ -1129,7 +1188,7 @@ public class DapServer implements DebugController.SuspendListener {
                 return 0;
             }
             int ref = nextVarRef++;
-            varRefs.put(ref, value);
+            varRefs.put(new Integer(ref), value);
             return ref;
         }
         return 0;
@@ -1162,7 +1221,7 @@ public class DapServer implements DebugController.SuspendListener {
      * 在 DAP 线程读取 env/members，不经过 VM 执行，避免污染暂停状态的栈。
      */
     private GSValue evaluateExpression(String expr, GSFrame frame) {
-        if (expr == null || expr.trim().isEmpty()) {
+        if (expr == null || expr.trim().length() == 0) {
             return GSNull.NULL;
         }
         expr = expr.trim();
@@ -1202,7 +1261,6 @@ public class DapServer implements DebugController.SuspendListener {
             this.category = category;
         }
 
-        @Override
         public void write(int b) {
             buf.write(b);
             if (b == '\n') {
@@ -1210,21 +1268,25 @@ public class DapServer implements DebugController.SuspendListener {
             }
         }
 
-        @Override
         public void write(byte[] b, int off, int len) {
             for (int i = off; i < off + len; i++) {
                 write(b[i]);
             }
         }
 
-        @Override
         public void flush() {
             flushLine();
         }
 
         private void flushLine() {
             if (buf.size() > 0) {
-                String text = new String(buf.toByteArray(), StandardCharsets.UTF_8);
+                String text;
+                try {
+                    text = new String(buf.toByteArray(), "UTF-8");
+                } catch (java.io.UnsupportedEncodingException e) {
+                    // UTF-8 是标准字符集，不会到达此分支
+                    throw new RuntimeException(e);
+                }
                 server.sendOutput(text, category);
                 buf.reset();
             }

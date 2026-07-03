@@ -9,7 +9,6 @@ public class RelationalExpression extends OperatorNode{
         type = "RelationalExpression";
     }
 
-    @Override
     public void accept(Visitor v) {
         v.visit(this);
     }

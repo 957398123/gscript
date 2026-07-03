@@ -52,7 +52,7 @@ public class DebugController {
      * <p>多文件调试时按文件路径区分断点，避免不同文件相同行号互相干扰。
      * 单文件场景只有一个 key。key 为 null 时表示非多文件调试的兼容断点。
      */
-    private final Map<String, Set<Integer>> breakpoints = new HashMap<>();
+    private final Map breakpoints = new HashMap();
 
     /** 当前单步模式 */
     private int stepMode = STEP_NONE;
@@ -71,7 +71,7 @@ public class DebugController {
      * per-frame 方案确保函数调用不影响外层帧的断点判断。
      * WeakHashMap 允许帧被 GC 回收后自动清理条目，避免深度递归调试时的内存泄漏。
      */
-    private final java.util.WeakHashMap<GSFrame, Integer> framePrevLines = new java.util.WeakHashMap<>();
+    private final java.util.WeakHashMap framePrevLines = new java.util.WeakHashMap();
 
     /** 解释器是否处于挂起状态 */
     private volatile boolean suspended = false;
@@ -130,12 +130,12 @@ public class DebugController {
      * @param path  源文件路径（断点所属文件，作为 key 区分多文件），可为 null
      * @param lines 断点行号集合（1-based），可为空或 null（清空该文件断点）
      */
-    public void setBreakpoints(String path, Collection<Integer> lines) {
+    public void setBreakpoints(String path, Collection lines) {
         synchronized (lock) {
             if (lines == null || lines.isEmpty()) {
                 breakpoints.remove(path);
             } else {
-                breakpoints.put(path, new HashSet<>(lines));
+                breakpoints.put(path, new HashSet(lines));
             }
         }
     }
@@ -228,8 +228,8 @@ public class DebugController {
             }
 
             // 获取当前帧的上一条已执行行号（per-frame，避免函数调用返回后误判行号变化）
-            Integer prevLineObj = framePrevLines.get(frame);
-            int prevLine = (prevLineObj != null) ? prevLineObj : 0;
+            Integer prevLineObj = (Integer) framePrevLines.get(frame);
+            int prevLine = (prevLineObj != null) ? prevLineObj.intValue() : 0;
 
             // 1. 入口暂停（仅触发一次，确保只在脚本首条指令而非每个函数帧）
             if (stopOnEntry && !stopOnEntryTriggered) {
@@ -246,8 +246,8 @@ public class DebugController {
             // 3. 断点命中（行号变化 + 当前文件该行是断点）
             //    按当前帧函数所属文件取断点集合，避免不同文件相同行号互相干扰
             else if (line > 0 && line != prevLine) {
-                Set<Integer> bps = breakpoints.get(frame.function.sourcePath);
-                if (bps != null && bps.contains(line)) {
+                Set bps = (Set) breakpoints.get(frame.function.sourcePath);
+                if (bps != null && bps.contains(new Integer(line))) {
                     shouldSuspend = true;
                     reason = "breakpoint";
                 }
@@ -294,7 +294,7 @@ public class DebugController {
             }
 
             // 更新当前帧的上一条已执行行号（无论是否挂起都更新，保证断点重触发判断正确）
-            framePrevLines.put(frame, line);
+            framePrevLines.put(frame, new Integer(line));
 
             if (shouldSuspend) {
                 stepMode = STEP_NONE;

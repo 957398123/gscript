@@ -25,7 +25,7 @@ $manifest = @'
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
   <Metadata>
-    <Identity Language="en-US" Id="gscript-debug" Version="0.1.0" Publisher="gscript" />
+    <Identity Language="en-US" Id="gscript-debug" Version="0.2.0" Publisher="gscript" />
     <DisplayName>gscript Debug</DisplayName>
     <Description xml:space="preserve">gscript debugger and syntax highlight</Description>
     <Tags>debuggers,programming languages</Tags>
@@ -61,8 +61,8 @@ Set-Content -LiteralPath $ctPath -Value $ct -Encoding UTF8 -NoNewline
 Write-Host "[Content_Types].xml written"
 
 # Package as ZIP (VSIX is essentially a ZIP)
-$zipPath = Join-Path $env:TEMP "gscript-debug-0.1.0.zip"
-$vsixPath = Join-Path $env:TEMP "gscript-debug-0.1.0.vsix"
+$zipPath = Join-Path $env:TEMP "gscript-debug-0.2.0.zip"
+$vsixPath = Join-Path $env:TEMP "gscript-debug-0.2.0.vsix"
 Remove-Item $zipPath -Force -ErrorAction SilentlyContinue
 Remove-Item $vsixPath -Force -ErrorAction SilentlyContinue
 

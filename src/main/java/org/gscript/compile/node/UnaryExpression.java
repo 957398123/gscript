@@ -16,7 +16,6 @@ public class UnaryExpression extends Node{
         this.operand = operand;
     }
 
-    @Override
     public void accept(Visitor v) {
         v.visit(this);
     }

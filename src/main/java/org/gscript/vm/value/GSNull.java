@@ -8,22 +8,18 @@ public class GSNull extends GSObject {
         this.type = 8;
     }
 
-    @Override
     public String toStringValue() {
         return "null";
     }
 
-    @Override
     public int toIntValue() {
         return 0;
     }
 
-    @Override
     public float toFloatValue() {
         return 0;
     }
 
-    @Override
     public boolean toBoolean() {
         return false;
     }

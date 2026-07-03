@@ -1,0 +1,39 @@
+=== STDOUT ===
+============================================================
+Java 宿主 ↔ gscript 交互 API 测试
+============================================================
+
+--- stdout ---
+x=10
+y=20
+sum=30
+100
+hello
+obj.name=Alice
+obj.age=30
+obj.scores=[90, 85, 95]
+config.timeout=5000
+config.retries=3
+tags[0]=1
+Uncaught Error: TypeError: function not exist. at <anonymous>:2
+err_is_null=true
+
+--- 断言 ---
+  [PASS] evalScript+getVariable x
+  [PASS] evalScript+getVariable y
+  [PASS] evalExpression add(x,y)
+  [PASS] setVariable + console.log(z/greeting)
+  [PASS] toJavaObject obj.name
+  [PASS] toJavaObject obj.age
+  [PASS] toJavaObject obj.scores (嵌套数组)
+  [PASS] fromJavaObject config.timeout
+  [PASS] fromJavaObject config.retries
+  [PASS] fromJavaObject tags[0] (数组索引)
+  [PASS] evalExpression 错误返回 null
+  [PASS] 错误表达式打印 Uncaught Error
+
+============================================================
+结果: 12 passed, 0 failed
+============================================================
+
+=== STDERR ===

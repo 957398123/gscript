@@ -20,7 +20,6 @@ public class IfStatement extends Node {
         this.elseBranch = elseBranch;
     }
 
-    @Override
     public void accept(Visitor v) {
         v.visit(this);
     }

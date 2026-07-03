@@ -739,7 +739,211 @@ funcCount × {
 CRC32 覆盖 Header 偏移 0-15 + 20-EOF（不含偏移 16-19 的 CRC32 字段自身）。
 加载时重新计算并比对，篡改文件会被拒绝加载。
 
+## 构建要求
+
+本项目已迁移为 **纯 Java 1.4** 实现，零外部依赖。
+
+### 环境要求
+
+- **Java 1.4+**（源码与目标均为 1.4，可在真实 JDK 1.4 环境编译执行）
+- **Maven 3.x**（仅用于构建，无任何外部依赖）
+
+### 关键设计
+
+| 迁移项 | 原实现（Java 9+） | 迁移后（Java 1.4） |
+|--------|-------------------|---------------------|
+| 语法特性 | 泛型、枚举、注解、增强 for、自动装箱、try-with-resources | 原始类型 + 显式 cast + Iterator + `new Integer()` |
+| 字符串构建 | `StringBuilder` | `StringBuffer` |
+| 格式化 | `String.format()` | 字符串拼接 + 自定义 `padLeft`/`padRight` |
+| switch on String | Java 7+ 原生支持 | 转换为 `if-else` + `.equals()` 链 |
+| Token 类型 | `enum GSTokenType` | `public static final int` 常量 |
+| JSON 处理 | Gson 2.10.1（外部依赖） | 自研 `org.gscript.vm.debug.dap.json` 库（API 对齐 Gson） |
+| 并发原语 | `java.util.concurrent`（AtomicInteger/LinkedBlockingQueue/PriorityQueue） | 自研 `org.gscript.util`（AtomicCounter/SimpleBlockingQueue/MinPriorityQueue） |
+| 打包 | maven-shade-plugin（fat jar 含 Gson） | maven-jar-plugin（纯项目 jar，无依赖） |
+
+### 构建命令
+
+```bash
+mvn package -DskipTests
+```
+
+生成 `target/gscript-1.0-SNAPSHOT.jar`，可直接 `java -jar` 运行调试适配器。
+
+> **注意**：JDK 9+ 编译器不支持 `-source 1.4`（最低 1.6）。在 JDK 9+ 环境验证时，需临时将 pom.xml 的 `<source>`/`<target>` 改为 `1.6`。代码本身仅使用 Java 1.4 语法与 API，在真实 JDK 1.4 环境可直接编译。
+
+## 在 Java 环境中使用 gscript（完整操作指南）
+
+本节给出在 Java 环境中从零开始使用 gscript 的完整流程：环境配置 → 依赖引入 → 基础语法 → 常见使用场景。
+
+### 1. 环境配置
+
+| 项 | 要求 | 说明 |
+|----|------|------|
+| JDK | 1.4+ | 源码与字节码目标均为 1.4，可在真实 JDK 1.4 编译执行 |
+| Maven | 3.x | 仅用于构建，无任何外部依赖 |
+| OS | 跨平台 | 纯 Java，Windows/Linux/macOS 均可 |
+
+**JDK 9+ 开发机注意**：JDK 9 编译器最低支持 `-source 1.6`，无法直接用 1.4 编译。开发验证时需临时把 `pom.xml` 的 `<source>`/`<target>` 改为 `1.6`，构建完成后再改回 `1.4`。代码本身仅使用 Java 1.4 语法与 API，改回 1.4 后可在真实 JDK 1.4 环境直接编译。
+
+### 2. 依赖引入
+
+gscript **零外部依赖**（原 Gson 已替换为自研 JSON 库，`java.util.concurrent` 已替换为自研并发原语）。引入方式有两种：
+
+**方式 A：源码构建（推荐）**
+
+```bash
+git clone <repo> gscript
+cd gscript
+mvn package -DskipTests
+```
+
+生成 `target/gscript-1.0-SNAPSHOT.jar`（约 190KB，纯项目 jar，无 shade 无 fat jar）。
+
+**方式 B：直接引用 jar**
+
+将 `gscript-1.0-SNAPSHOT.jar` 加入应用 classpath：
+
+```bash
+# 命令行
+java -cp path/to/gscript-1.0-SNAPSHOT.jar org.gscript.TestScript hello run
+
+# Maven 项目（install 到本地仓库后）
+mvn install:install-file -Dfile=gscript-1.0-SNAPSHOT.jar \
+    -DgroupId=org.gscript -DartifactId=gscript -Dversion=1.0-SNAPSHOT -Dpackaging=jar
+```
+
+然后在 `pom.xml` 中引用（注意：gscript 本身零依赖，无需传递依赖）：
+
+```xml
+<dependency>
+  <groupId>org.gscript</groupId>
+  <artifactId>gscript</artifactId>
+  <version>1.0-SNAPSHOT</version>
+</dependency>
+```
+
+### 3. 基础语法示例
+
+gscript 是类 JS 语法的脚本语言，支持变量、函数、控制流、对象/数组、异常、定时器等。以下是一个覆盖主要语法的示例（保存为 `hello.script`）：
+
+```javascript
+// 变量与算术
+var name = "gscript";
+var x = 10, y = 20;
+console.log("Hello, " + name + "!");          // Hello, gscript!
+console.log("sum = " + (x + y));               // sum = 30
+
+// 函数与递归
+function fib(n) {
+    if (n < 2) { return n; }
+    return fib(n - 1) + fib(n - 2);
+}
+console.log("fib(10) = " + fib(10));           // fib(10) = 55
+
+// 控制流：if-else / for / while / switch
+for (var i = 0; i < 3; i = i + 1) {
+    console.log("i=" + i);
+}
+switch (x) {
+    case 10: { console.log("ten"); }
+    case 20: { console.log("twenty"); }
+    default: { console.log("other"); }
+}
+
+// 对象与数组
+var point = { x: 1, y: 2 };
+var list = [1, 2, 3];
+console.log(point.x + "," + point.y);          // 1,2
+console.log(list[0] + list[2]);                // 4
+
+// 异常处理
+try {
+    throw "boom";
+} catch (e) {
+    console.log("caught: " + e);               // caught: boom
+} finally {
+    console.log("finally");
+}
+```
+
+执行（详见下一节「常见使用场景」）：
+
+```bash
+java -cp target/classes org.gscript.TestScript hello run
+```
+
+更多语法细节见本文档开头的 [语法定义](#语法定义)，字面量成员访问见 [字面量上的成员访问](#字面量上的成员访问)。
+
+### 4. 常见使用场景
+
+#### 场景一：命令行执行脚本（CLI）
+
+最直接的方式，编译源码 + 立即执行：
+
+```bash
+java -cp target/classes org.gscript.TestScript <name> [run|dump|compile|rungclass|dumpgclass|hosttest]
+```
+
+| 模式 | 说明 |
+|------|------|
+| `run`（默认） | 编译源码 + 执行 |
+| `dump` | 编译源码 + 打印字节码↔源码行映射 |
+| `compile` | 编译源码 + 写出 `.gclass` 文件 |
+| `rungclass` | 加载 `.gclass` + 执行 |
+| `dumpgclass` | 加载 `.gclass` + 打印字节码映射 + FunctionTable |
+| `hosttest` | 宿主交互 API 演示（Java 调用 gscript 解释器） |
+
+`<name>` 对应 `src/main/resources/<name>.script`（去掉扩展名）。详见下文 [TestScript 命令行模式](#testscript-命令行模式)。
+
+#### 场景二：Java 宿主嵌入（应用集成）
+
+在 Java 应用中直接 `new GSInterpreter()` 执行 gscript 代码、读写变量，实现 Java ↔ gscript 双向交互：
+
+```java
+GSInterpreter interpreter = new GSInterpreter();
+interpreter.addVariableToGlobal("console", new Console());
+
+interpreter.evalScript("var x = 10; function add(a, b) { return a + b; }");
+
+GSValue sum = interpreter.evalExpression("add(x, 20)");
+System.out.println(sum.toIntValue());              // 30
+
+interpreter.setVariable("config", myJavaMap);       // 注入 Java 对象
+GSValue v = interpreter.evalExpression("config.timeout");
+```
+
+完整 API 与类型映射见下文 [宿主交互 API](#宿主交互-api)。
+
+#### 场景三：.gclass 二进制缓存
+
+将 `.script` 编译为 `.gclass` 二进制文件（含 CRC32 校验、SourceMap、FunctionTable），用于网络传输或磁盘缓存，加载时无需重新编译：
+
+```bash
+# 编译
+java -cp target/classes org.gscript.TestScript hello compile
+# 加载执行
+java -cp target/classes org.gscript.TestScript hello rungclass
+```
+
+`.gclass` 文件格式详见 [编译文件格式（.gclass）](#编译文件格式gclass)。
+
+#### 场景四：定时器与事件循环
+
+gscript 内置 JS 风格的 `setTimeout`/`setInterval`/`clearTimeout`/`clearInterval`，单线程事件循环语义，回调内断点天然工作：
+
+```javascript
+var counter = 0;
+var id = setInterval(function() {
+    counter = counter + 1;
+    console.log("tick " + counter);
+    if (counter >= 3) { clearInterval(id); }
+}, 100);
+```
+
+完整 API 与事件循环语义见下文 [定时器 API](#定时器-api-settimeout--setinterval)。
+
 ## 运行
+
 
 ### 从源码运行
 
@@ -895,3 +1099,223 @@ setTimeout(function(a, b) {
     console.log("sum=" + (a + b));
 }, 0, 10, 20);  // 输出 sum=30
 ```
+
+## VSCode 调试
+
+gscript 提供 VSCode 扩展（`gscript-debug`），支持 **Launch**（stdio，本地启动）和 **Attach**（socket，附加到已运行进程）两种调试模式，覆盖断点、单步、调用栈、变量查看、表达式求值等完整调试能力。
+
+### 前置准备
+
+1. **构建调试适配器 jar**
+
+   ```bash
+   mvn package -DskipTests
+   ```
+
+   生成 `target/gscript-1.0-SNAPSHOT.jar`（纯项目 jar，无外部依赖）。
+
+2. **安装 VSCode 扩展**
+
+   ```powershell
+   # 方式 A：用项目内置脚本打包并安装
+   powershell -ExecutionPolicy Bypass -File tests\build_vsix.ps1
+   code --install-extension $env:TEMP\gscript-debug-0.2.0.vsix --force
+
+   # 方式 B：开发模式（推荐开发期）
+   # 将 vscode-extension 目录在 VSCode「扩展开发宿主」中打开，按 F5 调试
+   ```
+
+3. **配置 jar 路径**
+
+   在 VSCode `settings.json` 中配置：
+
+   ```json
+   {
+     "gscript.jarPath": "e:/JProjects/gscript/target/gscript-1.0-SNAPSHOT.jar",
+     "gscript.javaPath": "java"
+   }
+   ```
+
+   或在单条 `launch.json` 配置中用 `jarPath` 字段覆盖。
+
+### Launch 模式（本地调试，最常用）
+
+VSCode 启动调试适配器子进程（`java -jar <jarPath> --stdio`），通过 stdio 通信。源码在本地，断点路径直接匹配。
+
+#### 配置
+
+在 `.vscode/launch.json` 中：
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "gscript",
+      "request": "launch",
+      "name": "调试当前文件",
+      "files": ["${file}"],
+      "stopOnEntry": false,
+      "jarPath": "${workspaceFolder}/target/gscript-1.0-SNAPSHOT.jar"
+    },
+    {
+      "type": "gscript",
+      "request": "launch",
+      "name": "多文件调试 (multi_a + multi_b)",
+      "files": [
+        "${workspaceFolder}/src/main/resources/multi_a.script",
+        "${workspaceFolder}/src/main/resources/multi_b.script"
+      ],
+      "stopOnEntry": false
+    }
+  ]
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `files` | `string[]` | 按顺序加载的脚本路径数组（共享 global 域，后加载文件覆盖前文件同名函数）。**推荐用法** |
+| `program` | `string` | 单文件路径（与 `files` 二选一，`files` 优先；兼容旧用法） |
+| `stopOnEntry` | `boolean` | 是否在脚本入口处暂停（执行首条指令前挂起），默认 `false` |
+| `localRoot` / `remoteRoot` | `string` | 路径映射（launch 模式一般无需配置，保留以兼容带映射的启动场景） |
+| `jarPath` | `string` | 调试适配器 jar 路径（覆盖 `gscript.jarPath` 设置） |
+| `javaPath` | `string` | java 可执行路径（覆盖 `gscript.javaPath` 设置） |
+
+#### 操作流程
+
+1. 打开一个 gscript 脚本（`.gs` / `.gscript` / `.script`）
+2. 在行号左侧点击设置**断点**（红点）
+3. 选择「调试当前文件」配置，按 **F5** 启动
+4. 命中断点后：
+   - **F5** 继续 / **F10** 单步步过 / **F11** 单步步入 / **Shift+F11** 单步步出
+   - 「调用栈」面板查看函数调用链
+   - 「变量」面板查看 Locals（沿作用域链）+ Global（顶层 `var` 在 Global 作用域，需展开 Global）
+   - 「调试控制台」输入表达式求值（支持 `a.b.c` 形式的标识符与属性访问）
+5. **Shift+F5** 停止调试（launch 模式 disconnect = terminate，进程退出）
+
+#### 调试技巧
+
+- **多文件调试**：`files` 数组按顺序加载，后加载文件覆盖前文件同名函数。断点可设在任一文件。
+- **`stopOnEntry`**：设为 `true` 可在首条指令前挂起，便于从程序入口单步跟踪。
+- **`console.log` 输出**：Launch 模式下 stdout 被 DAP 协议占用，`console.log` 通过 DAP "output" 事件显示在「调试控制台」。
+- **路径不命中**：VSCode 的 `${workspaceFolder}` 解析路径与断点 `source.path` 可能混合斜杠/大小写不一致。gscript 内部用 `File.getCanonicalPath()` 规范化路径，若仍不命中，检查 `dap_debug.log`（见下文）。
+- **顶层变量**：顶层 `var` 声明落入 Global 作用域，不在 Locals 中——查看时需展开「变量」面板的 Global 节点。
+
+### Attach 模式（附加到已运行进程）
+
+调试适配器以 socket 模式独立运行（`java -jar <jar> --port=4711`），VSCode 通过 `host`/`port` 连接。适用于：调试适配器需在 IDE 之外单独运行（容器内、远程机器、或 gscript 进程已启动后动态附加）。
+
+Attach 模式有两种启用方式：
+
+#### 方式一：debug 模式（`waitForDebugger`，阻塞等待）
+
+gscript 程序启动时即进入 debug 模式，**阻塞等待** VSCode 连接后才开始执行。适合从程序入口调试。
+
+1. 启动调试适配器（socket 模式）：
+
+   ```bash
+   java -jar target/gscript-1.0-SNAPSHOT.jar --port=4711
+   ```
+
+2. gscript 程序以 debug 模式启动（具体取决于宿主如何调用解释器；程序会阻塞等待调试器连接）
+
+3. VSCode 选择 attach 配置，按 F5 连接，程序开始执行
+
+#### 方式二：运行时 attach（`attachReady`，动态附加）
+
+gscript 程序已正常运行，VSCode **随后连接**附加调试。适合调试运行时才出现的问题（如同 `node --inspect`）。
+
+1. gscript 程序正常运行（已加载脚本并执行）
+2. 启动调试适配器（socket 模式）：
+   ```bash
+   java -jar target/gscript-1.0-SNAPSHOT.jar --port=4711
+   ```
+3. VSCode 选择 attach 配置，按 F5 附加，在当前位置挂起
+
+#### 配置
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "gscript",
+      "request": "attach",
+      "name": "Attach to gscript (debug mode)",
+      "host": "localhost",
+      "port": 4711,
+      "localRoot": "${workspaceFolder}/src/main/resources",
+      "remoteRoot": "",
+      "stopOnEntry": false
+    },
+    {
+      "type": "gscript",
+      "request": "attach",
+      "name": "Attach to gscript (runtime)",
+      "host": "localhost",
+      "port": 4711,
+      "localRoot": "${workspaceFolder}/src/main/resources",
+      "remoteRoot": ""
+    }
+  ]
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `port` | `number` | **必填**。调试适配器监听的 socket 端口 |
+| `host` | `string` | 调试适配器主机地址，默认 `localhost` |
+| `localRoot` | `string` | 本地源码根目录（VSCode 端），用于映射断点路径到远程 sourcePath |
+| `remoteRoot` | `string` | 远程源码根目录前缀（gclass sourcePath 的前缀），默认空串表示 sourcePath 为相对路径 |
+| `stopOnEntry` | `boolean` | 连接后是否在当前位置暂停（`attachReady` 模式自动暂停；此选项用于 `waitForDebugger` 模式） |
+
+#### 路径映射（`localRoot` / `remoteRoot`）
+
+Attach 模式下源码可能来自 gclass 携带的 `sourcePath`（远程/相对路径），需映射到本地源码文件才能命中断点：
+
+- `remoteRoot` = gclass sourcePath 的前缀部分（剥离该前缀得到相对路径）
+- `localRoot` = 本地源码根目录（拼接相对路径得到本地绝对路径）
+
+示例：gclass 的 sourcePath 为 `/app/src/timer.script`，本地源码在 `e:/JProjects/gscript/src/main/resources/`：
+- `remoteRoot` = `/app/src/`
+- `localRoot` = `${workspaceFolder}/src/main/resources/`
+
+若 gclass 的 sourcePath 已是相对路径（如 `timer.script`），`remoteRoot` 留空即可。
+
+#### 源码查看（source 请求）
+
+Attach 模式下若 gclass 携带 `SourceContent` 属性，VSCode 会通过 DAP source 请求获取源码内容并显示。stackTrace 响应中 `source.sourceReference > 0` 时触发该请求。
+
+#### 调试技巧
+
+- **disconnect 行为**：attach 模式 disconnect **仅分离调试器**（如同 `node --inspect`），gscript 程序（含 `setInterval`）继续运行；需发送 `terminate` 请求或 kill 进程终止。
+- **`setInterval` 程序**：attach 后可调试周期回调；detach 后程序存活，可再次 attach。
+- **`stopOnEntry`**：`waitForDebugger` 模式下控制连接后是否暂停；`attachReady` 模式默认在当前位置暂停。
+- **调试日志**：DapServer 主循环异常写入 `dap_debug.log`，用于分析 VSCode 实际通信的 DAP 消息（断点不命中、堆栈异常等问题排查）。
+
+### 调试功能矩阵
+
+| 功能 | 支持情况 | 说明 |
+|------|---------|------|
+| 行断点 | ✅ | 点击行号左侧设置 |
+| 单步步过 / 步入 / 步出 | ✅ | F10 / F11 / Shift+F11 |
+| 继续 / 暂停 | ✅ | F5 / Ctrl+Pause |
+| 调用栈 | ✅ | 显示函数调用链（跨文件） |
+| 变量查看 | ✅ | Locals（沿作用域链）+ Global |
+| 对象展开 | ✅ | 点击变量前的展开箭头（递归） |
+| 表达式求值 | ✅（轻量） | 支持 `a.b.c` 标识符与属性访问；不支持算术/函数调用/字面量 |
+| `stopOnEntry` | ✅ | launch + attach 均支持 |
+| 路径映射 | ✅ | attach 模式 `localRoot`/`remoteRoot` |
+| 条件断点 | ❌ | 暂不支持 |
+| 异常断点 | ❌ | 暂不支持（预留） |
+
+### 故障排查
+
+| 现象 | 排查方向 |
+|------|----------|
+| 断点不命中（空心灰点） | 检查 `localRoot`/`remoteRoot` 映射；查看 `dap_debug.log` 的 setBreakpoints 请求路径；确认 `source.path` 经 `getCanonicalPath()` 规范化后与脚本一致 |
+| launch.json 属性「不允许」错误 | 确认已安装扩展 v0.2.0+（`code --list-extensions --show-versions`）；`localRoot`/`remoteRoot`/`stopOnEntry` 在 launch + attach 均允许 |
+| 「未配置 jar 路径」错误 | 在 VSCode 设置 `gscript.jarPath` 或 launch.json 配置 `jarPath` 字段 |
+| attach 连接失败 | 确认调试适配器已以 `--port=<port>` 启动；`host`/`port` 一致；防火墙未拦截 |
+| 变量面板看不到顶层变量 | 顶层 `var` 在 Global 作用域，展开「变量」面板的 Global 节点 |
+| stepIn 跨文件不挂起 | 单步逻辑需同时比较行号和文件路径（已修复，若复现查看 `dap_debug.log`） |

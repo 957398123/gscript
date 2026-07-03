@@ -9,15 +9,14 @@ public class CatchClause extends Node {
     public Identifier identifier;
 
     // 方法体
-    public List<Node> body;
+    public List body;
 
-    public CatchClause(Identifier identifier, List<Node> body) {
+    public CatchClause(Identifier identifier, List body) {
         type = "CatchClause";
         this.identifier = identifier;
         this.body = body;
     }
 
-    @Override
     public void accept(Visitor v) {
         v.visit(this);
     }

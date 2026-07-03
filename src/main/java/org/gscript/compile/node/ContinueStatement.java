@@ -8,7 +8,6 @@ public class ContinueStatement extends Node {
         type = "ContinueStatement";
     }
 
-    @Override
     public void accept(Visitor v) {
         v.visit(this);
     }

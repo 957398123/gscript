@@ -2,14 +2,13 @@ package org.gscript.vm;
 
 import org.gscript.vm.value.GSFunction;
 import org.gscript.vm.value.GSValue;
+import org.gscript.util.AtomicCounter;
+import org.gscript.util.MinPriorityQueue;
+import org.gscript.util.SimpleBlockingQueue;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.PriorityQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * 定时器调度器（方案 B：守护线程计时 + 主线程串行执行回调）。
@@ -26,7 +25,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * </ul>
  *
  * <p>线程安全：{@link #timerQueue} 和 {@link #taskMap} 通过 {@link #lock} 保护；
- * {@link #readyQueue} 用 {@link LinkedBlockingQueue} 自带的并发安全。
+ * {@link #readyQueue} 用 {@link SimpleBlockingQueue} 自带的并发安全。
  *
  * <p>注意：所有 gscript 回调都在主线程执行（callFunction 走 eval→push frame→suspendCheck），
  * 调试器断点/单步在回调里天然工作。守护线程不接触 GSInterpreter 任何字段。
@@ -40,12 +39,12 @@ public class TimerScheduler {
     static class TimerTask {
         final int id;
         final GSFunction callback;
-        final ArrayList<GSValue> args;  // 已按 OP_INVOKE 约定构造：args[0]=this(GSNull), args[1..]=实际参数
+        final ArrayList args;  // 已按 OP_INVOKE 约定构造：args[0]=this(GSNull), args[1..]=实际参数
         long nextRunTime;  // System.currentTimeMillis() 到期时间戳
         final long period;  // 周期（ms），0=setTimeout
         volatile boolean cancelled;
 
-        TimerTask(int id, GSFunction callback, ArrayList<GSValue> args, long delay, long period) {
+        TimerTask(int id, GSFunction callback, ArrayList args, long delay, long period) {
             this.id = id;
             this.callback = callback;
             this.args = args;
@@ -55,17 +54,28 @@ public class TimerScheduler {
         }
     }
 
+    /** TimerTask 按到期时间排序的比较器（替代 lambda Comparator）。 */
+    static class TimerTaskComparator implements MinPriorityQueue.Comparator {
+        public int compare(Object a, Object b) {
+            TimerTask ta = (TimerTask) a;
+            TimerTask tb = (TimerTask) b;
+            long diff = ta.nextRunTime - tb.nextRunTime;
+            if (diff < 0) return -1;
+            if (diff > 0) return 1;
+            return 0;
+        }
+    }
+
     /** 保护 timerQueue 和 taskMap 的监视器锁。 */
     private final Object lock = new Object();
     /** 按到期时间排序的待触发队列（守护线程 peek/wait/poll）。 */
-    private final PriorityQueue<TimerTask> timerQueue = new PriorityQueue<>(
-            (a, b) -> Long.compare(a.nextRunTime, b.nextRunTime));
+    private final MinPriorityQueue timerQueue = new MinPriorityQueue(new TimerTaskComparator());
     /** 已到期、待主线程取走的任务队列（守护线程 offer，主线程 poll）。 */
-    private final LinkedBlockingQueue<TimerTask> readyQueue = new LinkedBlockingQueue<>();
+    private final SimpleBlockingQueue readyQueue = new SimpleBlockingQueue();
     /** id → task 映射，供 cancel 查找。 */
-    private final Map<Integer, TimerTask> taskMap = new HashMap<>();
+    private final Map taskMap = new HashMap();
     /** 下一个任务 id（从 1 开始，0 保留给"无任务"语义）。 */
-    private final AtomicInteger nextId = new AtomicInteger(1);
+    private final AtomicCounter nextId = new AtomicCounter(1);
 
     private volatile boolean stopped = false;
     private Thread timerThread;
@@ -75,47 +85,51 @@ public class TimerScheduler {
     }
 
     private void startTimerThread() {
-        timerThread = new Thread(() -> {
-            while (!stopped) {
-                TimerTask task;
-                synchronized (lock) {
-                    // 队列空：等待新任务被 schedule 唤醒
-                    while (!stopped && timerQueue.isEmpty()) {
-                        try {
-                            lock.wait();
-                        } catch (InterruptedException e) {
-                            return;
+        timerThread = new Thread(new Runnable() {
+            public void run() {
+                while (!stopped) {
+                    TimerTask task;
+                    synchronized (lock) {
+                        // 队列空：等待新任务被 schedule 唤醒
+                        while (!stopped && timerQueue.isEmpty()) {
+                            try {
+                                lock.wait();
+                            } catch (InterruptedException e) {
+                                return;
+                            }
+                        }
+                        if (stopped) return;
+                        task = (TimerTask) timerQueue.peek();
+                        long now = System.currentTimeMillis();
+                        long waitTime = task.nextRunTime - now;
+                        if (waitTime > 0) {
+                            // 未到期：等待剩余时间（或被新任务/cancel 唤醒后重新 peek）
+                            try {
+                                lock.wait(waitTime);
+                            } catch (InterruptedException e) {
+                                return;
+                            }
+                            continue;
+                        }
+                        // 到期：移出 timerQueue
+                        timerQueue.poll();
+                        taskMap.remove(new Integer(task.id));
+                        // setInterval：必须在释放锁前重新入队，否则存在窗口期
+                        // （task 已从 timerQueue 移出、尚未塞回，readyQueue 也未 offer），
+                        // 主线程 hasPending 在此窗口看到双空 → 误判无任务 → event loop 提前退出。
+                        if (task.period > 0 && !task.cancelled && !stopped) {
+                            task.nextRunTime = System.currentTimeMillis() + task.period;
+                            timerQueue.offer(task);
+                            taskMap.put(new Integer(task.id), task);
+                        }
+                        // 投递到 readyQueue 供主线程取（必须在锁内完成，否则存在窗口期:
+                        // task 已从 timerQueue 移出、readyQueue 也未 offer，主线程 hasPending
+                        // 在此窗口看到双空 → 误判无任务 → event loop 提前退出，setTimeout 回调丢失）
+                        if (!task.cancelled) {
+                            readyQueue.offer(task);
                         }
                     }
-                    if (stopped) return;
-                    task = timerQueue.peek();
-                    long now = System.currentTimeMillis();
-                    long waitTime = task.nextRunTime - now;
-                    if (waitTime > 0) {
-                        // 未到期：等待剩余时间（或被新任务/cancel 唤醒后重新 peek）
-                        try {
-                            lock.wait(waitTime);
-                        } catch (InterruptedException e) {
-                            return;
-                        }
-                        continue;
-                    }
-                    // 到期：移出 timerQueue
-                    timerQueue.poll();
-                    taskMap.remove(task.id);
-                    // setInterval：必须在释放锁前重新入队，否则存在窗口期
-                    // （task 已从 timerQueue 移出、尚未塞回，readyQueue 也未 offer），
-                    // 主线程 hasPending 在此窗口看到双空 → 误判无任务 → event loop 提前退出。
-                    if (task.period > 0 && !task.cancelled && !stopped) {
-                        task.nextRunTime = System.currentTimeMillis() + task.period;
-                        timerQueue.offer(task);
-                        taskMap.put(task.id, task);
-                    }
-                }
-                // 投递到 readyQueue 供主线程取（锁外操作，readyQueue 自带并发安全）
-                // 此时 setInterval 任务已重新入 timerQueue，hasPending 不会看到双空。
-                if (!task.cancelled) {
-                    readyQueue.offer(task);
+                    // 锁已释放: 此时 task 必在 readyQueue（setTimeout/到期 setInterval）或 timerQueue（setInterval 重入队）中
                 }
             }
         }, "gscript-timer");
@@ -131,10 +145,10 @@ public class TimerScheduler {
      * @param args     回调参数列表（args[0]=this, args[1..]=实际参数）
      * @return 任务 id（可用于 clearTimeout）
      */
-    public int schedule(GSFunction callback, long delayMs, ArrayList<GSValue> args) {
+    public int schedule(GSFunction callback, long delayMs, ArrayList args) {
         TimerTask task = new TimerTask(nextId.getAndIncrement(), callback, args, delayMs, 0);
         synchronized (lock) {
-            taskMap.put(task.id, task);
+            taskMap.put(new Integer(task.id), task);
             timerQueue.offer(task);
             lock.notifyAll();  // 唤醒守护线程重新 peek（新任务可能更早到期）
         }
@@ -149,11 +163,11 @@ public class TimerScheduler {
      * @param args     回调参数列表
      * @return 任务 id（可用于 clearInterval）
      */
-    public int scheduleAtFixedRate(GSFunction callback, long periodMs, ArrayList<GSValue> args) {
+    public int scheduleAtFixedRate(GSFunction callback, long periodMs, ArrayList args) {
         long period = Math.max(periodMs, 1);
         TimerTask task = new TimerTask(nextId.getAndIncrement(), callback, args, period, period);
         synchronized (lock) {
-            taskMap.put(task.id, task);
+            taskMap.put(new Integer(task.id), task);
             timerQueue.offer(task);
             lock.notifyAll();
         }
@@ -168,7 +182,7 @@ public class TimerScheduler {
      */
     public boolean cancel(int id) {
         synchronized (lock) {
-            TimerTask task = taskMap.remove(id);
+            TimerTask task = (TimerTask) taskMap.remove(new Integer(id));
             if (task != null) {
                 task.cancelled = true;
                 timerQueue.remove(task);  // O(n)，定时器数量通常不大
@@ -186,9 +200,9 @@ public class TimerScheduler {
      */
     public TimerTask pollReady(long timeoutMs) throws InterruptedException {
         if (timeoutMs <= 0) {
-            return readyQueue.poll();
+            return (TimerTask) readyQueue.poll();
         }
-        return readyQueue.poll(timeoutMs, TimeUnit.MILLISECONDS);
+        return (TimerTask) readyQueue.poll(timeoutMs);
     }
 
     /**
@@ -201,7 +215,7 @@ public class TimerScheduler {
         synchronized (lock) {
             if (!readyQueue.isEmpty()) return 0;
             if (timerQueue.isEmpty()) return -1;
-            TimerTask head = timerQueue.peek();
+            TimerTask head = (TimerTask) timerQueue.peek();
             long remaining = head.nextRunTime - System.currentTimeMillis();
             return Math.max(remaining, 0);
         }

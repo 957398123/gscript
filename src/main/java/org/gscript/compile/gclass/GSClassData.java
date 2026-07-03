@@ -61,7 +61,6 @@ public class GSClassData {
             this.bodyLen = bodyLen;
         }
 
-        @Override
         public String toString() {
             return name + "@ip" + startIp + "(len=" + bodyLen + ")";
         }

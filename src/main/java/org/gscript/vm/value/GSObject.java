@@ -4,28 +4,24 @@ import java.util.HashMap;
 
 public class GSObject extends GSValue {
 
-    protected HashMap<String, GSValue> members = new HashMap<>();
+    protected HashMap members = new HashMap();
 
     public GSObject() {
         type = 4;
     }
 
-    @Override
     public String toStringValue() {
         return "[object Object]";
     }
 
-    @Override
     public int toIntValue() {
         return 0;
     }
 
-    @Override
     public float toFloatValue() {
         return 0;
     }
 
-    @Override
     public boolean toBoolean() {
         // 对象总是 truthy（JS 语义：任何对象/数组/函数都为 true）
         return true;
@@ -38,7 +34,7 @@ public class GSObject extends GSValue {
      * @return 成员值
      */
     public GSValue getProperty(String name) {
-        GSValue value = members.get(name);
+        GSValue value = (GSValue) members.get(name);
         if (value == null) {
             return GSNull.NULL;
         } else {
@@ -61,7 +57,7 @@ public class GSObject extends GSValue {
      *
      * @return 成员名 -> 值 的视图
      */
-    public java.util.Map<String, GSValue> getMembers() {
+    public java.util.Map getMembers() {
         return members;
     }
 }

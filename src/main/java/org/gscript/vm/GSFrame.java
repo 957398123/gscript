@@ -3,7 +3,8 @@ package org.gscript.vm;
 import org.gscript.vm.value.GSFunction;
 import org.gscript.vm.value.GSValue;
 
-import java.util.ArrayDeque;
+import java.util.Iterator;
+import java.util.LinkedList;
 
 public class GSFrame {
 
@@ -20,7 +21,7 @@ public class GSFrame {
     /**
      * 异常监视表
      */
-    public ArrayDeque<GSExceptionMonitor> exceptions = new ArrayDeque<>();
+    public LinkedList exceptions = new LinkedList();
 
     /**
      * 要抛出的异常
@@ -111,7 +112,7 @@ public class GSFrame {
      */
     public GSValue handleException(int ip, GSException e) throws GSException {
         // 首先查找当前异常ip对应的异常表，如果没有就需要向上抛异常
-        GSExceptionMonitor monitor = exceptions.peek();
+        GSExceptionMonitor monitor = (GSExceptionMonitor) exceptions.peek();
         if (monitor != null) {
             // 跳转需要清除当前块域
             function.freeToSpecScope("block");
@@ -181,7 +182,7 @@ public class GSFrame {
      */
     public void tryEndCheck() {
         // 如果try块执行完成以后，没有finally，那么需要移除当前监视
-        GSExceptionMonitor monitor = exceptions.peek();
+        GSExceptionMonitor monitor = (GSExceptionMonitor) exceptions.peek();
         if (monitor.finallyStart == -1) {
             exceptions.pop();
         }
@@ -197,7 +198,9 @@ public class GSFrame {
      * @return 目标监视器，没有则返回 null
      */
     public GSExceptionMonitor findReturnFinallyTarget(int ip) {
-        for (GSExceptionMonitor m : exceptions) {
+        Iterator it = exceptions.iterator();
+        while (it.hasNext()) {
+            GSExceptionMonitor m = (GSExceptionMonitor) it.next();
             if (m.finallyStart == -1) {
                 continue;  // 无 finally 的监视器不需要跳转
             }

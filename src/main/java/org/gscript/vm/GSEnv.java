@@ -21,7 +21,7 @@ public class GSEnv {
     /**
      * 变量存放
      */
-    private HashMap<String, GSValue> values = new HashMap<>();
+    private HashMap values = new HashMap();
 
     public GSEnv(String name, GSEnv parent) {
         this.name = name;
@@ -35,7 +35,7 @@ public class GSEnv {
      * @return
      */
     public GSValue getVariableValue(String name) {
-        return values.get(name);
+        return (GSValue) values.get(name);
     }
 
     /**
@@ -63,7 +63,7 @@ public class GSEnv {
      *
      * @return 变量名 -> 值 的只读视图
      */
-    public Map<String, GSValue> getValues() {
+    public Map getValues() {
         return values;
     }
 }

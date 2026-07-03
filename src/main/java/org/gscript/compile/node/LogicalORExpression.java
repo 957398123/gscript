@@ -9,7 +9,6 @@ public class LogicalORExpression extends OperatorNode{
         type = "LogicalORExpression";
     }
 
-    @Override
     public void accept(Visitor v) {
         v.visit(this);
     }

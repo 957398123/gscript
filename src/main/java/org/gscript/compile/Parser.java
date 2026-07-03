@@ -13,7 +13,6 @@ import java.util.List;
 /**
  * 读取token并使用递归下降解析器解析成抽象语法树
  */
-@SuppressWarnings("unused")
 public class Parser {
 
     /**
@@ -24,52 +23,52 @@ public class Parser {
     /**
      * 赋值操作符
      */
-    private static final GSTokenType[] ASSIGN = {GSTokenType.EQ, GSTokenType.PLUS_EQUAL, GSTokenType.MINUS_EQUAL, GSTokenType.STAR_EQUAL, GSTokenType.SLASH_EQUAL, GSTokenType.PERCENT_EQUAL, GSTokenType.T_AND_ASSIGN, GSTokenType.T_OR_ASSIGN, GSTokenType.T_XOR_ASSIGN};
+    private static final int[] ASSIGN = {GSTokenType.EQ, GSTokenType.PLUS_EQUAL, GSTokenType.MINUS_EQUAL, GSTokenType.STAR_EQUAL, GSTokenType.SLASH_EQUAL, GSTokenType.PERCENT_EQUAL, GSTokenType.T_AND_ASSIGN, GSTokenType.T_OR_ASSIGN, GSTokenType.T_XOR_ASSIGN};
 
     /**
      * 比较操作符
      */
-    private static final GSTokenType[] EQUALITY = {GSTokenType.T_EQ, GSTokenType.T_NEQ, GSTokenType.S_T_EQ, GSTokenType.S_T_NEQ};
+    private static final int[] EQUALITY = {GSTokenType.T_EQ, GSTokenType.T_NEQ, GSTokenType.S_T_EQ, GSTokenType.S_T_NEQ};
 
     /**
      * 关系操作符
      */
-    private static final GSTokenType[] RELATIONAL = {GSTokenType.GT, GSTokenType.LT, GSTokenType.T_GE, GSTokenType.T_LE};
+    private static final int[] RELATIONAL = {GSTokenType.GT, GSTokenType.LT, GSTokenType.T_GE, GSTokenType.T_LE};
 
     /**
      * 移位操作符
      */
-    private static final GSTokenType[] SHIFT = {GSTokenType.T_LSHIFT, GSTokenType.T_RSHIFT};
+    private static final int[] SHIFT = {GSTokenType.T_LSHIFT, GSTokenType.T_RSHIFT};
 
     /**
      * 加减运算符
      */
-    private static final GSTokenType[] ADDITIVE = {GSTokenType.PLUS, GSTokenType.MINUS};
+    private static final int[] ADDITIVE = {GSTokenType.PLUS, GSTokenType.MINUS};
 
     /**
      * 乘除运算符
      */
-    private static final GSTokenType[] MULTIPLICATIVE = {GSTokenType.MUL, GSTokenType.DIV, GSTokenType.MODULO};
+    private static final int[] MULTIPLICATIVE = {GSTokenType.MUL, GSTokenType.DIV, GSTokenType.MODULO};
 
     /**
      * 一元操作符
      */
-    private static final GSTokenType[] UNARY = {GSTokenType.PLUS, GSTokenType.MINUS, GSTokenType.NOT, GSTokenType.BIT_NOT};
+    private static final int[] UNARY = {GSTokenType.PLUS, GSTokenType.MINUS, GSTokenType.NOT, GSTokenType.BIT_NOT};
 
     /**
      * 自增和自减
      */
-    private static final GSTokenType[] POSTFIX = {GSTokenType.INCREMENT, GSTokenType.DECREMENT};
+    private static final int[] POSTFIX = {GSTokenType.INCREMENT, GSTokenType.DECREMENT};
 
     /**
      * token流
      */
-    private final List<GSToken> tokens;
+    private final List tokens;
 
     /**
      * 构造解析器
      */
-    public Parser(List<GSToken> tokens) {
+    public Parser(List tokens) {
         this.pos = 0;
         this.tokens = tokens;
     }
@@ -83,7 +82,7 @@ public class Parser {
      */
     public Node parseProgram() {
         final int startLine = peek().line;
-        List<Node> stmt = new ArrayList<>();
+        List stmt = new ArrayList();
         while (!isAtEnd()) {
             stmt.add(parseStatement());
         }
@@ -143,10 +142,10 @@ public class Parser {
         final int startLine = peek().line;
         // 块语句必须"{"开头
         consume(GSTokenType.LBRACE, "Expect '{' before block statement");
-        List<Node> stmt = null;
+        List stmt = null;
         // 如果不是空语句
         if (!check(GSTokenType.RBRACE)) {
-            stmt = new ArrayList<>();
+            stmt = new ArrayList();
             // 循环解析语句，直到遇到当前块语句结束符号
             do {
                 stmt.add(parseStatement());
@@ -228,7 +227,7 @@ public class Parser {
         }
         final int startLine = peek().line;
         Node stmt = parseStatement();
-        List<Node> stmts = new ArrayList<>();
+        List stmts = new ArrayList();
         stmts.add(stmt);
         BlockStatement block = new BlockStatement(stmts);
         block.line = startLine;
@@ -255,8 +254,8 @@ public class Parser {
         consume(GSTokenType.RPAREN, "Expected ')' after condition.");
         // 块语句必须"{"开头
         consume(GSTokenType.LBRACE, "Expected '{' before block statement");
-        List<Expression> cases = new ArrayList<>();
-        List<BlockStatement> blocks = new ArrayList<>();
+        List cases = new ArrayList();
+        List blocks = new ArrayList();
         int[] offsetMap = new int[0];
         boolean hasDefault = false;
         int defaultOffset = 0;
@@ -273,7 +272,7 @@ public class Parser {
                     hasDefault = true;
                 }
             } else if (!check(GSTokenType.CASE)) {
-                error(String.format("Uncaught SyntaxError: Unexpected token %s, expected 'case' or 'default'", peek().value));
+                error("Uncaught SyntaxError: Unexpected token " + peek().value + ", expected 'case' or 'default'");
             }
             advance();  // 消费 case/default
             if (isCase) {
@@ -284,7 +283,7 @@ public class Parser {
             }
             consume(GSTokenType.COLON, "Expected ':' after case expression.");
             // 解析 case 体：JS 风格，无需大括号，持续解析语句直到下一个 case/default/}
-            List<Node> bodyStmts = new ArrayList<>();
+            List bodyStmts = new ArrayList();
             while (!check(GSTokenType.CASE) && !check(GSTokenType.DEFAULT)
                     && !check(GSTokenType.RBRACE) && !check(GSTokenType.EOF)) {
                 bodyStmts.add(parseStatement());
@@ -316,7 +315,7 @@ public class Parser {
      * 解析for语句<br/>
      * {@literal 语法定义：ForStatement
      * = "for", "(", [ VariableDeclList
-     * | Expression ], ";", [ Expression ], ";", [ Expression ], ")", [ ";" | '{', { Statement }, '}'];}
+     * | Expression ], ";", [ Expression ], ";", [ Expression ], ")", [ ";" | '{', { Statement }, '}';}
      *
      * @return for语句
      */
@@ -333,7 +332,7 @@ public class Parser {
         // 声明更新节点
         Expression update = null;
         // 循环体
-        List<Node> body = null;
+        List body = null;
         // 解析初始化表达式(可能是变量声明语句或者表达式，也有可能为空)
         if (check(GSTokenType.VAR)) {
             init = parseVariableStatement();
@@ -355,10 +354,10 @@ public class Parser {
         if (!match(GSTokenType.SEMICOLON)) {
             if (check(GSTokenType.LBRACE)) {
                 BlockStatement block = parseBlockStatement();
-                body = block.stmts != null ? block.stmts : new ArrayList<>();
+                body = block.stmts != null ? block.stmts : new ArrayList();
             } else {
                 // 单语句体（JS 风格）
-                body = new ArrayList<>();
+                body = new ArrayList();
                 body.add(parseStatement());
             }
         }
@@ -380,11 +379,11 @@ public class Parser {
         // do语句必须"do"关键字开头
         consume(GSTokenType.DO, "Expected 'do' to start do-while statement");
         // 解析循环体
-        List<Node> body = null;
+        List body = null;
         consume(GSTokenType.LBRACE, "Expect '{' before 'do' keyword");
         // 如果不是空语句
         if (!check(GSTokenType.RBRACE)) {
-            body = new ArrayList<>();
+            body = new ArrayList();
             // 循环解析语句，直到遇到当前块语句结束符号
             do {
                 body.add(parseStatement());
@@ -425,16 +424,16 @@ public class Parser {
         // 匹配符号")"
         consume(GSTokenType.RPAREN, "Expected ')' after 'while'");
         // 解析循环体：支持 { } 块、空体 ; 或单语句（JS 风格）
-        List<Node> body = null;
+        List body = null;
         if (match(GSTokenType.SEMICOLON)) {
             // 空循环体
             body = null;
         } else if (check(GSTokenType.LBRACE)) {
             BlockStatement block = parseBlockStatement();
-            body = block.stmts != null ? block.stmts : new ArrayList<>();
+            body = block.stmts != null ? block.stmts : new ArrayList();
         } else {
             // 单语句体（JS 风格）
-            body = new ArrayList<>();
+            body = new ArrayList();
             body.add(parseStatement());
         }
         // 返回while语句节点
@@ -465,11 +464,11 @@ public class Parser {
         // 匹配符号"("
         consume(GSTokenType.LPAREN, "Expected '(' after function name.");
         // 初始化参数列表节点
-        List<Identifier> params = null;
+        List params = null;
         // 如果不是紧跟)，说明有参数
         if (!match(GSTokenType.RPAREN)) {
             // 初始化参数节点
-            params = new ArrayList<>();
+            params = new ArrayList();
             // 循环解析多个参数
             do {
                 String paramName = consume(GSTokenType.IDENTIFIER, "Expected parameter name");
@@ -485,7 +484,7 @@ public class Parser {
         // 这里需要判断，如果函数最后一行不是return，需要显式加上return null;
         if (!body.havingReturn()) {
             if (body.stmts == null) {
-                body.stmts = new ArrayList<>();
+                body.stmts = new ArrayList();
             }
             ReturnStatement implicitReturn = new ReturnStatement(null);
             implicitReturn.line = startLine;
@@ -665,7 +664,7 @@ public class Parser {
      */
     private VariableDeclList parseVariableDeclList() {
         // 初始化变量声明列表
-        List<VariableDecl> vars = new ArrayList<>();
+        List vars = new ArrayList();
         // 这里是只要匹配到,就执行变量声明解析。因为最少会有一个变量声明，所以使用do while
         do {
             vars.add(parseVariableDecl());
@@ -1074,40 +1073,40 @@ public class Parser {
         // 获取当前token
         GSToken token = peek();
         switch (token.type) {
-            case NULL:
-            case TRUE:
-            case STRING:
-            case FALSE:
-            case FLOAT:
-            case NaN:
-            case INTEGER_HEX:
-            case INTEGER_DECIMAL: {  // Literal
+            case GSTokenType.NULL:
+            case GSTokenType.TRUE:
+            case GSTokenType.STRING:
+            case GSTokenType.FALSE:
+            case GSTokenType.FLOAT:
+            case GSTokenType.NaN:
+            case GSTokenType.INTEGER_HEX:
+            case GSTokenType.INTEGER_DECIMAL: {  // Literal
                 // 字面量后可跟成员访问/调用，如 "str".length、42.toString()、null.foo
                 return parseMemberAccessOrCallSuffix(new Literal(advance()));
             }
-            case LBRACE: {  // <ObjectLiteral>
+            case GSTokenType.LBRACE: {  // <ObjectLiteral>
                 advance();
-                Hashtable<Node, Node> members = null;
+                Hashtable members = null;
                 if (!match(GSTokenType.RBRACE)) {
-                    members = new Hashtable<>();
+                    members = new Hashtable();
                     do {
                         Node key;
                         switch (peek().type) {
-                            case IDENTIFIER:
-                            case STRING:
-                            case INTEGER_HEX:
-                            case INTEGER_DECIMAL: {
+                            case GSTokenType.IDENTIFIER:
+                            case GSTokenType.STRING:
+                            case GSTokenType.INTEGER_HEX:
+                            case GSTokenType.INTEGER_DECIMAL: {
                                 key = new Literal(advance());
                                 break;
                             }
-                            case LBRACKET: {  // 如果是表达式
+                            case GSTokenType.LBRACKET: {  // 如果是表达式
                                 advance();
                                 key = parseExpression();
                                 consume(GSTokenType.RBRACKET, "Expected ']' to close computed property name");
                                 break;
                             }
                             default: {
-                                throw new RuntimeException(String.format("[Line %d:%d] Error:Unexpected token '%s' while parsing PropertyName.", token.line, token.column, token.value));
+                                throw new RuntimeException("[Line " + token.line + ":" + token.column + "] Error:Unexpected token '" + token.value + "' while parsing PropertyName.");
                             }
                         }
                         consume(GSTokenType.COLON, "Expected ':' after property name.");
@@ -1119,10 +1118,10 @@ public class Parser {
                 // 对象字面量后可跟成员访问/调用，如 {a:1}.a、{a:1}["a"]、{fn:func}()
                 return parseMemberAccessOrCallSuffix(new ObjectLiteral(members));
             }
-            case FUNCTION: {  // FunctionExpression
+            case GSTokenType.FUNCTION: {  // FunctionExpression
                 return parseFunctionExpression();
             }
-            case NEW: {  // NewExpression
+            case GSTokenType.NEW: {  // NewExpression
                 advance();
                 // new后面可以跟一个表达式
                 Expression constructor = parseExpression();
@@ -1155,22 +1154,22 @@ public class Parser {
         // 获取当前Token
         GSToken token = peek();
         switch (token.type) {
-            case IDENTIFIER: {  // Identifier
+            case GSTokenType.IDENTIFIER: {  // Identifier
                 expr = new Identifier(advance().value);
                 break;
             }
-            case LPAREN: {  // "(", Expression, ")"
+            case GSTokenType.LPAREN: {  // "(", Expression, ")"
                 advance();
                 expr = new ParenthesizedExpression(parseExpression());
                 consume(GSTokenType.RPAREN, "Expected ')' after expression");
                 break;
             }
-            case LBRACKET: {  // <ArrayLiteral>
+            case GSTokenType.LBRACKET: {  // <ArrayLiteral>
                 advance();
-                List<Node> element = null;
+                List element = null;
                 // 如果有数组定义
                 if (!match(GSTokenType.RBRACKET)) {
-                    element = new ArrayList<>();
+                    element = new ArrayList();
                     do {
                         element.add(parseExpression());
                     } while (match(GSTokenType.COMMA));
@@ -1180,7 +1179,7 @@ public class Parser {
                 break;
             }
             default: {
-                throw new RuntimeException(String.format("[Line %d:%d] Error:Unexpected token '%s' while parsing primary expression", token.line, token.column, token.value));
+                throw new RuntimeException("[Line " + token.line + ":" + token.column + "] Error:Unexpected token '" + token.value + "' while parsing primary expression");
             }
         }
         // 连续匹配MemberAccess或者CallSuffix
@@ -1209,7 +1208,7 @@ public class Parser {
                 consume(GSTokenType.RBRACKET, "");
                 expr = new MemberAccess(expr, expression);
             } else if (match(GSTokenType.LPAREN)) {  // 匹配到了函数调用
-                ArrayList<Expression> args = new ArrayList<>();
+                ArrayList args = new ArrayList();
                 // 这里先判断是否为空参数
                 if (!check(GSTokenType.RPAREN)) {
                     do {
@@ -1251,11 +1250,11 @@ public class Parser {
         // 匹配符号"("
         consume(GSTokenType.LPAREN, "Expected '(' after function name.");
         // 初始化参数列表节点
-        List<Identifier> params = null;
+        List params = null;
         // 如果不是紧跟)，说明有参数
         if (!match(GSTokenType.RPAREN)) {
             // 初始化参数节点
-            params = new ArrayList<>();
+            params = new ArrayList();
             // 循环解析多个参数
             do {
                 String paramName = consume(GSTokenType.IDENTIFIER, "Expected parameter name");
@@ -1270,7 +1269,7 @@ public class Parser {
         BlockStatement body = parseBlockStatement();
         // 空函数体时 stmts 为 null，初始化为空列表避免 NPE
         if (body.stmts == null) {
-            body.stmts = new ArrayList<>();
+            body.stmts = new ArrayList();
         }
         // 这里需要判断，如果函数最后一行不是return，需要显式加上return null;
         if (!body.havingReturn()) {
@@ -1301,7 +1300,8 @@ public class Parser {
      * @return
      */
     private boolean isAssignmentOperator(GSToken token) {
-        for (GSTokenType gsTokenType : ASSIGN) {
+        for (int i = 0; i < ASSIGN.length; i++) {
+            int gsTokenType = ASSIGN[i];
             if (token.type == gsTokenType) {
                 return true;
             }
@@ -1316,7 +1316,8 @@ public class Parser {
      * @return
      */
     private boolean isEqualityOperator(GSToken token) {
-        for (GSTokenType gsTokenType : EQUALITY) {
+        for (int i = 0; i < EQUALITY.length; i++) {
+            int gsTokenType = EQUALITY[i];
             if (token.type == gsTokenType) {
                 return true;
             }
@@ -1331,7 +1332,8 @@ public class Parser {
      * @return
      */
     private boolean isRelationalOperator(GSToken token) {
-        for (GSTokenType gsTokenType : RELATIONAL) {
+        for (int i = 0; i < RELATIONAL.length; i++) {
+            int gsTokenType = RELATIONAL[i];
             if (token.type == gsTokenType) {
                 return true;
             }
@@ -1346,7 +1348,8 @@ public class Parser {
      * @return
      */
     private boolean isShiftOperator(GSToken token) {
-        for (GSTokenType gsTokenType : SHIFT) {
+        for (int i = 0; i < SHIFT.length; i++) {
+            int gsTokenType = SHIFT[i];
             if (token.type == gsTokenType) {
                 return true;
             }
@@ -1361,7 +1364,8 @@ public class Parser {
      * @return
      */
     private boolean isAdditiveOperator(GSToken token) {
-        for (GSTokenType gsTokenType : ADDITIVE) {
+        for (int i = 0; i < ADDITIVE.length; i++) {
+            int gsTokenType = ADDITIVE[i];
             if (token.type == gsTokenType) {
                 return true;
             }
@@ -1376,7 +1380,8 @@ public class Parser {
      * @return
      */
     private boolean isMultiplicativeOperator(GSToken token) {
-        for (GSTokenType gsTokenType : MULTIPLICATIVE) {
+        for (int i = 0; i < MULTIPLICATIVE.length; i++) {
+            int gsTokenType = MULTIPLICATIVE[i];
             if (token.type == gsTokenType) {
                 return true;
             }
@@ -1391,7 +1396,8 @@ public class Parser {
      * @return
      */
     private boolean isUnaryOperator(GSToken token) {
-        for (GSTokenType gsTokenType : UNARY) {
+        for (int i = 0; i < UNARY.length; i++) {
+            int gsTokenType = UNARY[i];
             if (token.type == gsTokenType) {
                 return true;
             }
@@ -1406,8 +1412,9 @@ public class Parser {
      * @return
      */
     private boolean isPosfixOperator(GSToken token) {
-        for (GSTokenType postfix : POSTFIX) {
-            if (token.type == postfix) {
+        for (int i = 0; i < POSTFIX.length; i++) {
+            int gsTokenType = POSTFIX[i];
+            if (token.type == gsTokenType) {
                 return true;
             }
         }
@@ -1420,7 +1427,7 @@ public class Parser {
      * @param message 报错信息
      */
     private void error(String message) {
-        throw new RuntimeException(String.format("Uncaught SyntaxError: %s", message));
+        throw new RuntimeException("Uncaught SyntaxError: " + message);
     }
 
     /**
@@ -1430,7 +1437,7 @@ public class Parser {
      * @param message 报错信息
      */
     private void error(GSToken token, String message) {
-        throw new RuntimeException(String.format("[Line %d:%d] Uncaught SyntaxError: %s", token.line, token.column, message));
+        throw new RuntimeException("[Line " + token.line + ":" + token.column + "] Uncaught SyntaxError: " + message);
     }
 
     /**
@@ -1439,8 +1446,8 @@ public class Parser {
      * @param type 要预消费的token类型
      * @return 是否消费成功
      */
-    private boolean match(GSTokenType type) {
-        if (tokens.get(pos).type == type) {
+    private boolean match(int type) {
+        if (((GSToken) tokens.get(pos)).type == type) {
             advance();
             return true;
         }
@@ -1454,13 +1461,13 @@ public class Parser {
      * @param message 报错提示
      * @return token值
      */
-    private String consume(GSTokenType type, String message) {
+    private String consume(int type, String message) {
         String result;
         if (check(type)) {
             result = advance().value;
         } else {
             GSToken token = peek();
-            throw new RuntimeException(String.format("[Line %d:%d] Error: %s", token.line, token.column, message));
+            throw new RuntimeException("[Line " + token.line + ":" + token.column + "] Error: " + message);
         }
         return result;
     }
@@ -1471,7 +1478,7 @@ public class Parser {
      * @param type
      * @return
      */
-    private boolean check(GSTokenType type) {
+    private boolean check(int type) {
         return !isAtEnd() && peek().type == type;
     }
 
@@ -1482,8 +1489,8 @@ public class Parser {
      */
     private GSToken advance() {
         if (isAtEnd()) {
-            GSToken lastToken = tokens.get(tokens.size() - 1);
-            throw new RuntimeException(String.format("[Line %d:%d] SyntaxError: Unexpected end of input after '%s'", lastToken.line, lastToken.column, lastToken.value));
+            GSToken lastToken = (GSToken) tokens.get(tokens.size() - 1);
+            throw new RuntimeException("[Line " + lastToken.line + ":" + lastToken.column + "] SyntaxError: Unexpected end of input after '" + lastToken.value + "'");
         }
         ++pos;
         return previous();
@@ -1495,7 +1502,7 @@ public class Parser {
      * @return
      */
     private GSToken previous() {
-        return tokens.get(pos - 1);
+        return (GSToken) tokens.get(pos - 1);
     }
 
     /**
@@ -1504,7 +1511,7 @@ public class Parser {
      * @return
      */
     private GSToken peek() {
-        return tokens.get(pos);
+        return (GSToken) tokens.get(pos);
     }
 
     /**

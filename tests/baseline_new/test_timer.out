@@ -1,0 +1,21 @@
+=== STDOUT ===
+=== timer_test ===
+  [PASS] exit code 0
+  [PASS] no uncaught error
+  [PASS] output line count
+  [PASS] full output order
+  [PASS] cancelled callback not fired
+  [PASS] sync: cancel_ok before main_end
+  [PASS] main_end is 2nd line
+  [PASS] zero delay is first callback
+  [PASS] short before long
+  [PASS] setTimeout args passed
+  [PASS] closure sees modified value
+  [PASS] outer before inner
+  [PASS] setInterval tick count
+  [PASS] cleared after tick=3
+  [PASS] long is last
+
+=== 结果: 15 passed, 0 failed ===
+
+=== STDERR ===

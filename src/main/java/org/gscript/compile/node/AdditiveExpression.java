@@ -9,7 +9,6 @@ public class AdditiveExpression extends OperatorNode{
         type = "AdditiveExpression";
     }
 
-    @Override
     public void accept(Visitor v) {
         v.visit(this);
     }

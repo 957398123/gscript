@@ -4,7 +4,6 @@ import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -106,17 +105,17 @@ public class GSClassReader {
                     int len = dis.readUnsignedShort();
                     byte[] bytes = new byte[len];
                     dis.readFully(bytes);
-                    cp[i] = new String(bytes, StandardCharsets.UTF_8);
+                    cp[i] = new String(bytes, "UTF-8");
                     break;
                 }
                 case GSClassConstants.TAG_INT:
-                    cp[i] = dis.readInt();
+                    cp[i] = new Integer(dis.readInt());
                     break;
                 case GSClassConstants.TAG_FLOAT:
-                    cp[i] = dis.readFloat();
+                    cp[i] = new Float(dis.readFloat());
                     break;
                 case GSClassConstants.TAG_BOOL:
-                    cp[i] = dis.readUnsignedByte() != 0;
+                    cp[i] = new Boolean(dis.readUnsignedByte() != 0);
                     break;
                 default:
                     throw new IOException("Unknown CP tag at index " + i + ": 0x" + Integer.toHexString(tag & 0xFF));
@@ -142,7 +141,7 @@ public class GSClassReader {
             if (useRle) {
                 // RLE 格式：u4 pairCount + pairCount × (u2 count, u2 line)
                 int pairCount = dis.readInt();
-                List<int[]> pairs = new ArrayList<>();
+                List pairs = new ArrayList();
                 int total = 0;
                 for (int i = 0; i < pairCount; i++) {
                     int count = dis.readUnsignedShort();
@@ -152,7 +151,8 @@ public class GSClassReader {
                 }
                 sourceLines = new int[total];
                 int idx = 0;
-                for (int[] p : pairs) {
+                for (int i = 0; i < pairs.size(); i++) {
+                    int[] p = (int[]) pairs.get(i);
                     Arrays.fill(sourceLines, idx, idx + p[0], p[1]);
                     idx += p[0];
                 }
@@ -187,7 +187,7 @@ public class GSClassReader {
                 if (GSClassConstants.ATTR_FUNCTION_TABLE.equals(attrName)) {
                     functions = parseFunctionTable(attrData, cp);
                 } else if (GSClassConstants.ATTR_SOURCE_CONTENT.equals(attrName)) {
-                    sourceContent = new String(attrData, StandardCharsets.UTF_8);
+                    sourceContent = new String(attrData, "UTF-8");
                 }
                 // 未知属性：跳过（前向兼容，旧 reader 不崩溃）
             }

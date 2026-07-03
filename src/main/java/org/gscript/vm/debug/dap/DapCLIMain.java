@@ -27,7 +27,8 @@ public class DapCLIMain {
         int port = 4711;
 
         // 解析参数
-        for (String arg : args) {
+        for (int i = 0; i < args.length; i++) {
+            String arg = args[i];
             if ("--stdio".equals(arg)) {
                 mode = "stdio";
             } else if (arg.startsWith("--port=")) {
@@ -82,13 +83,25 @@ public class DapCLIMain {
      * DAP 消息走 socket 输出流）。
      */
     private static void runSocket(int port) throws Exception {
-        try (ServerSocket serverSocket = new ServerSocket(port)) {
+        ServerSocket serverSocket = new ServerSocket(port);
+        try {
             // 仅接受一次连接（VSCode 调试会话期间保持长连接）
-            try (Socket socket = serverSocket.accept()) {
+            Socket socket = serverSocket.accept();
+            try {
                 InputStream in = socket.getInputStream();
                 PrintStream out = new PrintStream(socket.getOutputStream(), true);
                 DapServer server = new DapServer(in, out);
                 server.run();
+            } finally {
+                try {
+                    socket.close();
+                } catch (Exception e) {
+                }
+            }
+        } finally {
+            try {
+                serverSocket.close();
+            } catch (Exception e) {
             }
         }
     }

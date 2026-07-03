@@ -57,12 +57,12 @@ public class DebugAgent {
     private final String host;
     private DebugController controller;
     private DapServer dapServer;
-    private final List<GSClassData> gclassDataList = new ArrayList<>();
+    private final List gclassDataList = new ArrayList();
     private ServerSocket serverSocket;
     private Thread acceptThread;
 
     /** 已加载 gclass 的源码内容映射：sourcePath → sourceContent（供 DapServer source 请求用） */
-    private final Map<String, String> sourceContents = new LinkedHashMap<>();
+    private final Map sourceContents = new LinkedHashMap();
 
     /** 模式标志：true=attachReady（解释器已运行），false=waitForDebugger（解释器未启动） */
     private boolean interpreterAlreadyRunning = false;
@@ -106,7 +106,7 @@ public class DebugAgent {
     }
 
     /** 获取源码内容映射（DapServer 读取，用于响应 source 请求）。 */
-    public Map<String, String> getSourceContents() {
+    public Map getSourceContents() {
         return sourceContents;
     }
 
@@ -134,7 +134,8 @@ public class DebugAgent {
         interpreterAlreadyRunning = false;
         serverSocket = new ServerSocket(port);
         System.err.println("[DebugAgent] waitForDebugger 模式，监听端口 " + port + "，等待 VSCode 连接...");
-        try (Socket socket = serverSocket.accept()) {
+        Socket socket = serverSocket.accept();
+        try {
             System.err.println("[DebugAgent] VSCode 已连接");
             // 注意：controller 不在此创建，由 DapServer.handleLaunchAttach 创建并通过
             // setController 共享，确保解释器拿到的是带 SuspendListener 的同一实例
@@ -143,6 +144,10 @@ public class DebugAgent {
                     new PrintStream(socket.getOutputStream(), true), this);
             dapServer.run();  // 阻塞直到 disconnect
         } finally {
+            try {
+                socket.close();
+            } catch (Exception e) {
+            }
             if (serverSocket != null && !serverSocket.isClosed()) {
                 serverSocket.close();
             }
@@ -160,21 +165,29 @@ public class DebugAgent {
             throw new IllegalStateException("attachReady 模式必须先 setInterpreter");
         }
         interpreterAlreadyRunning = true;
-        acceptThread = new Thread(() -> {
-            try {
-                serverSocket = new ServerSocket(port);
-                System.err.println("[DebugAgent] attachReady 模式，监听端口 " + port + "，等待 VSCode 附加...");
-                try (Socket socket = serverSocket.accept()) {
-                    System.err.println("[DebugAgent] VSCode 已附加");
-                    // 注意：controller 不在此创建，由 DapServer.handleLaunchAttach 创建并通过
-                    // setController 共享。setController 内部会根据 interpreterAlreadyRunning
-                    // 立即设置到已运行的解释器（volatile 字段）并按需 pause()
-                    dapServer = new DapServer(socket.getInputStream(),
-                            new PrintStream(socket.getOutputStream(), true), this);
-                    dapServer.run();  // 阻塞直到 disconnect
+        acceptThread = new Thread(new Runnable() {
+            public void run() {
+                try {
+                    serverSocket = new ServerSocket(port);
+                    System.err.println("[DebugAgent] attachReady 模式，监听端口 " + port + "，等待 VSCode 附加...");
+                    Socket socket = serverSocket.accept();
+                    try {
+                        System.err.println("[DebugAgent] VSCode 已附加");
+                        // 注意：controller 不在此创建，由 DapServer.handleLaunchAttach 创建并通过
+                        // setController 共享。setController 内部会根据 interpreterAlreadyRunning
+                        // 立即设置到已运行的解释器（volatile 字段）并按需 pause()
+                        dapServer = new DapServer(socket.getInputStream(),
+                                new PrintStream(socket.getOutputStream(), true), DebugAgent.this);
+                        dapServer.run();  // 阻塞直到 disconnect
+                    } finally {
+                        try {
+                            socket.close();
+                        } catch (Exception e) {
+                        }
+                    }
+                } catch (Exception e) {
+                    System.err.println("[DebugAgent] accept 异常: " + e);
                 }
-            } catch (Exception e) {
-                System.err.println("[DebugAgent] accept 异常: " + e);
             }
         }, "gscript-debug-accept");
         acceptThread.setDaemon(true);
@@ -239,22 +252,25 @@ public class DebugAgent {
             }
             interpreter.setDebugController(controller);
             final GSInterpreter interp = interpreter;
-            final List<GSClassData> datas = new ArrayList<>(gclassDataList);
-            Thread t = new Thread(() -> {
-                try {
-                    for (GSClassData data : datas) {
-                        interp.eval(data.src, data.constantPool, data.sourceLines,
-                                data.sourcePath, data.sourceContent);
+            final List datas = new ArrayList(gclassDataList);
+            Thread t = new Thread(new Runnable() {
+                public void run() {
+                    try {
+                        for (int i = 0; i < datas.size(); i++) {
+                            GSClassData data = (GSClassData) datas.get(i);
+                            interp.eval(data.src, data.constantPool, data.sourceLines,
+                                    data.sourcePath, data.sourceContent);
+                        }
+                        interp.runEventLoop();
+                    } catch (DebugAbortException e) {
+                        // 调试会话终止，正常退出
+                    } catch (Throwable e) {
+                        e.printStackTrace();
                     }
-                    interp.runEventLoop();
-                } catch (DebugAbortException e) {
-                    // 调试会话终止，正常退出
-                } catch (Throwable e) {
-                    e.printStackTrace();
-                }
-                // 解释器结束，通知 DapServer 发送 terminated 事件
-                if (dapServer != null) {
-                    dapServer.notifyInterpreterTerminated();
+                    // 解释器结束，通知 DapServer 发送 terminated 事件
+                    if (dapServer != null) {
+                        dapServer.notifyInterpreterTerminated();
+                    }
                 }
             }, "gscript-interpreter");
             t.setDaemon(true);

@@ -9,7 +9,6 @@ public class ShiftExpression extends OperatorNode{
         type = "ShiftExpression";
     }
 
-    @Override
     public void accept(Visitor v) {
         v.visit(this);
     }

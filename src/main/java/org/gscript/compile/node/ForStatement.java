@@ -16,9 +16,9 @@ public class ForStatement extends Node {
     public Expression update;
 
     // 循环体
-    public List<Node> body;
+    public List body;
 
-    public ForStatement(Node init, Expression condition, Expression update, List<Node> body) {
+    public ForStatement(Node init, Expression condition, Expression update, List body) {
         type = "ForStatement";
         this.init = init;
         this.condition = condition;
@@ -26,7 +26,6 @@ public class ForStatement extends Node {
         this.body = body;
     }
 
-    @Override
     public void accept(Visitor v) {
         v.visit(this);
     }

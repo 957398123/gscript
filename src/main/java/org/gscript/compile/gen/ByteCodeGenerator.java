@@ -6,6 +6,7 @@ import org.gscript.compile.token.GSTokenType;
 
 import java.util.ArrayList;
 import java.util.Hashtable;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -14,14 +15,14 @@ public class ByteCodeGenerator implements Visitor {
     /**
      * 字节码
      */
-    private final ArrayList<String> bytecode = new ArrayList<>();
+    private final ArrayList bytecode = new ArrayList();
 
     /**
      * 字节码索引对应的源码行号（1-based，0 表示未设置）。
      * 与 {@link #bytecode} 平行，调试器用于"字节码索引 ↔ 源码行"映射。
      * 回填操作（{@link #emit(int, String)}）不修改本列表，保持映射稳定。
      */
-    private final ArrayList<Integer> sourceLines = new ArrayList<>();
+    private final ArrayList sourceLines = new ArrayList();
 
     /**
      * 当前正在生成字节码的源码行号。
@@ -32,7 +33,7 @@ public class ByteCodeGenerator implements Visitor {
     /**
      * 获取生成的字节码
      */
-    public ArrayList<String> getBytecode() {
+    public ArrayList getBytecode() {
         return bytecode;
     }
 
@@ -41,7 +42,7 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @return 源码行号列表，第 i 项为字节码第 i 条对应的源码行号（1-based，0 表示未设置）
      */
-    public ArrayList<Integer> getSourceLines() {
+    public ArrayList getSourceLines() {
         return sourceLines;
     }
 
@@ -62,7 +63,8 @@ public class ByteCodeGenerator implements Visitor {
      */
     public void print() {
         int index = 0;
-        for (String s : bytecode) {
+        for (int i = 0; i < bytecode.size(); i++) {
+            String s = (String) bytecode.get(i);
             System.out.println(index++ + ": " + s);
         }
     }
@@ -72,7 +74,7 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @return 字节码
      */
-    public ArrayList<String> getByteCode() {
+    public ArrayList getByteCode() {
         return bytecode;
     }
 
@@ -81,10 +83,11 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @return 可视化化的字节码
      */
-    public ArrayList<String> getFormatByteCode() {
-        ArrayList<String> format = new ArrayList<>();
+    public ArrayList getFormatByteCode() {
+        ArrayList format = new ArrayList();
         int index = 0;
-        for (String s : bytecode) {
+        for (int i = 0; i < bytecode.size(); i++) {
+            String s = (String) bytecode.get(i);
             format.add(index++ + ": " + s);
         }
         return format;
@@ -96,7 +99,7 @@ public class ByteCodeGenerator implements Visitor {
      */
     public void emit(String byteCode) {
         bytecode.add(byteCode);
-        sourceLines.add(currentLine);
+        sourceLines.add(new Integer(currentLine));
     }
 
     /**
@@ -111,7 +114,7 @@ public class ByteCodeGenerator implements Visitor {
      * 获取指定位置字节码
      */
     public String get(int index) {
-        return bytecode.get(index);
+        return (String) bytecode.get(index);
     }
 
     /**
@@ -140,14 +143,14 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node 程序节点
      */
-    @Override
     public void visit(ProgramNode node) {
         line(node);
-        List<Node> stmts = node.stmts;
+        List stmts = node.stmts;
         // 将函数声明提前
         handleFunctionDeclare(stmts);
         // 生成字节码
-        for (Node stmt : stmts) {
+        for (int i = 0; i < stmts.size(); i++) {
+            Node stmt = (Node) stmts.get(i);
             stmt.accept(this);
         }
     }
@@ -157,16 +160,16 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node 块语句节点
      */
-    @Override
     public void visit(BlockStatement node) {
         line(node);
-        List<Node> stmts = node.stmts;
+        List stmts = node.stmts;
         // 将函数声明提前
         handleFunctionDeclare(stmts);
         // 创建块域
         emit("pushenv block");
         // 解析块语句内容
-        for (Node stmt : stmts) {
+        for (int i = 0; i < stmts.size(); i++) {
+            Node stmt = (Node) stmts.get(i);
             stmt.accept(this);
         }
         // 销毁块域
@@ -178,7 +181,6 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node 变量声明语句
      */
-    @Override
     public void visit(VariableStatement node) {
         line(node);
         node.args.accept(this);
@@ -189,7 +191,6 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node if语句节点
      */
-    @Override
     public void visit(IfStatement node) {
         line(node);
         // 处理If条件(if里面的条件表达式是不能为空的)
@@ -206,15 +207,14 @@ public class ByteCodeGenerator implements Visitor {
             emit("");
         }
         // 回填跳转判断
-        emit(start, String.format("false_jump %d", size() - start));
+        emit(start, "false_jump " + (size() - start));
         if (node.elseBranch != null) {
             node.elseBranch.accept(this);
             // 这里是如果有else，才在if执行完了以后直接跳到else后面
-            emit(thenEnd, String.format("jump %d", size() - thenEnd));
+            emit(thenEnd, "jump " + (size() - thenEnd));
         }
     }
 
-    @Override
     public void visit(SwitchStatement node) {
         line(node);
         // 使用临时变量保存 switch 条件值，避免条件值长期滞留共享栈。
@@ -223,13 +223,13 @@ public class ByteCodeGenerator implements Visitor {
         // 残留在共享栈上、破坏调用者栈对齐（引发 "function not exist" 等运行时错误）。
         // 改为：declare 临时变量 → 求值条件 → store 入临时变量；各 case 用 const a 重新加载。
         final String switchTemp = "__switch_cond__";
-        emit(String.format("declare %s", switchTemp));
+        emit("declare " + switchTemp);
         // 首先计算表达式并存入临时变量（store 会从栈上消费条件值，栈保持干净）
         node.condition.accept(this);
-        emit(String.format("store %s", switchTemp));
+        emit("store " + switchTemp);
         // 接下来看case条件列表
-        List<Expression> cases = node.cases;
-        List<BlockStatement> blocks = node.blocks;
+        List cases = node.cases;
+        List blocks = node.blocks;
         int[] offsetMap = node.offsetMap;
         int defaultOffset = -1;
         int size = cases.size();
@@ -237,10 +237,10 @@ public class ByteCodeGenerator implements Visitor {
             int[] caseOffset = new int[size];
             // 这里进行比对，default一定是在最后面,default只有jump
             for (int i = 0; i < cases.size(); ++i) {
-                Expression expr = cases.get(i);
+                Expression expr = (Expression) cases.get(i);
                 if (expr != null) {  // case
                     // 从临时变量加载条件值（每次比较独立加载，comp eq 会消费两值，栈保持干净）
-                    emit(String.format("const a %s", switchTemp));
+                    emit("const a " + switchTemp);
                     // 访问当前条件值
                     expr.accept(this);
                     // 进行比对
@@ -271,17 +271,17 @@ public class ByteCodeGenerator implements Visitor {
                 int address = caseOffset[mapOffset];
                 int offset = size() - address;
                 if (mapOffset != defaultOffset) {
-                    emit(address, String.format("false_jump %d", offset));
+                    emit(address, "false_jump " + offset);
                 } else {
-                    emit(address, String.format("jump %d", offset));
+                    emit(address, "jump " + offset);
                 }
-                BlockStatement block = blocks.get(i);
+                BlockStatement block = (BlockStatement) blocks.get(i);
                 block.accept(this);
             }
             int bodyEnd = size();
             // 回填无 default 时的跳转
             if (noDefaultJumpAddr >= 0) {
-                emit(noDefaultJumpAddr, String.format("jump %d", bodyEnd - noDefaultJumpAddr));
+                emit(noDefaultJumpAddr, "jump " + (bodyEnd - noDefaultJumpAddr));
             }
             // 最后处理语句中的break
             handleSwitchJump(bodyStart, bodyEnd, bodyEnd);
@@ -295,7 +295,6 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node for语句字节码
      */
-    @Override
     public void visit(ForStatement node) {
         line(node);
         Node init = node.init;
@@ -332,10 +331,10 @@ public class ByteCodeGenerator implements Visitor {
             emit("pop");
         }
         // 不管update有没有实际内容，update后需要跳转至condition
-        emit(String.format("jump %d", cStart - size()));
+        emit("jump " + (cStart - size()));
         // 回填条件表达式跳转结束地址
         if (condition != null) {
-            emit(bodyStart - 1, String.format("false_jump %d", size() - bodyStart + 1));
+            emit(bodyStart - 1, "false_jump " + (size() - bodyStart + 1));
         }
         // 这里对这段循环体里面的continue和break进行处理，替换成对应的跳转
         handleLoopJump(node.body, bodyStart, bodyEnd, bodyEnd, size());
@@ -346,7 +345,6 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node do-while节点
      */
-    @Override
     public void visit(DoWhileStatement node) {
         line(node);
         // 解析body
@@ -363,7 +361,7 @@ public class ByteCodeGenerator implements Visitor {
         // 对栈顶的值进行取反，方便false跳转
         emit("rela_op l_not");
         // 如果是表达式值为true，继续执行循环体
-        emit(String.format("false_jump %d", bodyStart - size()));
+        emit("false_jump " + (bodyStart - size()));
         // 这里对这段循环体里面的continue和break进行处理，替换成对应的跳转
         handleLoopJump(node.body, bodyStart, bodyEnd, bodyEnd, size());
     }
@@ -373,7 +371,6 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node while语句节点
      */
-    @Override
     public void visit(WhileStatement node) {
         line(node);
         // 条件表达式开始位置
@@ -389,9 +386,9 @@ public class ByteCodeGenerator implements Visitor {
         // body结束位置
         int bodyEnd = size();
         // body结尾跳转到条件判断
-        emit(String.format("jump %d", cStart - size()));
+        emit("jump " + (cStart - size()));
         // 回填条件判断的false跳转
-        emit(bodyStart - 1, String.format("false_jump %d", size() - bodyStart + 1));
+        emit(bodyStart - 1, "false_jump " + (size() - bodyStart + 1));
         // 这里对这段循环体里面的continue和break进行处理，替换成对应的跳转
         handleLoopJump(node.body, bodyStart, bodyEnd, cStart, size());
     }
@@ -401,12 +398,11 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node 函数语句字节码
      */
-    @Override
     public void visit(FunctionStatement node) {
         line(node);
         String identifier = node.identifier.name;
         // 声明函数变量
-        emit(String.format("declare %s", identifier));
+        emit("declare " + identifier);
         // 更新当前函数定义位置
         definedFunctionOffset = size() + 1;
         // 处理函数声明
@@ -414,7 +410,7 @@ public class ByteCodeGenerator implements Visitor {
         // 还原定义
         definedFunctionOffset = 0;
         // 赋值变量
-        emit(String.format("store %s", identifier));
+        emit("store " + identifier);
     }
 
     /**
@@ -422,7 +418,6 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node
      */
-    @Override
     public void visit(BreakStatement node) {
         line(node);
         // 这里直接提交break，让其上一级处理
@@ -434,7 +429,6 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node continue语句字节码
      */
-    @Override
     public void visit(ContinueStatement node) {
         line(node);
         // 这里直接提交continue，让其上一级处理
@@ -446,7 +440,6 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node return字节码
      */
-    @Override
     public void visit(ReturnStatement node) {
         line(node);
         // 如果有返回值
@@ -464,7 +457,6 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node throw字节码
      */
-    @Override
     public void visit(ThrowStatement node) {
         line(node);
         // 首先计算抛出异常值
@@ -479,7 +471,6 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node 异常处理语句字节码
      */
-    @Override
     public void visit(ExceptionStatement node) {
         line(node);
         // try块起始位置
@@ -493,7 +484,7 @@ public class ByteCodeGenerator implements Visitor {
             emit("");
             cStart = size();
             node.catchClause.accept(this);
-            emit(cStart - 1, String.format("jump %d", size() - cStart + 1));
+            emit(cStart - 1, "jump " + (size() - cStart + 1));
         }
         int fStart = -1;
         if (node.finallyBody != null) {
@@ -503,7 +494,7 @@ public class ByteCodeGenerator implements Visitor {
         // 回填try块的try_start字节码 这里需要减去当前函数的offset
         cStart = cStart == -1 ? -1 : cStart - definedFunctionOffset;
         fStart = fStart == -1 ? -1 : fStart - definedFunctionOffset;
-        emit(tStart, String.format("try_start %d %d %d %d", tStart - definedFunctionOffset, tEnd - definedFunctionOffset, cStart, fStart));
+        emit(tStart, "try_start " + (tStart - definedFunctionOffset) + " " + (tEnd - definedFunctionOffset) + " " + cStart + " " + fStart);
     }
 
     /**
@@ -511,7 +502,6 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node 表达式语句字节码
      */
-    @Override
     public void visit(ExpressionStatement node) {
         line(node);
         // 计算表达式
@@ -525,7 +515,6 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param expr 表达式字节码
      */
-    @Override
     public void visit(Expression expr) {
         // "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "&=" | "|=" | "^=" 必须要有效的左值
         if (expr.operator != null) {
@@ -537,7 +526,7 @@ public class ByteCodeGenerator implements Visitor {
             // 接下来判断是不是左值
             if (left instanceof Identifier) {
                 Identifier node = (Identifier) left;
-                GSTokenType type = expr.operator.symbol.type;
+                int type = expr.operator.symbol.type;
                 if (type != GSTokenType.EQ) {
                     // +=这种运算符要先获取当前左值
                     node.accept(this);
@@ -551,7 +540,7 @@ public class ByteCodeGenerator implements Visitor {
                 // 赋值对象
                 MemberAccess node = (MemberAccess) left;
                 // 赋值操作符
-                GSTokenType type = expr.operator.symbol.type;
+                int type = expr.operator.symbol.type;
                 // 获取左值引用
                 node.object.accept(this);
                 // 访问key表达式
@@ -581,7 +570,6 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node 条件表达式字节码
      */
-    @Override
     public void visit(ConditionalExpression node) {
         node.condition.accept(this);
         // 处理三目表达式
@@ -597,10 +585,10 @@ public class ByteCodeGenerator implements Visitor {
             // 预填跳转end
             emit("");
             // 回填else跳转
-            emit(start, String.format("false_jump %d", size() - start));
+            emit(start, "false_jump " + (size() - start));
             node.elseExpr.accept(this);
             // 回填if的结束跳转
-            emit(end, String.format("jump %d", size() - end));
+            emit(end, "jump " + (size() - end));
         }
     }
 
@@ -609,7 +597,6 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node 逻辑或表达式字节码
      */
-    @Override
     public void visit(LogicalORExpression node) {
         // 先计算左边的值
         node.left.accept(this);
@@ -629,9 +616,9 @@ public class ByteCodeGenerator implements Visitor {
         // 表达式计算为false
         emit("const b false");
         // 回填第一个true跳转（必须到const b true）
-        emit(start, String.format("false_jump %d", size() - start - 3));
+        emit(start, "false_jump " + (size() - start - 3));
         // 回填第二个false跳转（必须到const b false）—— 注意用 start2 计算偏移
-        emit(start2, String.format("false_jump %d", size() - start2 - 1));
+        emit(start2, "false_jump " + (size() - start2 - 1));
     }
 
     /**
@@ -639,7 +626,6 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node 逻辑与表达式字节码
      */
-    @Override
     public void visit(LogicalANDExpression node) {
         // 先计算左边的值
         node.left.accept(this);
@@ -658,9 +644,9 @@ public class ByteCodeGenerator implements Visitor {
         // 表达式计算为false
         emit("const b false");
         // 回填第一个false跳转（必须到const b false）
-        emit(start, String.format("false_jump %d", size() - start - 1));
+        emit(start, "false_jump " + (size() - start - 1));
         // 回填第二个false跳转（必须到const b false）—— 注意用 start2 计算偏移
-        emit(start2, String.format("false_jump %d", size() - start2 - 1));
+        emit(start2, "false_jump " + (size() - start2 - 1));
     }
 
     /**
@@ -668,7 +654,6 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node 按位或表达式字节码
      */
-    @Override
     public void visit(BitwiseORExpression node) {
         node.left.accept(this);
         node.right.accept(this);
@@ -680,7 +665,6 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node 按位异或表达式字节码
      */
-    @Override
     public void visit(BitwiseXORExpression node) {
         node.left.accept(this);
         node.right.accept(this);
@@ -692,7 +676,6 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node 按位与表达式
      */
-    @Override
     public void visit(BitwiseANDExpression node) {
         node.left.accept(this);
         node.right.accept(this);
@@ -704,27 +687,26 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node 比较表达式字节码
      */
-    @Override
     public void visit(EqualityExpression node) {
         node.left.accept(this);
         if (node.operator != null) {
             node.right.accept(this);
-            GSTokenType type = node.operator.symbol.type;
+            int type = node.operator.symbol.type;
             switch (type) {
-                case T_EQ: {  // == 等于
-                    emit(String.format("comp eq"));
+                case GSTokenType.T_EQ: {  // == 等于
+                    emit("comp eq");
                     break;
                 }
-                case T_NEQ: {  // != 不等于
-                    emit(String.format("comp neq"));
+                case GSTokenType.T_NEQ: {  // != 不等于
+                    emit("comp neq");
                     break;
                 }
-                case S_T_EQ: {  // === 严格等于
-                    emit(String.format("comp seq"));
+                case GSTokenType.S_T_EQ: {  // === 严格等于
+                    emit("comp seq");
                     break;
                 }
-                case S_T_NEQ: {  // !== 严格不等于
-                    emit(String.format("comp sneq"));
+                case GSTokenType.S_T_NEQ: {  // !== 严格不等于
+                    emit("comp sneq");
                     break;
                 }
             }
@@ -736,26 +718,25 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node 关系表达式字节码
      */
-    @Override
     public void visit(RelationalExpression node) {
         node.left.accept(this);
         if (node.operator != null) {
             node.right.accept(this);
-            GSTokenType type = node.operator.symbol.type;
+            int type = node.operator.symbol.type;
             switch (type) {
-                case LT: {
+                case GSTokenType.LT: {
                     emit("comp lt");
                     break;
                 }
-                case GT: {
+                case GSTokenType.GT: {
                     emit("comp gt");
                     break;
                 }
-                case T_LE: {
+                case GSTokenType.T_LE: {
                     emit("comp le");
                     break;
                 }
-                case T_GE: {
+                case GSTokenType.T_GE: {
                     emit("comp ge");
                     break;
                 }
@@ -771,19 +752,18 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node 移位表达式字节码
      */
-    @Override
     public void visit(ShiftExpression node) {
         node.left.accept(this);
         Operator operator = node.operator;
         if (operator != null) {
-            GSTokenType type = operator.symbol.type;
+            int type = operator.symbol.type;
             node.right.accept(this);
             switch (type) {
-                case T_LSHIFT: {
+                case GSTokenType.T_LSHIFT: {
                     emit("arith_op ls");
                     break;
                 }
-                case T_RSHIFT: {
+                case GSTokenType.T_RSHIFT: {
                     emit("arith_op rs");
                     break;
                 }
@@ -799,19 +779,18 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node 加法表达式字节码
      */
-    @Override
     public void visit(AdditiveExpression node) {
         node.left.accept(this);
         Operator operator = node.operator;
         if (operator != null) {
-            GSTokenType type = operator.symbol.type;
+            int type = operator.symbol.type;
             node.right.accept(this);
             switch (type) {
-                case PLUS: {
+                case GSTokenType.PLUS: {
                     emit("arith_op plus");
                     break;
                 }
-                case MINUS: {
+                case GSTokenType.MINUS: {
                     emit("arith_op minus");
                     break;
                 }
@@ -827,23 +806,22 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node 乘法表达式字节码
      */
-    @Override
     public void visit(MultiplicativeExpression node) {
         node.left.accept(this);
         Operator operator = node.operator;
         if (operator != null) {
-            GSTokenType type = operator.symbol.type;
+            int type = operator.symbol.type;
             node.right.accept(this);
             switch (type) {
-                case MUL: {
+                case GSTokenType.MUL: {
                     emit("arith_op mul");
                     break;
                 }
-                case DIV: {
+                case GSTokenType.DIV: {
                     emit("arith_op div");
                     break;
                 }
-                case MODULO: {
+                case GSTokenType.MODULO: {
                     emit("arith_op modulo");
                     break;
                 }
@@ -859,7 +837,6 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node 一元表达式字节码
      */
-    @Override
     public void visit(UnaryExpression node) {
         // 运算节点
         Node operand = node.operand;
@@ -867,7 +844,7 @@ public class ByteCodeGenerator implements Visitor {
         Operator operator = node.operator;
         // 处理运算符
         if (operator != null) {
-            GSTokenType type = operator.symbol.type;
+            int type = operator.symbol.type;
             // 如果是前缀++或者--
             if (type == GSTokenType.INCREMENT || type == GSTokenType.DECREMENT) {
                 // 先取左值引用
@@ -908,18 +885,18 @@ public class ByteCodeGenerator implements Visitor {
                 operand.accept(this);
                 // 再执行一元运算
                 switch (type) {
-                    case PLUS: {  // + 什么都不做
+                    case GSTokenType.PLUS: {  // + 什么都不做
                         break;
                     }
-                    case MINUS: { // -
+                    case GSTokenType.MINUS: { // -
                         emit("arith_op neg");
                         break;
                     }
-                    case NOT: {  // !
+                    case GSTokenType.NOT: {  // !
                         emit("rela_op l_not");
                         break;
                     }
-                    case BIT_NOT: { // ~
+                    case GSTokenType.BIT_NOT: { // ~
                         emit("rela_op b_not");
                         break;
                     }
@@ -939,14 +916,13 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node 后缀表达式字节码
      */
-    @Override
     public void visit(PostfixExpression node) {
         // 运算节点
         Node operand = node.operand;
         // 运算符
         Operator operator = node.operator;
         if (operator != null) {
-            GSTokenType type = operator.symbol.type;
+            int type = operator.symbol.type;
             // 如果是后缀++或者--
             if (type == GSTokenType.INCREMENT || type == GSTokenType.DECREMENT) {
                 // 这里如果是括号表达式，把括号表达式里面的东西取出来
@@ -1008,43 +984,42 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node 字面量字节码
      */
-    @Override
     public void visit(Literal node) {
         GSToken token = node.token;
         switch (token.type) {
-            case INTEGER_DECIMAL: {
-                emit(String.format("const i %s", token.value));
+            case GSTokenType.INTEGER_DECIMAL: {
+                emit("const i " + token.value);
                 break;
             }
-            case INTEGER_HEX: {
+            case GSTokenType.INTEGER_HEX: {
                 // 十六进制字面量：解析为十进制整数值后生成 const i
                 String hexValue = token.value;
                 int dotIndex = hexValue.indexOf('x');
                 if (dotIndex < 0) dotIndex = hexValue.indexOf('X');
                 String hexPart = (dotIndex >= 0) ? hexValue.substring(dotIndex + 1) : hexValue;
                 int decimal = Integer.parseInt(hexPart, 16);
-                emit(String.format("const i %d", decimal));
+                emit("const i " + decimal);
                 break;
             }
-            case FLOAT: {
-                emit(String.format("const f %s", token.value));
+            case GSTokenType.FLOAT: {
+                emit("const f " + token.value);
                 break;
             }
-            case IDENTIFIER:
-            case STRING: {
-                emit(String.format("const s %s", token.value));
+            case GSTokenType.IDENTIFIER:
+            case GSTokenType.STRING: {
+                emit("const s " + token.value);
                 break;
             }
-            case TRUE:
-            case FALSE: {
-                emit(String.format("const b %s", token.value));
+            case GSTokenType.TRUE:
+            case GSTokenType.FALSE: {
+                emit("const b " + token.value);
                 break;
             }
-            case NULL: {
+            case GSTokenType.NULL: {
                 emit("lda_null");
                 break;
             }
-            case NaN: {
+            case GSTokenType.NaN: {
                 emit("lda_nan");
                 break;
             }
@@ -1059,19 +1034,21 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node 对象声明表达式字节码
      */
-    @Override
     public void visit(ObjectLiteral node) {
         // 构建对象
         emit("new Object");
-        Hashtable<Node, Node> members = node.members;
+        Hashtable members = node.members;
         if (members != null) {
-            for (Map.Entry<Node, Node> member : members.entrySet()) {
+            for (Iterator it = members.entrySet().iterator(); it.hasNext(); ) {
+                Map.Entry member = (Map.Entry) it.next();
+                Node key = (Node) member.getKey();
+                Node value = (Node) member.getValue();
                 // 复制对象引用
                 emit("copy");
                 // 将key计算结果放栈顶
-                member.getKey().accept(this);
+                key.accept(this);
                 // 将值计算结果放栈顶
-                member.getValue().accept(this);
+                value.accept(this);
                 // 进行赋值操作
                 emit("putfield");
                 // 清除当前栈顶的赋值
@@ -1085,7 +1062,6 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node 函数表达式字节码
      */
-    @Override
     public void visit(FunctionExpression node) {
         line(node);
         // 更新当前函数定义位置
@@ -1101,9 +1077,8 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node 标识符字节码
      */
-    @Override
     public void visit(Identifier node) {
-        emit(String.format("const a %s", node.name));
+        emit("const a " + node.name);
     }
 
     /**
@@ -1111,7 +1086,6 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node 括号表达式字节码
      */
-    @Override
     public void visit(ParenthesizedExpression node) {
         node.expression.accept(this);
     }
@@ -1121,15 +1095,14 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param newExpression new关键字字节码
      */
-    @Override
     public void visit(NewExpression newExpression) {
         Expression constructor = newExpression.constructor;
         // 首先获取构造函数
         constructor.accept(this);
         // 如果是函数调用
         if (constructor.left instanceof FunctionCallNode) {
-            // 将invoke修改为constructor
-            emit(size() - 1, get(size() - 1).replace("invoke", "constructor"));
+            // 将invoke修改为constructor（用 replaceAll 是 Java 1.4 API；String.replace(CharSequence) 是 1.5）
+            emit(size() - 1, get(size() - 1).replaceAll("invoke", "constructor"));
         } else {
             emit("constructor 0");
         }
@@ -1140,17 +1113,17 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node 数组字面量字节码
      */
-    @Override
     public void visit(ArrayLiteral node) {
         emit("new Array");
-        List<Node> elements = node.elements;
+        List elements = node.elements;
         if (elements != null) {
             int index = 0;
-            for (Node element : elements) {
+            for (int i = 0; i < elements.size(); i++) {
+                Node element = (Node) elements.get(i);
                 // 复制数组引用
                 emit("copy");
                 // 往栈顶放key
-                emit(String.format("const i %d", index++));
+                emit("const i " + (index++));
                 // 获取数组赋值
                 element.accept(this);
                 // 进行赋值操作
@@ -1166,14 +1139,13 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node 成员访问字节码
      */
-    @Override
     public void visit(MemberAccess node) {
         // 获取访问对象
         node.object.accept(this);
         // 访问key表达式
         if (node.property instanceof Identifier) {
             Identifier property = (Identifier) node.property;
-            emit(String.format("const s %s", property.name));
+            emit("const s " + property.name);
         } else {
             node.property.accept(this);
         }
@@ -1186,7 +1158,6 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node 函数调用字节码
      */
-    @Override
     public void visit(FunctionCallNode node) {
         Node callee = node.callee;
         // 放函数调用者objectref(只有属性访问的才有，其余的都是null)
@@ -1198,7 +1169,7 @@ public class ByteCodeGenerator implements Visitor {
             // 访问key表达式
             if (master.property instanceof Identifier) {
                 Identifier property = (Identifier) master.property;
-                emit(String.format("const s %s", property.name));
+                emit("const s " + property.name);
             } else {
                 master.property.accept(this);
             }
@@ -1209,14 +1180,14 @@ public class ByteCodeGenerator implements Visitor {
             // 获取函数调用引用methodref
             node.callee.accept(this);
         }
-        List<Expression> args = node.args;
+        List args = node.args;
         // 往栈顶倒序放置参数，从最后一个元素开始，倒序遍历到第一个
         for (int i = args.size() - 1; i >= 0; i--) {
-            Expression arg = args.get(i);
+            Expression arg = (Expression) args.get(i);
             arg.accept(this);
         }
         // 调用函数，注意这里是函数调用的时候传入的实参个数，虚拟机需要处理函数默认0是this传参
-        emit(String.format("invoke %d", node.args.size()));
+        emit("invoke " + node.args.size());
     }
 
     /**
@@ -1224,7 +1195,6 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node 变量定义字节码
      */
-    @Override
     public void visit(VariableDecl node) {
         line(node);
         Expression value = node.value;
@@ -1245,10 +1215,10 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node 变量声明列表字节码
      */
-    @Override
     public void visit(VariableDeclList node) {
         // var声明，需要把变量加载到本地域
-        for (VariableDecl decl : node.decls) {
+        for (int i = 0; i < node.decls.size(); i++) {
+            VariableDecl decl = (VariableDecl) node.decls.get(i);
             // 声明变量
             emit("declare " + decl.identifier.name);
             // 访问变量定义节点
@@ -1263,7 +1233,6 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node
      */
-    @Override
     public void visit(TryClause node) {
         // try_start
         emit("try_start");
@@ -1278,7 +1247,6 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node catch子句字节码
      */
-    @Override
     public void visit(CatchClause node) {
         // 设置 catch 关键字行号，使 pushenv/declare/store 等 setup 指令映射到 catch 行
         // （否则会继承 try body 末尾语句的行号，导致调试器单步从 throw 跳到 catch 时光标位置错误）
@@ -1288,11 +1256,12 @@ public class ByteCodeGenerator implements Visitor {
         // 异常名称
         String name = node.identifier.name;
         // 先声明变量
-        emit(String.format("declare %s", name));
+        emit("declare " + name);
         // 从栈顶取异常对象
-        emit(String.format("store %s", name));
+        emit("store " + name);
         // 解析catch子句内容
-        for (Node stmt : node.body) {
+        for (int i = 0; i < node.body.size(); i++) {
+            Node stmt = (Node) node.body.get(i);
             stmt.accept(this);
         }
         // 销毁块级作用域
@@ -1304,7 +1273,6 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param node finally子句字节码
      */
-    @Override
     public void visit(FinallyClause node) {
         // 设置 finally 关键字行号，使 finally 块指令映射到 finally 行
         line(node);
@@ -1318,40 +1286,40 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param type 关联符号字节码
      */
-    private void emitAssignmentOperator(GSTokenType type) {
+    private void emitAssignmentOperator(int type) {
         switch (type) {
-            case EQ: {  // =
+            case GSTokenType.EQ: {  // =
                 break;
             }
-            case PLUS_EQUAL: {  // +=
+            case GSTokenType.PLUS_EQUAL: {  // +=
                 emit("arith_op plus");
                 break;
             }
-            case MINUS_EQUAL: {  // -=
+            case GSTokenType.MINUS_EQUAL: {  // -=
                 emit("arith_op minus");
                 break;
             }
-            case STAR_EQUAL: {  // *=
+            case GSTokenType.STAR_EQUAL: {  // *=
                 emit("arith_op mul");
                 break;
             }
-            case SLASH_EQUAL: {  // /=
+            case GSTokenType.SLASH_EQUAL: {  // /=
                 emit("arith_op div");
                 break;
             }
-            case PERCENT_EQUAL: {  // %=
+            case GSTokenType.PERCENT_EQUAL: {  // %=
                 emit("arith_op modulo");
                 break;
             }
-            case T_AND_ASSIGN: {  // &=
+            case GSTokenType.T_AND_ASSIGN: {  // &=
                 emit("rela_op b_and");
                 break;
             }
-            case T_OR_ASSIGN: {   // |=
+            case GSTokenType.T_OR_ASSIGN: {   // |=
                 emit("rela_op b_or");
                 break;
             }
-            case T_XOR_ASSIGN: {  // ^=
+            case GSTokenType.T_XOR_ASSIGN: {  // ^=
                 emit("rela_op b_xor");
                 break;
             }
@@ -1364,9 +1332,9 @@ public class ByteCodeGenerator implements Visitor {
         // 获取函数名(null是匿名函数)
         String funName = identifier.name;
         // 参数不可能为空
-        List<Identifier> params = node.params;
+        List params = node.params;
         // 语句列表
-        List<Node> stmts = node.body.stmts;
+        List stmts = node.body.stmts;
         // 函数起始位置
         int start = size();
         // 这里先预填函数定义 fundef
@@ -1376,12 +1344,14 @@ public class ByteCodeGenerator implements Visitor {
         int index = 0;
         // 将实参加入到本地变量表 实参变量索引从1开始，0是隐式this
         if (params != null) {
-            for (Identifier param : params) {
+            for (int i = 0; i < params.size(); i++) {
+                Identifier param = (Identifier) params.get(i);
                 emit("fstore " + param.name + " " + ++index);
             }
         }
         // 解析函数体
-        for (Node stmt : stmts) {
+        for (int i = 0; i < stmts.size(); i++) {
+            Node stmt = (Node) stmts.get(i);
             stmt.accept(this);
         }
         // 函数末尾自动 return null：确保没有显式 return 的函数也返回 null 到栈顶
@@ -1393,7 +1363,7 @@ public class ByteCodeGenerator implements Visitor {
         emit("lda_null");
         emit("return");
         // 回填函数定义总长度（不包括fundef本身）
-        emit(start, String.format("fundef %s %d", funName, (size() - start - 1)));
+        emit(start, "fundef " + funName + " " + (size() - start - 1));
     }
 
     /**
@@ -1405,15 +1375,15 @@ public class ByteCodeGenerator implements Visitor {
      * @param continueStart continue跳转位置
      * @param breakStart    break跳转位置
      */
-    private void handleLoopJump(List<Node> body, int bodyStart, int bodyEnd, int continueStart, int breakStart) {
+    private void handleLoopJump(List body, int bodyStart, int bodyEnd, int continueStart, int breakStart) {
         if (body != null) {
             for (int i = bodyStart; i < bodyEnd; ++i) {
                 if ("continue".equals(get(i))) {
                     // 跳转至更新体
-                    emit(i, String.format("loop_jump %d", continueStart - i));
+                    emit(i, "loop_jump " + (continueStart - i));
                 } else if ("break".equals(get(i))) {
                     // 跳转至结束
-                    emit(i, String.format("loop_jump %d", breakStart - i));
+                    emit(i, "loop_jump " + (breakStart - i));
                 }
             }
         }
@@ -1430,7 +1400,7 @@ public class ByteCodeGenerator implements Visitor {
         for (int i = bodyStart; i < bodyEnd; ++i) {
             if ("break".equals(get(i))) {
                 // 跳转至结束
-                emit(i, String.format("block_jump %d", breakStart - i));
+                emit(i, "block_jump " + (breakStart - i));
             }
         }
     }
@@ -1438,13 +1408,14 @@ public class ByteCodeGenerator implements Visitor {
     /**
      * 处理块语句中函数声明提升
      */
-    private void handleFunctionDeclare(List<Node> stmt) {
+    private void handleFunctionDeclare(List stmt) {
         // 这里先把function语句提升到前面
-        List<Node> functionStatements = new ArrayList<>();
+        List functionStatements = new ArrayList();
         // 临时存储其他类型的元素
-        List<Node> otherStatements = new ArrayList<>();
+        List otherStatements = new ArrayList();
         // 遍历列表并分类存储
-        for (Node node : stmt) {
+        for (int i = 0; i < stmt.size(); i++) {
+            Node node = (Node) stmt.get(i);
             if (node instanceof FunctionStatement) {
                 functionStatements.add(node);
             } else {
@@ -1462,14 +1433,15 @@ public class ByteCodeGenerator implements Visitor {
      *
      * @param body 循环体
      */
-    private void handleLoopStatement(List<Node> body) {
+    private void handleLoopStatement(List body) {
         if (body != null) {
             // 将循环体里面的函数声明提前
             handleFunctionDeclare(body);
             // 创建循环域
             emit("pushenv loop");
             // 解析循环体内容
-            for (Node stmt : body) {
+            for (int i = 0; i < body.size(); i++) {
+                Node stmt = (Node) body.get(i);
                 stmt.accept(this);
             }
             // 销毁循环域

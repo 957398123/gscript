@@ -24,9 +24,9 @@ import java.util.Map;
 public class BytecodeEncoder {
 
     /** 常量池条目列表（0-based，CP 索引 = 列表位置 + 1，因 CP 从 1 开始） */
-    private final List<Object> cpList = new ArrayList<>();
+    private final List cpList = new ArrayList();
     /** 去重映射：key → CP 索引（1-based）。key 格式 = tag + ":" + valueStr */
-    private final Map<String, Integer> cpIndex = new LinkedHashMap<>();
+    private final Map cpIndex = new LinkedHashMap();
 
     /**
      * 编码文本字节码为二进制内存表示。
@@ -34,10 +34,10 @@ public class BytecodeEncoder {
      * @param bytecode 1D 文本指令列表（如 "const s hello world"、"arith_op plus"）
      * @return 编码结果（byte[][] instructions + Object[] constantPool）
      */
-    public EncodedBytecode encode(List<String> bytecode) {
+    public EncodedBytecode encode(List bytecode) {
         byte[][] instructions = new byte[bytecode.size()][];
         for (int i = 0; i < bytecode.size(); i++) {
-            String text = bytecode.get(i);
+            String text = (String) bytecode.get(i);
             String[] parts = parseInstruction(text);
             instructions[i] = encodeInstruction(parts);
         }
@@ -77,53 +77,51 @@ public class BytecodeEncoder {
             String value = code[2];
             byte opcode = GSClassConstants.constOpcode(typeChar);
             int cpIdx;
-            switch (typeChar) {
-                case "a": cpIdx = addUtf8(value); break;
-                case "s": cpIdx = addUtf8(value); break;
-                case "i": cpIdx = addInt(Integer.parseInt(value)); break;
-                case "f": cpIdx = addFloat(Float.parseFloat(value)); break;
-                case "b": cpIdx = addBool(Boolean.parseBoolean(value)); break;
-                default: throw new IllegalArgumentException("Unknown const type: " + typeChar);
-            }
+            if ("a".equals(typeChar)) { cpIdx = addUtf8(value); }
+            else if ("s".equals(typeChar)) { cpIdx = addUtf8(value); }
+            else if ("i".equals(typeChar)) { cpIdx = addInt(Integer.parseInt(value)); }
+            else if ("f".equals(typeChar)) { cpIdx = addFloat(Float.parseFloat(value)); }
+            else if ("b".equals(typeChar)) { cpIdx = addBool(Boolean.parseBoolean(value)); }
+            else { throw new IllegalArgumentException("Unknown const type: " + typeChar); }
             return new byte[]{opcode, (byte) (cpIdx >> 8), (byte) cpIdx};
         }
 
-        Byte opcodeBox = GSClassConstants.TEXT_TO_OPCODE.get(cmd);
+        Byte opcodeBox = (Byte) GSClassConstants.TEXT_TO_OPCODE.get(cmd);
         if (opcodeBox == null) {
             throw new IllegalArgumentException("Unknown instruction: " + cmd);
         }
-        byte opcode = opcodeBox;
+        byte opcode = opcodeBox.byteValue();
 
         switch (opcode) {
             case GSClassConstants.OP_ARITH_OP: {
-                Byte sub = GSClassConstants.ARITH_SUB.get(code[1]);
+                Byte sub = (Byte) GSClassConstants.ARITH_SUB.get(code[1]);
                 if (sub == null) throw new IllegalArgumentException("Unknown arith_op sub: " + code[1]);
-                return new byte[]{opcode, sub};
+                return new byte[]{opcode, sub.byteValue()};
             }
             case GSClassConstants.OP_COMP: {
-                Byte sub = GSClassConstants.COMP_SUB.get(code[1]);
+                Byte sub = (Byte) GSClassConstants.COMP_SUB.get(code[1]);
                 if (sub == null) throw new IllegalArgumentException("Unknown comp sub: " + code[1]);
-                return new byte[]{opcode, sub};
+                return new byte[]{opcode, sub.byteValue()};
             }
             case GSClassConstants.OP_RELA_OP: {
-                Byte sub = GSClassConstants.RELA_SUB.get(code[1]);
+                Byte sub = (Byte) GSClassConstants.RELA_SUB.get(code[1]);
                 if (sub == null) throw new IllegalArgumentException("Unknown rela_op sub: " + code[1]);
-                return new byte[]{opcode, sub};
+                return new byte[]{opcode, sub.byteValue()};
             }
             case GSClassConstants.OP_PUSHENV: {
-                Byte sub = GSClassConstants.PUSHENV_SUB.get(code[1]);
+                Byte sub = (Byte) GSClassConstants.PUSHENV_SUB.get(code[1]);
                 if (sub == null) throw new IllegalArgumentException("Unknown pushenv sub: " + code[1]);
-                return new byte[]{opcode, sub};
+                return new byte[]{opcode, sub.byteValue()};
             }
             case GSClassConstants.OP_POPENV: {
-                Byte sub = GSClassConstants.POPENV_SUB.get(code[1]);
+                Byte sub = (Byte) GSClassConstants.POPENV_SUB.get(code[1]);
                 if (sub == null) throw new IllegalArgumentException("Unknown popenv sub: " + code[1]);
-                return new byte[]{opcode, sub};
+                return new byte[]{opcode, sub.byteValue()};
             }
             case GSClassConstants.OP_NEW: {
-                Byte sub = GSClassConstants.NEW_SUB.get(code[1]);
+                Byte sub = (Byte) GSClassConstants.NEW_SUB.get(code[1]);
                 if (sub == null) throw new IllegalArgumentException("Unknown new sub: " + code[1]);
-                return new byte[]{opcode, sub};
+                return new byte[]{opcode, sub.byteValue()};
             }
             case GSClassConstants.OP_DECLARE:
             case GSClassConstants.OP_STORE: {
@@ -177,41 +175,41 @@ public class BytecodeEncoder {
 
     private int addUtf8(String value) {
         String key = "U:" + value;
-        Integer idx = cpIndex.get(key);
-        if (idx != null) return idx;
+        Integer idx = (Integer) cpIndex.get(key);
+        if (idx != null) return idx.intValue();
         int newIdx = cpList.size() + 1;
         cpList.add(value);
-        cpIndex.put(key, newIdx);
+        cpIndex.put(key, new Integer(newIdx));
         return newIdx;
     }
 
     private int addInt(int value) {
         String key = "I:" + value;
-        Integer idx = cpIndex.get(key);
-        if (idx != null) return idx;
+        Integer idx = (Integer) cpIndex.get(key);
+        if (idx != null) return idx.intValue();
         int newIdx = cpList.size() + 1;
-        cpList.add(value);
-        cpIndex.put(key, newIdx);
+        cpList.add(new Integer(value));
+        cpIndex.put(key, new Integer(newIdx));
         return newIdx;
     }
 
     private int addFloat(float value) {
         String key = "F:" + Float.floatToIntBits(value);
-        Integer idx = cpIndex.get(key);
-        if (idx != null) return idx;
+        Integer idx = (Integer) cpIndex.get(key);
+        if (idx != null) return idx.intValue();
         int newIdx = cpList.size() + 1;
-        cpList.add(value);
-        cpIndex.put(key, newIdx);
+        cpList.add(new Float(value));
+        cpIndex.put(key, new Integer(newIdx));
         return newIdx;
     }
 
     private int addBool(boolean value) {
         String key = "B:" + value;
-        Integer idx = cpIndex.get(key);
-        if (idx != null) return idx;
+        Integer idx = (Integer) cpIndex.get(key);
+        if (idx != null) return idx.intValue();
         int newIdx = cpList.size() + 1;
-        cpList.add(value);
-        cpIndex.put(key, newIdx);
+        cpList.add(new Boolean(value));
+        cpIndex.put(key, new Integer(newIdx));
         return newIdx;
     }
 }

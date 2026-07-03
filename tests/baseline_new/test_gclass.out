@@ -1,0 +1,99 @@
+=== STDOUT ===
+============================================================
+gclass 二进制文件格式端到端测试
+============================================================
+
+--- gclass_test ---
+  [PASS] gclass_test: compile 成功
+  [PASS] gclass_test: dump 与 dumpgclass 一致
+  [PASS] gclass_test: run 与 rungclass 输出一致
+
+--- multi_a ---
+  [PASS] multi_a: compile 成功
+  [PASS] multi_a: dump 与 dumpgclass 一致
+  [PASS] multi_a: run 与 rungclass 输出一致
+
+--- multi_b ---
+  [PASS] multi_b: compile 成功
+  [PASS] multi_b: dump 与 dumpgclass 一致
+  [PASS] multi_b: run 与 rungclass 输出一致
+
+--- semantics_test ---
+  [PASS] semantics_test: compile 成功
+  [PASS] semantics_test: dump 与 dumpgclass 一致
+  [PASS] semantics_test: run 与 rungclass 输出一致
+
+--- 字符串含空格验证 ---
+  [PASS] 字符串含空格: 'hello world with spaces'
+  [PASS] 字符串含空格: 'A says: world'
+  [PASS] 字符串含空格: 'error occurred'
+
+--- CRC32 校验 ---
+  [PASS] .gclass 文件存在
+  [PASS] CRC32 篡改检测：加载被拒绝
+
+--- Magic 校验 ---
+  [PASS] Magic 损坏检测：加载被拒绝
+
+--- 恢复后正常加载 ---
+  [PASS] 恢复后 gclass 正常加载
+
+--- FunctionTable 正确性 ---
+  [PASS] gclass_test: FunctionTable 条目数 == fundef 指令数
+  [PASS] gclass_test: 函数 'add' 元数据匹配
+  [PASS] multi_a: FunctionTable 条目数 == fundef 指令数
+  [PASS] multi_a: 函数 'greet' 元数据匹配
+  [PASS] multi_a: 函数 'shared' 元数据匹配
+  [PASS] multi_b: FunctionTable 条目数 == fundef 指令数
+  [PASS] multi_b: 函数 'greet' 元数据匹配
+  [PASS] semantics_test: FunctionTable 条目数 == fundef 指令数
+  [PASS] semantics_test: 函数 'check' 元数据匹配
+  [PASS] semantics_test: 函数 'sw' 元数据匹配
+  [PASS] semantics_test: 函数 'fib' 元数据匹配
+  [PASS] semantics_test: 函数 'makeCounter' 元数据匹配
+  [PASS] semantics_test: 函数 'null' 元数据匹配
+  [PASS] semantics_test: 函数 'noReturn' 元数据匹配
+  [PASS] semantics_test: 函数 'apply' 元数据匹配
+  [PASS] semantics_test: 函数 'double' 元数据匹配
+  [PASS] semantics_test: 函数 'tryCatch' 元数据匹配
+  [PASS] semantics_test: 函数 'tryFinally' 元数据匹配
+  [PASS] semantics_test: 函数 'tryReturnFinally' 元数据匹配
+  [PASS] semantics_test: 函数 'catchReturnFinally' 元数据匹配
+  [PASS] semantics_test: 函数 'finallyThrow' 元数据匹配
+  [PASS] semantics_test: 函数 'throwAcross' 元数据匹配
+  [PASS] semantics_test: 函数 'nestedTry' 元数据匹配
+  [PASS] semantics_test: 函数 'scopeTest' 元数据匹配
+  [PASS] semantics_test: 函数 'echo' 元数据匹配
+  [PASS] semantics_test: 函数 'classify' 元数据匹配
+  [PASS] semantics_test: 函数 'dayName' 元数据匹配
+  [PASS] semantics_test: 函数 'noDefault' 元数据匹配
+  [PASS] semantics_test: 函数 'fallthrough' 元数据匹配
+  [PASS] semantics_test: 函数 'emptySwitch' 元数据匹配
+  [PASS] semantics_test: 函数 'emptyDecl' 元数据匹配
+  [PASS] semantics_test: 函数 'null' 元数据匹配
+  [PASS] semantics_test: 函数 'null' 元数据匹配
+  [PASS] semantics_test: 函数 'null' 元数据匹配
+
+--- RLE 压缩 + Attributes 标志 ---
+  [PASS] gclass_test: .gclass 文件存在
+  gclass_test: size=1574B, RLE=True, Attributes=True
+  [PASS] gclass_test: FLAG_RLE_SOURCE_MAP 已设置
+  [PASS] gclass_test: FLAG_HAS_ATTRIBUTES 已设置
+  [PASS] multi_a: .gclass 文件存在
+  multi_a: size=531B, RLE=True, Attributes=True
+  [PASS] multi_a: FLAG_RLE_SOURCE_MAP 已设置
+  [PASS] multi_a: FLAG_HAS_ATTRIBUTES 已设置
+  [PASS] multi_b: .gclass 文件存在
+  multi_b: size=461B, RLE=True, Attributes=True
+  [PASS] multi_b: FLAG_RLE_SOURCE_MAP 已设置
+  [PASS] multi_b: FLAG_HAS_ATTRIBUTES 已设置
+  [PASS] semantics_test: .gclass 文件存在
+  semantics_test: size=36255B, RLE=True, Attributes=True
+  [PASS] semantics_test: FLAG_RLE_SOURCE_MAP 已设置
+  [PASS] semantics_test: FLAG_HAS_ATTRIBUTES 已设置
+
+============================================================
+结果: 65 passed, 0 failed
+============================================================
+
+=== STDERR ===

@@ -7,9 +7,9 @@ import java.util.List;
 public class ArrayLiteral extends Node {
 
     // 数组元素
-    public List<Node> elements;
+    public List elements;
 
-    public ArrayLiteral(List<Node> elements) {
+    public ArrayLiteral(List elements) {
         type = "ArrayLiteral";
         this.elements = elements;
     }

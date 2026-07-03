@@ -1,6 +1,8 @@
 package org.gscript.compile;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -10,7 +12,6 @@ import org.gscript.compile.token.GSTokenType;
 /**
  * token生成程序
  */
-@SuppressWarnings("unused")
 public class Lexer {
     private String src;
     private int pos;
@@ -18,7 +19,11 @@ public class Lexer {
     private int column;
 
     // 关键字列表
-    private static final Set<String> keywords = Set.of("function", "do", "var", "if", "else", "break", "for", "while", "true", "false", "null", "switch", "case", "default", "return", "continue", "new", "try", "catch", "finally", "throw", "NaN");
+    private static final Set keywords = new HashSet(Arrays.asList(new String[]{
+        "function", "do", "var", "if", "else", "break", "for", "while",
+        "true", "false", "null", "switch", "case", "default", "return",
+        "continue", "new", "try", "catch", "finally", "throw", "NaN"
+    }));
 
     public Lexer() {
         this.pos = 0;
@@ -80,18 +85,18 @@ public class Lexer {
     }
 
     // 将源代码解析为Token
-    public List<GSToken> tokenize(String src) {
+    public List tokenize(String src) {
         this.src = src;
         this.pos = 0;
         this.line = 1;
         this.column = 1;
-        List<GSToken> tokens = new ArrayList<>();
+        List tokens = new ArrayList();
         while (pos < src.length()) {
             char c = peek();
             if (isWhiteSpace(c)) {  // 忽略空格
                 advance();
             } else if (isDigit(c)) {  // 如果是数字
-                StringBuilder number = new StringBuilder();
+                StringBuffer number = new StringBuffer();
                 do {
                     advance();
                     number.append(c);
@@ -370,7 +375,7 @@ public class Lexer {
                         break;
                     }
                     case '"': {  // 如果是字符串
-                        StringBuilder str = new StringBuilder();
+                        StringBuffer str = new StringBuffer();
                         boolean escaping = false;  // 转义状态标记
                         while (true) {
                             c = advance();
@@ -417,7 +422,7 @@ public class Lexer {
                                         break;
                                     }
                                     case 'u': {  // Unicode 转义 uXXXX
-                                        StringBuilder hex = new StringBuilder();
+                                        StringBuffer hex = new StringBuffer();
                                         for (int i = 0; i < 4; i++) {
                                             char h = peek();
                                             if (isHexDigit(h)) {
@@ -451,7 +456,7 @@ public class Lexer {
                 }
             } else if (isIdentifierStart(c)) {  // 如果标识符
                 // 找出标识符
-                StringBuilder identifier = new StringBuilder();
+                StringBuffer identifier = new StringBuffer();
                 do {
                     advance();
                     identifier.append(c);
@@ -459,97 +464,29 @@ public class Lexer {
                 String value = identifier.toString();
                 // 检查是否是关键字
                 if (keywords.contains(value)) {
-                    GSTokenType token = GSTokenType.IDENTIFIER;
-                    switch (value) {
-                        case "function": {
-                            token = GSTokenType.FUNCTION;
-                            break;
-                        }
-                        case "do": {
-                            token = GSTokenType.DO;
-                            break;
-                        }
-                        case "var": {
-                            token = GSTokenType.VAR;
-                            break;
-                        }
-                        case "if": {
-                            token = GSTokenType.IF;
-                            break;
-                        }
-                        case "else": {
-                            token = GSTokenType.ELSE;
-                            break;
-                        }
-                        case "break": {
-                            token = GSTokenType.BREAK;
-                            break;
-                        }
-                        case "continue": {
-                            token = GSTokenType.CONTINUE;
-                            break;
-                        }
-                        case "for": {
-                            token = GSTokenType.FOR;
-                            break;
-                        }
-                        case "while": {
-                            token = GSTokenType.WHILE;
-                            break;
-                        }
-                        case "true": {
-                            token = GSTokenType.TRUE;
-                            break;
-                        }
-                        case "false": {
-                            token = GSTokenType.FALSE;
-                            break;
-                        }
-                        case "null": {
-                            token = GSTokenType.NULL;
-                            break;
-                        }
-                        case "switch": {
-                            token = GSTokenType.SWITCH;
-                            break;
-                        }
-                        case "case": {
-                            token = GSTokenType.CASE;
-                            break;
-                        }
-                        case "default": {
-                            token = GSTokenType.DEFAULT;
-                            break;
-                        }
-                        case "return": {
-                            token = GSTokenType.RETURN;
-                            break;
-                        }
-                        case "try":{
-                            token = GSTokenType.TRY;
-                            break;
-                        }
-                        case "catch": {
-                            token = GSTokenType.CATCH;
-                            break;
-                        }
-                        case "finally": {
-                            token = GSTokenType.FINALLY;
-                            break;
-                        }
-                        case "throw":{
-                            token = GSTokenType.THROW;
-                            break;
-                        }
-                        case "new":{
-                            token = GSTokenType.NEW;
-                            break;
-                        }
-                        case "NaN":{
-                            token = GSTokenType.NaN;
-                            break;
-                        }
-                    }
+                    int token = GSTokenType.IDENTIFIER;
+                    if (value.equals("function")) { token = GSTokenType.FUNCTION; }
+                    else if (value.equals("do")) { token = GSTokenType.DO; }
+                    else if (value.equals("var")) { token = GSTokenType.VAR; }
+                    else if (value.equals("if")) { token = GSTokenType.IF; }
+                    else if (value.equals("else")) { token = GSTokenType.ELSE; }
+                    else if (value.equals("break")) { token = GSTokenType.BREAK; }
+                    else if (value.equals("continue")) { token = GSTokenType.CONTINUE; }
+                    else if (value.equals("for")) { token = GSTokenType.FOR; }
+                    else if (value.equals("while")) { token = GSTokenType.WHILE; }
+                    else if (value.equals("true")) { token = GSTokenType.TRUE; }
+                    else if (value.equals("false")) { token = GSTokenType.FALSE; }
+                    else if (value.equals("null")) { token = GSTokenType.NULL; }
+                    else if (value.equals("switch")) { token = GSTokenType.SWITCH; }
+                    else if (value.equals("case")) { token = GSTokenType.CASE; }
+                    else if (value.equals("default")) { token = GSTokenType.DEFAULT; }
+                    else if (value.equals("return")) { token = GSTokenType.RETURN; }
+                    else if (value.equals("try")) { token = GSTokenType.TRY; }
+                    else if (value.equals("catch")) { token = GSTokenType.CATCH; }
+                    else if (value.equals("finally")) { token = GSTokenType.FINALLY; }
+                    else if (value.equals("throw")) { token = GSTokenType.THROW; }
+                    else if (value.equals("new")) { token = GSTokenType.NEW; }
+                    else if (value.equals("NaN")) { token = GSTokenType.NaN; }
                     tokens.add(new GSToken(token, value, line, column));
                 } else {
                     tokens.add(new GSToken(GSTokenType.IDENTIFIER, value, line, column));

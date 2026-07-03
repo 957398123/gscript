@@ -9,7 +9,6 @@ public class EqualityExpression extends OperatorNode {
         type = "EqualityExpression";
     }
 
-    @Override
     public void accept(Visitor v) {
         v.visit(this);
     }

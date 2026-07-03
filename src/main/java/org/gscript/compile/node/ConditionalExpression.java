@@ -20,7 +20,6 @@ public class ConditionalExpression extends Node {
         this.elseExpr = elseExpr;
     }
 
-    @Override
     public void accept(Visitor v) {
         v.visit(this);
     }

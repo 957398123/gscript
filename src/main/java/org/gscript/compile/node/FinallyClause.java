@@ -11,7 +11,6 @@ public class FinallyClause extends Node{
         this.finallyBody = finallyBody;
     }
 
-    @Override
     public void accept(Visitor v) {
         v.visit(this);
     }

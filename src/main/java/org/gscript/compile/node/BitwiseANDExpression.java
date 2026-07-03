@@ -9,7 +9,6 @@ public class BitwiseANDExpression extends OperatorNode{
         type = "BitwiseANDExpression";
     }
 
-    @Override
     public void accept(Visitor v) {
         v.visit(this);
     }

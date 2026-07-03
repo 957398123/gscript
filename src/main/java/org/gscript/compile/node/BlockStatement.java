@@ -7,9 +7,9 @@ import org.gscript.compile.gen.Visitor;
 public class BlockStatement extends Node {
 
     // 语句列表
-    public List<Node> stmts;
+    public List stmts;
 
-    public BlockStatement(List<Node> stmts) {
+    public BlockStatement(List stmts) {
         type = "BlockStatement";
         this.stmts = stmts;
     }

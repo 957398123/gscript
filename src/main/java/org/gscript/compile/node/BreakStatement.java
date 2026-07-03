@@ -8,7 +8,6 @@ public class BreakStatement extends Node {
         type = "BreakStatement";
     }
 
-    @Override
     public void accept(Visitor v) {
         v.visit(this);
     }

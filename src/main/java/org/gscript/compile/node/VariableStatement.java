@@ -15,7 +15,6 @@ public class VariableStatement extends Node {
         this.args = args;
     }
 
-    @Override
     public void accept(Visitor v) {
         v.visit(this);
     }

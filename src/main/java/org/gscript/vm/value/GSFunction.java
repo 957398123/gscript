@@ -118,7 +118,7 @@ public class GSFunction extends GSObject {
             env = env.parent;
         }
         // 这里模仿严格模式，抛出异常，这里必须抛出虚拟机异常，这样才能获取到异常信息
-        throw new RuntimeException(String.format("ReferenceError: %s is not defined", name));
+        throw new RuntimeException("ReferenceError: " + name + " is not defined");
     }
 
     /**

@@ -7,14 +7,13 @@ import java.util.List;
 public class ProgramNode extends Node {
 
     // 语句列表
-    public List<Node> stmts;
+    public List stmts;
 
-    public  ProgramNode(List<Node> stmts) {
+    public  ProgramNode(List stmts) {
         type = "Program";
         this.stmts = stmts;
     }
 
-    @Override
     public void accept(Visitor v) {
         v.visit(this);
     }

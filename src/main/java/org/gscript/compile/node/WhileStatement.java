@@ -18,15 +18,14 @@ public class WhileStatement extends Node {
     public Expression condition;
 
     // 循环体
-    public List<Node> body;
+    public List body;
 
-    public WhileStatement(Expression condition, List<Node> body) {
+    public WhileStatement(Expression condition, List body) {
         type = "WhileStatement";
         this.condition = condition;
         this.body = body;
     }
 
-    @Override
     public void accept(Visitor v) {
         v.visit(this);
     }

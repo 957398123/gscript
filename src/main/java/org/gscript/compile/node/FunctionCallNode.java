@@ -10,15 +10,14 @@ public class FunctionCallNode extends Node {
     public Node callee;
 
     // 参数列表
-    public List<Expression> args;
+    public List args;
 
-    public FunctionCallNode(Node callee, List<Expression> args) {
+    public FunctionCallNode(Node callee, List args) {
         type = "FunctionCallNode";
         this.callee = callee;
         this.args = args;
     }
 
-    @Override
     public void accept(Visitor v) {
         v.visit(this);
     }

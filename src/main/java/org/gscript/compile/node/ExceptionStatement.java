@@ -26,7 +26,6 @@ public class ExceptionStatement extends Node{
         this.finallyBody = finallyBody;
     }
 
-    @Override
     public void accept(Visitor v) {
         v.visit(this);
     }

@@ -34,18 +34,18 @@ public class BytecodeDecoder {
             Object value = cp != null ? cp[cpIdx] : "?" + cpIdx;
             String valueStr;
             if (opcode == GSClassConstants.OP_CONST_I) {
-                valueStr = Integer.toString((Integer) value);
+                valueStr = Integer.toString(((Integer) value).intValue());
             } else if (opcode == GSClassConstants.OP_CONST_F) {
-                valueStr = Float.toString((Float) value);
+                valueStr = Float.toString(((Float) value).floatValue());
             } else if (opcode == GSClassConstants.OP_CONST_B) {
-                valueStr = Boolean.toString((Boolean) value);
+                valueStr = ((Boolean) value).toString();
             } else {
                 valueStr = (String) value;  // const_a / const_s → UTF8
             }
             return "const " + typeChar + " " + valueStr;
         }
 
-        String textName = GSClassConstants.OPCODE_TO_TEXT.get(opcode);
+        String textName = (String) GSClassConstants.OPCODE_TO_TEXT.get(new Byte(opcode));
         if (textName == null) {
             return "unknown_0x" + Integer.toHexString(opcode & 0xFF);
         }
@@ -111,8 +111,8 @@ public class BytecodeDecoder {
     }
 
     /** 子操作码反查文本名 */
-    private static String subName(Map<Byte, String> revMap, byte sub) {
-        String name = revMap.get(sub);
+    private static String subName(Map revMap, byte sub) {
+        String name = (String) revMap.get(new Byte(sub));
         return name != null ? name : "0x" + Integer.toHexString(sub & 0xFF);
     }
 }

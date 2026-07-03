@@ -13,7 +13,6 @@ public class Literal extends Node {
         this.token = token;
     }
 
-    @Override
     public void accept(Visitor v) {
         v.visit(this);
     }

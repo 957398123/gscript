@@ -16,7 +16,6 @@ public class PostfixExpression extends Node {
         this.operator = operator;
     }
 
-    @Override
     public void accept(Visitor v) {
         v.visit(this);
     }

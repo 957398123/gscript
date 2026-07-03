@@ -16,7 +16,6 @@ public class MemberAccess extends Node {
         this.property = property;
     }
 
-    @Override
     public void accept(Visitor v) {
         v.visit(this);
     }

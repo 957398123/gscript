@@ -22,7 +22,7 @@ public abstract class GSNativeFunction extends GSObject {
      * @param args 传入参数
      * @return 返回值
      */
-    public final GSValue eval(ArrayList<GSValue> args) {
+    public final GSValue eval(ArrayList args) {
         GSValue value = call(args);
         if (value == null) {
             value = GSNull.NULL;
@@ -36,10 +36,9 @@ public abstract class GSNativeFunction extends GSObject {
      * @param args 参数
      * @return 结果
      */
-    public abstract GSValue call(ArrayList<GSValue> args);
+    public abstract GSValue call(ArrayList args);
 
-    @Override
     public String toStringValue() {
-        return String.format("ƒ %s() { [native code] }", _name);
+        return "ƒ " + _name + "() { [native code] }";
     }
 }

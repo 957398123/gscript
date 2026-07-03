@@ -1,0 +1,13 @@
+=== STDOUT ===
+[INFO] 测试场景：只在 multi_b:9 设断点，stepIn 应跳转到 multi_a 的 shared()
+  [PASS] 断点命中 multi_b line 9
+  [PASS] 断点原因是 breakpoint
+  [PASS] stepIn 后挂起（未直接运行结束）
+  [PASS] stepIn 原因是 step
+  [PASS] stepIn 跳转到 multi_a 文件
+  [PASS] stepIn 帧名称是 shared
+  [PASS] 脚本正常终止
+
+==== 7 passed, 0 failed ====
+
+=== STDERR ===

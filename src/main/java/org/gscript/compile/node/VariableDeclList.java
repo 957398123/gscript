@@ -11,9 +11,9 @@ import org.gscript.compile.gen.Visitor;
 public class VariableDeclList extends Node {
 
     // 变量声明列表
-    public List<VariableDecl> decls;
+    public List decls;
 
-    public VariableDeclList(List<VariableDecl> decl) {
+    public VariableDeclList(List decl) {
         type = "VariableDeclList";
         this.decls = decl;
     }

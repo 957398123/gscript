@@ -1,6 +1,7 @@
 package org.gscript.vm.value;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -474,25 +475,27 @@ public abstract class GSValue {
     public Object toJavaObject() {
         switch (this.type) {
             case 1:  // GSBool
-                return ((GSBool) this).value;
+                return new Boolean(((GSBool) this).value);
             case 2:  // GSInt
-                return ((GSInt) this).value;
+                return new Integer(((GSInt) this).value);
             case 3:  // GSFloat
-                return ((GSFloat) this).value;
+                return new Float(((GSFloat) this).value);
             case 5:  // GSString（value 私有，用 toStringValue）
                 return this.toStringValue();
             case 8:  // GSNull
                 return null;
             case 10: // GSNaN
-                return Float.NaN;
+                return new Float(Float.NaN);
             case 4:  // GSObject
-                Map<String, Object> map = new LinkedHashMap<>();
-                for (Map.Entry<String, GSValue> e : ((GSObject) this).getMembers().entrySet()) {
-                    map.put(e.getKey(), e.getValue().toJavaObject());
+                Map map = new LinkedHashMap();
+                Iterator it = ((GSObject) this).getMembers().entrySet().iterator();
+                while (it.hasNext()) {
+                    Map.Entry e = (Map.Entry) it.next();
+                    map.put((String) e.getKey(), ((GSValue) e.getValue()).toJavaObject());
                 }
                 return map;
             case 7:  // GSArray（extends GSObject，元素键为 "0","1",...）
-                List<Object> list = new ArrayList<>();
+                List list = new ArrayList();
                 GSObject arr = (GSObject) this;
                 for (int i = 0; arr.getMembers().containsKey(String.valueOf(i)); i++) {
                     list.add(arr.getProperty(String.valueOf(i)).toJavaObject());
@@ -516,23 +519,26 @@ public abstract class GSValue {
     public static GSValue fromJavaObject(Object obj) {
         if (obj == null) return GSNull.NULL;
         if (obj instanceof GSValue) return (GSValue) obj;
-        if (obj instanceof Integer) return new GSInt((Integer) obj);
-        if (obj instanceof Float) return new GSFloat((Float) obj);
+        if (obj instanceof Integer) return new GSInt(((Integer) obj).intValue());
+        if (obj instanceof Float) return new GSFloat(((Float) obj).floatValue());
         if (obj instanceof Double) return new GSFloat(((Double) obj).floatValue());
         if (obj instanceof String) return new GSString((String) obj);
-        if (obj instanceof Boolean) return GSBool.getGSBool((Boolean) obj);
+        if (obj instanceof Boolean) return GSBool.getGSBool(((Boolean) obj).booleanValue());
         if (obj instanceof Map) {
             GSObject gso = new GSObject();
-            for (Map.Entry<?, ?> e : ((Map<?, ?>) obj).entrySet()) {
+            Iterator it = ((Map) obj).entrySet().iterator();
+            while (it.hasNext()) {
+                Map.Entry e = (Map.Entry) it.next();
                 gso.setProperty(e.getKey().toString(), fromJavaObject(e.getValue()));
             }
             return gso;
         }
         if (obj instanceof List) {
             GSArray gsa = new GSArray();
-            int i = 0;
-            for (Object item : (List<?>) obj) {
-                gsa.setProperty(String.valueOf(i++), fromJavaObject(item));
+            List list = (List) obj;
+            for (int i = 0; i < list.size(); i++) {
+                Object item = list.get(i);
+                gsa.setProperty(String.valueOf(i), fromJavaObject(item));
             }
             return gsa;
         }

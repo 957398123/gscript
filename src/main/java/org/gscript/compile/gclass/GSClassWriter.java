@@ -4,7 +4,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.CRC32;
@@ -39,7 +38,7 @@ public class GSClassWriter {
      * @param sourcePath  源文件路径，可为 null
      * @param out         输出流
      */
-    public void write(List<String> bytecode, List<Integer> sourceLines, String sourcePath, OutputStream out) throws IOException {
+    public void write(List bytecode, List sourceLines, String sourcePath, OutputStream out) throws IOException {
         write(bytecode, sourceLines, sourcePath, null, out);
     }
 
@@ -52,7 +51,7 @@ public class GSClassWriter {
      * @param sourceContent 完整源码文本（attach 调试模式用，null/空串表示不写入），可为 null
      * @param out           输出流
      */
-    public void write(List<String> bytecode, List<Integer> sourceLines, String sourcePath, String sourceContent, OutputStream out) throws IOException {
+    public void write(List bytecode, List sourceLines, String sourcePath, String sourceContent, OutputStream out) throws IOException {
         // 1. 用 BytecodeEncoder 编码（内存 byte[][] + Object[] CP）
         BytecodeEncoder encoder = new BytecodeEncoder();
         EncodedBytecode encoded = encoder.encode(bytecode);
@@ -61,7 +60,7 @@ public class GSClassWriter {
 
         // 2. sourcePath 加入 CP（sourcePath 不在指令流中，需单独追加到 CP 末尾）
         int sourcePathCpIndex = 0;
-        if (sourcePath != null && !sourcePath.isEmpty()) {
+        if (sourcePath != null && sourcePath.length() != 0) {
             sourcePathCpIndex = cp.length;  // 追加到末尾，新索引 = 当前数组长度
             Object[] newCp = new Object[cp.length + 1];
             System.arraycopy(cp, 0, newCp, 0, cp.length);
@@ -73,7 +72,7 @@ public class GSClassWriter {
         // fundef 指令格式：OP_FUNDEF + u2 nameCp + u2 bodyLen（共 5 字节）。
         // startIp = fundef 指令索引 + 1（函数体紧随 fundef 指令）。
         // 仅当存在函数定义时才生成属性段，并把 "FunctionTable" 属性名加入 CP。
-        List<int[]> funcEntries = new ArrayList<>();  // each: {nameCp, startIp, bodyLen}
+        List funcEntries = new ArrayList();  // each: {nameCp, startIp, bodyLen}
         for (int i = 0; i < instructions.length; i++) {
             if (instructions[i].length > 0 && instructions[i][0] == GSClassConstants.OP_FUNDEF) {
                 byte[] instr = instructions[i];
@@ -82,7 +81,7 @@ public class GSClassWriter {
                 funcEntries.add(new int[]{nameCp, i + 1, bodyLen});
             }
         }
-        boolean hasSourceContentAttr = sourceContent != null && !sourceContent.isEmpty();
+        boolean hasSourceContentAttr = sourceContent != null && sourceContent.length() != 0;
         boolean hasAttributes = !funcEntries.isEmpty() || hasSourceContentAttr;
         int attrNameCpIndex = 0;  // FunctionTable 属性名 CP 索引
         int sourceContentAttrNameCpIndex = 0;  // SourceContent 属性名 CP 索引
@@ -113,14 +112,14 @@ public class GSClassWriter {
         // RLE 压缩源码映射：源码行号常有长游程（多条字节码对应同一源码行），
         // RLE 编码为 (count, line) 对（4 字节/对），原始格式为 2 字节/条。
         // 仅当 RLE 对数 < 原始长度的 50% 时启用（4M < 2N → M < N/2），否则 RLE 反而更大。
-        List<int[]> rlePairs = null;
+        List rlePairs = null;
         boolean useRle = false;
         if (hasSourceMap) {
-            rlePairs = new ArrayList<>();
-            int prev = sourceLines.get(0);
+            rlePairs = new ArrayList();
+            int prev = ((Integer) sourceLines.get(0)).intValue();
             int count = 1;
             for (int i = 1; i < sourceLines.size(); i++) {
-                int cur = sourceLines.get(i);
+                int cur = ((Integer) sourceLines.get(i)).intValue();
                 if (cur == prev) {
                     count++;
                 } else {
@@ -156,25 +155,26 @@ public class GSClassWriter {
             Object entry = cp[i];
             if (entry instanceof String) {
                 dos.writeByte(GSClassConstants.TAG_UTF8);
-                byte[] utf8Bytes = ((String) entry).getBytes(StandardCharsets.UTF_8);
+                byte[] utf8Bytes = ((String) entry).getBytes("UTF-8");
                 dos.writeShort(utf8Bytes.length);
                 dos.write(utf8Bytes);
             } else if (entry instanceof Integer) {
                 dos.writeByte(GSClassConstants.TAG_INT);
-                dos.writeInt((Integer) entry);
+                dos.writeInt(((Integer) entry).intValue());
             } else if (entry instanceof Float) {
                 dos.writeByte(GSClassConstants.TAG_FLOAT);
-                dos.writeFloat((Float) entry);
+                dos.writeFloat(((Float) entry).floatValue());
             } else if (entry instanceof Boolean) {
                 dos.writeByte(GSClassConstants.TAG_BOOL);
-                dos.writeByte((Boolean) entry ? 1 : 0);
+                dos.writeByte(((Boolean) entry).booleanValue() ? 1 : 0);
             } else {
                 throw new IOException("Unknown CP entry type at index " + i + ": " + entry.getClass());
             }
         }
 
         // 字节码段（直接写每条指令的 byte[]，无需逐指令编码）
-        for (byte[] instr : instructions) {
+        for (int i = 0; i < instructions.length; i++) {
+            byte[] instr = instructions[i];
             dos.write(instr);
         }
 
@@ -183,14 +183,16 @@ public class GSClassWriter {
             if (useRle) {
                 // RLE 格式：u4 pairCount + pairCount × (u2 count, u2 line)
                 dos.writeInt(rlePairs.size());
-                for (int[] p : rlePairs) {
+                for (int i = 0; i < rlePairs.size(); i++) {
+                    int[] p = (int[]) rlePairs.get(i);
                     dos.writeShort(p[0]);
                     dos.writeShort(p[1]);
                 }
             } else {
                 // 原始格式：u4 lineCount + lineCount × u2 line
                 dos.writeInt(sourceLines.size());
-                for (Integer line : sourceLines) {
+                for (int i = 0; i < sourceLines.size(); i++) {
+                    int line = ((Integer) sourceLines.get(i)).intValue();
                     dos.writeShort(line);
                 }
             }
@@ -209,7 +211,8 @@ public class GSClassWriter {
                 int attrDataLen = 2 + funcEntries.size() * 10;
                 dos.writeInt(attrDataLen);
                 dos.writeShort(funcEntries.size());
-                for (int[] fe : funcEntries) {
+                for (int i = 0; i < funcEntries.size(); i++) {
+                    int[] fe = (int[]) funcEntries.get(i);
                     dos.writeShort(fe[0]);  // nameCpIndex
                     dos.writeInt(fe[1]);    // startIp
                     dos.writeInt(fe[2]);    // bodyLen
@@ -218,7 +221,7 @@ public class GSClassWriter {
             // SourceContent 属性（若有）：u4 长度 + UTF-8 源码字节（u4 长度无 65535 限制）
             if (hasSourceContentAttr) {
                 dos.writeShort(sourceContentAttrNameCpIndex);
-                byte[] srcBytes = sourceContent.getBytes(StandardCharsets.UTF_8);
+                byte[] srcBytes = sourceContent.getBytes("UTF-8");
                 dos.writeInt(srcBytes.length);  // u4 长度，可存大源码
                 dos.write(srcBytes);
             }

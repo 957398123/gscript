@@ -33,12 +33,11 @@ public class TimerLib {
     /** setTimeout(callback, delay, ...args) → 返回 timer id（GSInt） */
     public GSNativeFunction setTimeout() {
         return new GSNativeFunction("setTimeout") {
-            @Override
-            public GSValue call(ArrayList<GSValue> args) {
+            public GSValue call(ArrayList args) {
                 GSFunction cb = extractCallback(args);
                 if (cb == null) return GSNull.NULL;
                 long delay = extractLong(args, 2, 0);
-                ArrayList<GSValue> cbArgs = buildCallbackArgs(args, 3);
+                ArrayList cbArgs = buildCallbackArgs(args, 3);
                 int id = interpreter.scheduleTimeout(cb, delay, cbArgs);
                 return new GSInt(id);
             }
@@ -48,12 +47,11 @@ public class TimerLib {
     /** setInterval(callback, period, ...args) → 返回 timer id（GSInt） */
     public GSNativeFunction setInterval() {
         return new GSNativeFunction("setInterval") {
-            @Override
-            public GSValue call(ArrayList<GSValue> args) {
+            public GSValue call(ArrayList args) {
                 GSFunction cb = extractCallback(args);
                 if (cb == null) return GSNull.NULL;
                 long period = extractLong(args, 2, 0);
-                ArrayList<GSValue> cbArgs = buildCallbackArgs(args, 3);
+                ArrayList cbArgs = buildCallbackArgs(args, 3);
                 int id = interpreter.scheduleInterval(cb, period, cbArgs);
                 return new GSInt(id);
             }
@@ -63,8 +61,7 @@ public class TimerLib {
     /** clearTimeout(id) → 返回 null */
     public GSNativeFunction clearTimeout() {
         return new GSNativeFunction("clearTimeout") {
-            @Override
-            public GSValue call(ArrayList<GSValue> args) {
+            public GSValue call(ArrayList args) {
                 int id = extractInt(args, 1, 0);
                 interpreter.cancelTimer(id);
                 return GSNull.NULL;
@@ -75,8 +72,7 @@ public class TimerLib {
     /** clearInterval(id) → 返回 null */
     public GSNativeFunction clearInterval() {
         return new GSNativeFunction("clearInterval") {
-            @Override
-            public GSValue call(ArrayList<GSValue> args) {
+            public GSValue call(ArrayList args) {
                 int id = extractInt(args, 1, 0);
                 interpreter.cancelTimer(id);
                 return GSNull.NULL;
@@ -87,12 +83,12 @@ public class TimerLib {
     // ===== 内部工具 =====
 
     /** 提取回调函数（args[1]，必须 type==6 GSFunction），非法返回 null 并打印警告。 */
-    private GSFunction extractCallback(ArrayList<GSValue> args) {
+    private GSFunction extractCallback(ArrayList args) {
         if (args.size() < 2) {
             System.err.println("TypeError: timer callback expected");
             return null;
         }
-        GSValue cb = args.get(1);
+        GSValue cb = (GSValue) args.get(1);
         if (cb.type != 6) {
             System.err.println("TypeError: timer callback is not a function (got type " + cb.type + ")");
             return null;
@@ -101,15 +97,15 @@ public class TimerLib {
     }
 
     /** 从 args[idx] 提取 long，缺省返回 defaultVal。 */
-    private long extractLong(ArrayList<GSValue> args, int idx, long defaultVal) {
+    private long extractLong(ArrayList args, int idx, long defaultVal) {
         if (idx >= args.size()) return defaultVal;
-        return args.get(idx).toIntValue();
+        return ((GSValue) args.get(idx)).toIntValue();
     }
 
     /** 从 args[idx] 提取 int，缺省返回 defaultVal。 */
-    private int extractInt(ArrayList<GSValue> args, int idx, int defaultVal) {
+    private int extractInt(ArrayList args, int idx, int defaultVal) {
         if (idx >= args.size()) return defaultVal;
-        return args.get(idx).toIntValue();
+        return ((GSValue) args.get(idx)).toIntValue();
     }
 
     /**
@@ -119,11 +115,11 @@ public class TimerLib {
      * @param extraStart 附加参数在 nativeArgs 中的起始索引（setTimeout/setInterval 为 3）
      * @return [GSNull.NULL(this), ...extraArgs]
      */
-    private ArrayList<GSValue> buildCallbackArgs(ArrayList<GSValue> nativeArgs, int extraStart) {
-        ArrayList<GSValue> cbArgs = new ArrayList<>();
+    private ArrayList buildCallbackArgs(ArrayList nativeArgs, int extraStart) {
+        ArrayList cbArgs = new ArrayList();
         cbArgs.add(GSNull.NULL);  // args[0] = this（回调无对象上下文，用 null）
         for (int i = extraStart; i < nativeArgs.size(); i++) {
-            cbArgs.add(nativeArgs.get(i));
+            cbArgs.add((GSValue) nativeArgs.get(i));
         }
         return cbArgs;
     }

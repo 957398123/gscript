@@ -9,7 +9,6 @@ public class MultiplicativeExpression extends OperatorNode{
         type = "MultiplicativeExpression";
     }
 
-    @Override
     public void accept(Visitor v) {
         v.visit(this);
     }

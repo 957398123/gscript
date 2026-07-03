@@ -11,7 +11,6 @@ public class TryClause extends Node{
         this.tryBody = tryBody;
     }
 
-    @Override
     public void accept(Visitor v) {
         v.visit(this);
     }

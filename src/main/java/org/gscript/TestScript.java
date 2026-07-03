@@ -20,9 +20,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.FileOutputStream;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -75,36 +72,41 @@ public class TestScript {
         URL rootUrl = Test.class.getResource("/");
         InputStream in = Test.class.getResourceAsStream("/" + fileName + ".script");
         if (in != null) {
-            String content = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+            byte[] buf = new byte[4096];
+            int n;
+            while ((n = in.read(buf)) != -1) { bos.write(buf, 0, n); }
             in.close();
+            String content = new String(bos.toByteArray(), "UTF-8");
             Lexer lexer = new Lexer();
-            List<GSToken> tokens = lexer.tokenize(content);
+            List tokens = lexer.tokenize(content);
             Parser parser = new Parser(tokens);
             Node program = parser.parseProgram();
             ByteCodeGenerator byteCodeGenerator = new ByteCodeGenerator();
             program.accept(byteCodeGenerator);
-            // 使用Paths和Files处理路径
-            Path outputPath = Paths.get(rootUrl.toURI()).resolve("gtxt").resolve(fileName + ".gtxt");
+            // 使用File处理路径
+            java.io.File outputPath = new java.io.File(new java.io.File(rootUrl.toURI()), "gtxt");
+            outputPath = new java.io.File(outputPath, fileName + ".gtxt");
             Test.list2File(byteCodeGenerator.getFormatByteCode(), outputPath.toString());
             // dump 模式：打印字节码索引和 sourceLine 对照（调试器源码映射验证用）
             if (dump) {
-                ArrayList<String> bc = byteCodeGenerator.getByteCode();
-                ArrayList<Integer> lines = byteCodeGenerator.getSourceLines();
+                ArrayList bc = byteCodeGenerator.getByteCode();
+                ArrayList lines = byteCodeGenerator.getSourceLines();
                 System.err.println("==== bytecode<->sourceLine dump ====");
                 for (int i = 0; i < bc.size(); i++) {
-                    int ln = (i < lines.size()) ? lines.get(i) : 0;
-                    System.err.println(String.format("%4d [line %-3d] %s", i, ln, bc.get(i)));
+                    int ln = (i < lines.size()) ? ((Integer) lines.get(i)).intValue() : 0;
+                    System.err.println(padLeft(String.valueOf(i), 4) + " [line " + padRight(String.valueOf(ln), 3) + "] " + bc.get(i));
                 }
                 System.err.println("==== end dump ====");
                 return;  // dump 模式只打印不执行
             }
             // 创建解释器，并执行脚本
             GSInterpreter interpreter = new GSInterpreter();
-            ArrayList<String> src =  byteCodeGenerator.getByteCode();
+            ArrayList src =  byteCodeGenerator.getByteCode();
             // 增加控制台输出
             interpreter.addVariableToGlobal("console", new Console());
             interpreter.installTimerGlobals();
-            interpreter.eval(src.toArray(new String[src.size()]));
+            interpreter.eval((String[]) src.toArray(new String[src.size()]));
             interpreter.runEventLoop();
         }
     }
@@ -124,30 +126,38 @@ public class TestScript {
             System.err.println("Script not found: /" + name + ".script");
             return;
         }
-        String content = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+        byte[] buf = new byte[4096];
+        int n;
+        while ((n = in.read(buf)) != -1) { bos.write(buf, 0, n); }
         in.close();
+        String content = new String(bos.toByteArray(), "UTF-8");
 
         // 编译
         Lexer lexer = new Lexer();
-        List<GSToken> tokens = lexer.tokenize(content);
+        List tokens = lexer.tokenize(content);
         Parser parser = new Parser(tokens);
         Node program = parser.parseProgram();
         ByteCodeGenerator gen = new ByteCodeGenerator();
         program.accept(gen);
 
-        ArrayList<String> bytecode = gen.getByteCode();
-        ArrayList<Integer> sourceLines = gen.getSourceLines();
+        ArrayList bytecode = gen.getByteCode();
+        ArrayList sourceLines = gen.getSourceLines();
 
         // 序列化为 .gclass
         // sourcePath 设为 name + ".script"（调试用标识，非绝对路径）
         // sourceContent 传入完整源码文本（attach 调试模式通过 source 请求返回）
         String sourcePath = name + ".script";
-        Path gclassPath = Paths.get(rootUrl.toURI()).resolve("gtxt").resolve(name + ".gclass");
-        File gclassFile = gclassPath.toFile();
+        java.io.File gclassPath = new java.io.File(new java.io.File(rootUrl.toURI()), "gtxt");
+        gclassPath = new java.io.File(gclassPath, name + ".gclass");
+        File gclassFile = gclassPath;
         gclassFile.getParentFile().mkdirs();  // 确保 gtxt 目录存在
         GSClassWriter writer = new GSClassWriter();
-        try (OutputStream out = new FileOutputStream(gclassFile)) {
+        OutputStream out = new FileOutputStream(gclassFile);
+        try {
             writer.write(bytecode, sourceLines, sourcePath, content, out);
+        } finally {
+            try { out.close(); } catch (Exception e) {}
         }
         System.err.println("gclass written: " + gclassPath);
         System.err.println("  bytecode instructions: " + bytecode.size());
@@ -184,14 +194,15 @@ public class TestScript {
             int ln = (data.sourceLines != null && i < data.sourceLines.length) ? data.sourceLines[i] : 0;
             // 用 BytecodeDecoder 将二进制指令还原为文本形式
             String text = BytecodeDecoder.decode(data.src[i], data.constantPool);
-            System.err.println(String.format("%4d [line %-3d] %s", i, ln, text));
+            System.err.println(padLeft(String.valueOf(i), 4) + " [line " + padRight(String.valueOf(ln), 3) + "] " + text);
         }
         System.err.println("==== end gclass dump ====");
 
         // 打印 FunctionTable（若有 attributes 段）
         if (data.functions != null && data.functions.length > 0) {
             System.err.println("==== function table ====");
-            for (GSClassData.FunctionEntry fe : data.functions) {
+            for (int i = 0; i < data.functions.length; i++) {
+                GSClassData.FunctionEntry fe = data.functions[i];
                 System.err.println("  " + fe);
             }
             System.err.println("==== end function table ====");
@@ -244,23 +255,22 @@ public class TestScript {
         System.out.println("sum=" + sum.toIntValue());
 
         // 3. setVariable 注入 Java 值 + gscript 读取
-        interpreter.setVariable("z", 100);
+        interpreter.setVariable("z", new Integer(100));
         interpreter.setVariable("greeting", "hello");
         interpreter.evalScript("console.log(z); console.log(greeting);");
 
         // 4. toJavaObject：对象 + 嵌套数组递归转换
         GSValue obj = interpreter.evalExpression("{name: \"Alice\", age: 30, scores: [90, 85, 95]}");
-        @SuppressWarnings("unchecked")
-        Map<String, Object> javaObj = (Map<String, Object>) obj.toJavaObject();
+        Map javaObj = (Map) obj.toJavaObject();
         System.out.println("obj.name=" + javaObj.get("name"));
         System.out.println("obj.age=" + javaObj.get("age"));
         System.out.println("obj.scores=" + javaObj.get("scores"));
 
         // 5. fromJavaObject：注入 Map/List + gscript 访问
-        Map<String, Object> config = new LinkedHashMap<>();
-        config.put("timeout", 5000);
-        config.put("retries", 3);
-        List<Integer> tags = Arrays.asList(1, 2, 3);
+        Map config = new LinkedHashMap();
+        config.put("timeout", new Integer(5000));
+        config.put("retries", new Integer(3));
+        List tags = new ArrayList(Arrays.asList(new Integer[]{new Integer(1), new Integer(2), new Integer(3)}));
         interpreter.setVariable("config", config);
         interpreter.setVariable("tags", tags);
         GSValue timeout = interpreter.evalExpression("config.timeout");
@@ -321,5 +331,28 @@ public class TestScript {
             agent.waitForDebuggerAndRun();  // 阻塞直到调试会话结束
             System.err.println("[测试] 调试会话结束");
         }
+    }
+
+    // =========================================================================
+    //  格式化辅助（替代 String.format，Java 1.4 兼容）
+    // =========================================================================
+
+    /** 右对齐：左侧补空格到 width（替代 String.format("%4d")）。 */
+    private static String padLeft(String s, int width) {
+        StringBuffer sb = new StringBuffer();
+        while (sb.length() + s.length() < width) {
+            sb.append(' ');
+        }
+        sb.append(s);
+        return sb.toString();
+    }
+
+    /** 左对齐：右侧补空格到 width（替代 String.format("%-3d")）。 */
+    private static String padRight(String s, int width) {
+        StringBuffer sb = new StringBuffer(s);
+        while (sb.length() < width) {
+            sb.append(' ');
+        }
+        return sb.toString();
     }
 }

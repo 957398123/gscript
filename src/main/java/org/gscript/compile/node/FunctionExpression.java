@@ -9,19 +9,18 @@ public class FunctionExpression extends Node{
     public Identifier identifier;
 
     // 形参列表
-    public List<Identifier> params;
+    public List params;
 
     // 方法体
     public BlockStatement body;
 
-    public FunctionExpression(Identifier identifier, List<Identifier> params, BlockStatement body) {
+    public FunctionExpression(Identifier identifier, List params, BlockStatement body) {
         type = "FunctionExpression";
         this.identifier = identifier;
         this.params = params;
         this.body = body;
     }
 
-    @Override
     public void accept(Visitor v) {
         v.visit(this);
     }

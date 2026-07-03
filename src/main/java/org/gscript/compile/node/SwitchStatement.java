@@ -10,17 +10,17 @@ public class SwitchStatement extends Node {
     public Expression condition;
 
     // case条件
-    public List<Expression> cases;
+    public List cases;
 
     // case对应的语句
-    public List<BlockStatement> blocks;
+    public List blocks;
 
     // case与block的映射位置
     public int[] offsetMap;
 
     public boolean hasDefault = false;
 
-    public SwitchStatement(Expression condition, List<Expression> cases, List<BlockStatement> blocks, int[] offsetMap, boolean hasDefault) {
+    public SwitchStatement(Expression condition, List cases, List blocks, int[] offsetMap, boolean hasDefault) {
         this.condition = condition;
         this.cases = cases;
         this.blocks = blocks;
@@ -28,7 +28,6 @@ public class SwitchStatement extends Node {
         this.hasDefault = hasDefault;
     }
 
-    @Override
     public void accept(Visitor v) {
         v.visit(this);
     }

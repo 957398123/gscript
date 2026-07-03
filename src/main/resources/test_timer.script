@@ -1,0 +1,6 @@
+function printHello(count){
+    console.log("hello "  + count);
+}
+
+setInterval(printHello, 10000);
+console.log("测试开始");

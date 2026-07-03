@@ -124,17 +124,17 @@ public final class GSClassConstants {
     public static final byte NEW_ARRAY = 2;
 
     // ===== 主操作码文本名 → 二进制码映射（不含 const，const 需特殊处理）=====
-    public static final Map<String, Byte> TEXT_TO_OPCODE = new HashMap<>();
+    public static final Map TEXT_TO_OPCODE = new HashMap();
     /** 二进制码 → 文本操作码名（反序列化用，const_* 统一映射回 "const"） */
-    public static final Map<Byte, String> OPCODE_TO_TEXT = new HashMap<>();
+    public static final Map OPCODE_TO_TEXT = new HashMap();
 
     static {
         // const_* 统一映射回文本 "const"（Reader 还原为 String[]{"const", typeChar, value}）
-        OPCODE_TO_TEXT.put(OP_CONST_A, "const");
-        OPCODE_TO_TEXT.put(OP_CONST_I, "const");
-        OPCODE_TO_TEXT.put(OP_CONST_F, "const");
-        OPCODE_TO_TEXT.put(OP_CONST_S, "const");
-        OPCODE_TO_TEXT.put(OP_CONST_B, "const");
+        OPCODE_TO_TEXT.put(new Byte(OP_CONST_A), "const");
+        OPCODE_TO_TEXT.put(new Byte(OP_CONST_I), "const");
+        OPCODE_TO_TEXT.put(new Byte(OP_CONST_F), "const");
+        OPCODE_TO_TEXT.put(new Byte(OP_CONST_S), "const");
+        OPCODE_TO_TEXT.put(new Byte(OP_CONST_B), "const");
 
         // 其余操作码双向映射
         put("lda_null", OP_LDA_NULL);
@@ -172,60 +172,60 @@ public final class GSClassConstants {
     }
 
     private static void put(String text, byte code) {
-        TEXT_TO_OPCODE.put(text, code);
-        OPCODE_TO_TEXT.put(code, text);
+        TEXT_TO_OPCODE.put(text, new Byte(code));
+        OPCODE_TO_TEXT.put(new Byte(code), text);
     }
 
     // ===== 子操作码文本名 → 二进制码映射 =====
-    public static final Map<String, Byte> ARITH_SUB = new HashMap<>();
-    public static final Map<String, Byte> COMP_SUB = new HashMap<>();
-    public static final Map<String, Byte> RELA_SUB = new HashMap<>();
-    public static final Map<String, Byte> PUSHENV_SUB = new HashMap<>();
-    public static final Map<String, Byte> POPENV_SUB = new HashMap<>();
-    public static final Map<String, Byte> NEW_SUB = new HashMap<>();
+    public static final Map ARITH_SUB = new HashMap();
+    public static final Map COMP_SUB = new HashMap();
+    public static final Map RELA_SUB = new HashMap();
+    public static final Map PUSHENV_SUB = new HashMap();
+    public static final Map POPENV_SUB = new HashMap();
+    public static final Map NEW_SUB = new HashMap();
 
     /** 子操作码二进制码 → 文本名（反序列化用） */
-    public static final Map<Byte, String> ARITH_SUB_REV = new HashMap<>();
-    public static final Map<Byte, String> COMP_SUB_REV = new HashMap<>();
-    public static final Map<Byte, String> RELA_SUB_REV = new HashMap<>();
-    public static final Map<Byte, String> PUSHENV_SUB_REV = new HashMap<>();
-    public static final Map<Byte, String> POPENV_SUB_REV = new HashMap<>();
-    public static final Map<Byte, String> NEW_SUB_REV = new HashMap<>();
+    public static final Map ARITH_SUB_REV = new HashMap();
+    public static final Map COMP_SUB_REV = new HashMap();
+    public static final Map RELA_SUB_REV = new HashMap();
+    public static final Map PUSHENV_SUB_REV = new HashMap();
+    public static final Map POPENV_SUB_REV = new HashMap();
+    public static final Map NEW_SUB_REV = new HashMap();
 
     static {
-        ARITH_SUB.put("plus", ARITH_PLUS);     ARITH_SUB_REV.put(ARITH_PLUS, "plus");
-        ARITH_SUB.put("minus", ARITH_MINUS);   ARITH_SUB_REV.put(ARITH_MINUS, "minus");
-        ARITH_SUB.put("mul", ARITH_MUL);       ARITH_SUB_REV.put(ARITH_MUL, "mul");
-        ARITH_SUB.put("div", ARITH_DIV);       ARITH_SUB_REV.put(ARITH_DIV, "div");
-        ARITH_SUB.put("modulo", ARITH_MODULO); ARITH_SUB_REV.put(ARITH_MODULO, "modulo");
-        ARITH_SUB.put("neg", ARITH_NEG);       ARITH_SUB_REV.put(ARITH_NEG, "neg");
-        ARITH_SUB.put("ls", ARITH_LS);         ARITH_SUB_REV.put(ARITH_LS, "ls");
-        ARITH_SUB.put("rs", ARITH_RS);         ARITH_SUB_REV.put(ARITH_RS, "rs");
+        ARITH_SUB.put("plus", new Byte(ARITH_PLUS));     ARITH_SUB_REV.put(new Byte(ARITH_PLUS), "plus");
+        ARITH_SUB.put("minus", new Byte(ARITH_MINUS));   ARITH_SUB_REV.put(new Byte(ARITH_MINUS), "minus");
+        ARITH_SUB.put("mul", new Byte(ARITH_MUL));       ARITH_SUB_REV.put(new Byte(ARITH_MUL), "mul");
+        ARITH_SUB.put("div", new Byte(ARITH_DIV));       ARITH_SUB_REV.put(new Byte(ARITH_DIV), "div");
+        ARITH_SUB.put("modulo", new Byte(ARITH_MODULO)); ARITH_SUB_REV.put(new Byte(ARITH_MODULO), "modulo");
+        ARITH_SUB.put("neg", new Byte(ARITH_NEG));       ARITH_SUB_REV.put(new Byte(ARITH_NEG), "neg");
+        ARITH_SUB.put("ls", new Byte(ARITH_LS));         ARITH_SUB_REV.put(new Byte(ARITH_LS), "ls");
+        ARITH_SUB.put("rs", new Byte(ARITH_RS));         ARITH_SUB_REV.put(new Byte(ARITH_RS), "rs");
 
-        COMP_SUB.put("eq", COMP_EQ);     COMP_SUB_REV.put(COMP_EQ, "eq");
-        COMP_SUB.put("neq", COMP_NEQ);   COMP_SUB_REV.put(COMP_NEQ, "neq");
-        COMP_SUB.put("seq", COMP_SEQ);   COMP_SUB_REV.put(COMP_SEQ, "seq");
-        COMP_SUB.put("sneq", COMP_SNEQ); COMP_SUB_REV.put(COMP_SNEQ, "sneq");
-        COMP_SUB.put("gt", COMP_GT);     COMP_SUB_REV.put(COMP_GT, "gt");
-        COMP_SUB.put("ge", COMP_GE);     COMP_SUB_REV.put(COMP_GE, "ge");
-        COMP_SUB.put("lt", COMP_LT);     COMP_SUB_REV.put(COMP_LT, "lt");
-        COMP_SUB.put("le", COMP_LE);     COMP_SUB_REV.put(COMP_LE, "le");
+        COMP_SUB.put("eq", new Byte(COMP_EQ));     COMP_SUB_REV.put(new Byte(COMP_EQ), "eq");
+        COMP_SUB.put("neq", new Byte(COMP_NEQ));   COMP_SUB_REV.put(new Byte(COMP_NEQ), "neq");
+        COMP_SUB.put("seq", new Byte(COMP_SEQ));   COMP_SUB_REV.put(new Byte(COMP_SEQ), "seq");
+        COMP_SUB.put("sneq", new Byte(COMP_SNEQ)); COMP_SUB_REV.put(new Byte(COMP_SNEQ), "sneq");
+        COMP_SUB.put("gt", new Byte(COMP_GT));     COMP_SUB_REV.put(new Byte(COMP_GT), "gt");
+        COMP_SUB.put("ge", new Byte(COMP_GE));     COMP_SUB_REV.put(new Byte(COMP_GE), "ge");
+        COMP_SUB.put("lt", new Byte(COMP_LT));     COMP_SUB_REV.put(new Byte(COMP_LT), "lt");
+        COMP_SUB.put("le", new Byte(COMP_LE));     COMP_SUB_REV.put(new Byte(COMP_LE), "le");
 
-        RELA_SUB.put("b_and", RELA_B_AND); RELA_SUB_REV.put(RELA_B_AND, "b_and");
-        RELA_SUB.put("b_or", RELA_B_OR);   RELA_SUB_REV.put(RELA_B_OR, "b_or");
-        RELA_SUB.put("b_xor", RELA_B_XOR); RELA_SUB_REV.put(RELA_B_XOR, "b_xor");
-        RELA_SUB.put("b_not", RELA_B_NOT); RELA_SUB_REV.put(RELA_B_NOT, "b_not");
-        RELA_SUB.put("l_not", RELA_L_NOT); RELA_SUB_REV.put(RELA_L_NOT, "l_not");
+        RELA_SUB.put("b_and", new Byte(RELA_B_AND)); RELA_SUB_REV.put(new Byte(RELA_B_AND), "b_and");
+        RELA_SUB.put("b_or", new Byte(RELA_B_OR));   RELA_SUB_REV.put(new Byte(RELA_B_OR), "b_or");
+        RELA_SUB.put("b_xor", new Byte(RELA_B_XOR)); RELA_SUB_REV.put(new Byte(RELA_B_XOR), "b_xor");
+        RELA_SUB.put("b_not", new Byte(RELA_B_NOT)); RELA_SUB_REV.put(new Byte(RELA_B_NOT), "b_not");
+        RELA_SUB.put("l_not", new Byte(RELA_L_NOT)); RELA_SUB_REV.put(new Byte(RELA_L_NOT), "l_not");
 
-        PUSHENV_SUB.put("function", PUSHENV_FUNCTION); PUSHENV_SUB_REV.put(PUSHENV_FUNCTION, "function");
-        PUSHENV_SUB.put("loop", PUSHENV_LOOP);         PUSHENV_SUB_REV.put(PUSHENV_LOOP, "loop");
-        PUSHENV_SUB.put("block", PUSHENV_BLOCK);       PUSHENV_SUB_REV.put(PUSHENV_BLOCK, "block");
+        PUSHENV_SUB.put("function", new Byte(PUSHENV_FUNCTION)); PUSHENV_SUB_REV.put(new Byte(PUSHENV_FUNCTION), "function");
+        PUSHENV_SUB.put("loop", new Byte(PUSHENV_LOOP));         PUSHENV_SUB_REV.put(new Byte(PUSHENV_LOOP), "loop");
+        PUSHENV_SUB.put("block", new Byte(PUSHENV_BLOCK));       PUSHENV_SUB_REV.put(new Byte(PUSHENV_BLOCK), "block");
 
-        POPENV_SUB.put("loop", POPENV_LOOP);   POPENV_SUB_REV.put(POPENV_LOOP, "loop");
-        POPENV_SUB.put("block", POPENV_BLOCK); POPENV_SUB_REV.put(POPENV_BLOCK, "block");
+        POPENV_SUB.put("loop", new Byte(POPENV_LOOP));   POPENV_SUB_REV.put(new Byte(POPENV_LOOP), "loop");
+        POPENV_SUB.put("block", new Byte(POPENV_BLOCK)); POPENV_SUB_REV.put(new Byte(POPENV_BLOCK), "block");
 
-        NEW_SUB.put("Object", NEW_OBJECT); NEW_SUB_REV.put(NEW_OBJECT, "Object");
-        NEW_SUB.put("Array", NEW_ARRAY);    NEW_SUB_REV.put(NEW_ARRAY, "Array");
+        NEW_SUB.put("Object", new Byte(NEW_OBJECT)); NEW_SUB_REV.put(new Byte(NEW_OBJECT), "Object");
+        NEW_SUB.put("Array", new Byte(NEW_ARRAY));    NEW_SUB_REV.put(new Byte(NEW_ARRAY), "Array");
     }
 
     /**
@@ -235,14 +235,12 @@ public final class GSClassConstants {
      * @return 对应的 const_* 操作码
      */
     public static byte constOpcode(String typeChar) {
-        switch (typeChar) {
-            case "a": return OP_CONST_A;
-            case "i": return OP_CONST_I;
-            case "f": return OP_CONST_F;
-            case "s": return OP_CONST_S;
-            case "b": return OP_CONST_B;
-            default: throw new IllegalArgumentException("Unknown const type: " + typeChar);
-        }
+        if ("a".equals(typeChar)) { return OP_CONST_A; }
+        if ("i".equals(typeChar)) { return OP_CONST_I; }
+        if ("f".equals(typeChar)) { return OP_CONST_F; }
+        if ("s".equals(typeChar)) { return OP_CONST_S; }
+        if ("b".equals(typeChar)) { return OP_CONST_B; }
+        throw new IllegalArgumentException("Unknown const type: " + typeChar);
     }
 
     /**

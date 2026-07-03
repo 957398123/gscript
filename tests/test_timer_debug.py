@@ -27,15 +27,9 @@ RESOURCES_DIR = os.path.join(PROJECT_DIR, "src", "main", "resources")
 JAVA = os.environ.get("JAVA_HOME", r"C:\Program Files\Java\jdk-9.0.4") + r"\bin\java.exe"
 PORT = 4711
 HOST = "localhost"
-# debugagent / debugagent-attach 模式经过 DebugAgent → DapServer 需要 Gson（DAP JSON 处理），
-# 而 target/classes 不含 Gson 依赖（仅 mvn package 打 fat jar 时包含）。
-# 故 debug 启动用 classpath = target/classes + Maven 本地仓库的 Gson jar。
-GSON_JAR = os.path.join(
-    os.path.expanduser("~"),
-    ".m2", "repository", "com", "google", "code", "gson",
-    "gson", "2.10.1", "gson-2.10.1.jar",
-)
-DEBUG_CP = CLASSES_DIR + os.pathsep + GSON_JAR
+# Java 1.4 迁移：DAP JSON 处理改用自研 org.gscript.vm.debug.dap.json 库（编译进 target/classes），
+# 不再依赖 Gson，故 debug 启动 classpath = target/classes。
+DEBUG_CP = CLASSES_DIR
 
 passed = 0
 failed = 0
@@ -153,7 +147,7 @@ def ensure_gclass(name):
 
 
 def start_java(name, mode):
-    """启动 TestScript（debug 模式需 Gson，用 DEBUG_CP）。"""
+    """启动 TestScript（debug 模式用 DEBUG_CP = target/classes，自研 JSON 库）。"""
     cmd = [JAVA, "-cp", DEBUG_CP, "org.gscript.TestScript", name, mode]
     return subprocess.Popen(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,

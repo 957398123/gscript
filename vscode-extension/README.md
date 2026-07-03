@@ -13,10 +13,12 @@ gscript 语言的 VSCode 调试扩展，提供：
 在项目根目录执行：
 
 ```bash
-mvn package
+mvn package -DskipTests
 ```
 
-生成 `target/gscript-1.0-SNAPSHOT.jar`（fat jar，含 Gson）。
+生成 `target/gscript-1.0-SNAPSHOT.jar`（纯项目 jar，零外部依赖）。
+
+> **JDK 9+ 开发机**：JDK 9 不支持 `-source 1.4`，需临时将 pom.xml 的 `<source>`/`<target>` 改为 `1.6` 再构建。代码本身仅用 Java 1.4 语法与 API。
 
 ### 2. 配置 jar 路径
 
@@ -36,7 +38,7 @@ mvn package
   "type": "gscript",
   "request": "launch",
   "name": "Launch gscript",
-  "program": "${file}",
+  "files": ["${file}"],
   "stopOnEntry": false,
   "jarPath": "e:/JProjects/gscript/target/gscript-1.0-SNAPSHOT.jar"
 }
@@ -73,16 +75,28 @@ VSCode 会自动生成默认 `launch.json`：
     {
       "type": "gscript",
       "request": "launch",
-      "name": "Launch gscript",
-      "program": "${file}",
+      "name": "Launch gscript (current file)",
+      "files": ["${file}"],
       "stopOnEntry": false
     },
     {
       "type": "gscript",
       "request": "attach",
-      "name": "Attach to gscript",
+      "name": "Attach to gscript (debug mode)",
       "host": "localhost",
-      "port": 4711
+      "port": 4711,
+      "localRoot": "${workspaceFolder}/src/main/resources",
+      "remoteRoot": "",
+      "stopOnEntry": false
+    },
+    {
+      "type": "gscript",
+      "request": "attach",
+      "name": "Attach to gscript (runtime)",
+      "host": "localhost",
+      "port": 4711,
+      "localRoot": "${workspaceFolder}/src/main/resources",
+      "remoteRoot": ""
     }
   ]
 }
@@ -90,15 +104,19 @@ VSCode 会自动生成默认 `launch.json`：
 
 ### Attach 模式
 
-1. 手动启动调试适配器：
+1. 手动启动调试适配器（socket 模式）：
 
    ```bash
-   java -jar gscript-1.0-SNAPSHOT.jar --port=4711
+   java -jar target/gscript-1.0-SNAPSHOT.jar --port=4711
    ```
 
 2. 在 VSCode 中选择「Attach to gscript」配置，按 F5。
 
-Attach 模式适用于：调试适配器需要在 IDE 之外单独运行（如容器内、远程机器上）的场景。
+Attach 模式有两种启用方式：
+- **debug 模式（`waitForDebugger`）**：gscript 程序启动时阻塞等待 VSCode 连接后执行
+- **运行时 attach（`attachReady`）**：gscript 程序已运行，VSCode 随后附加（如同 `node --inspect`）
+
+Attach 模式适用于：调试适配器需在 IDE 之外单独运行（容器内、远程机器、或运行时动态附加）的场景。`localRoot`/`remoteRoot` 用于远程 sourcePath 到本地源码的路径映射。
 
 ## 调试功能
 
@@ -129,7 +147,8 @@ Attach 模式适用于：调试适配器需要在 IDE 之外单独运行（如�
 
 ## 注意事项
 
-1. **Java 版本**：需 Java 9+（使用了 `InputStream.readAllBytes()`）。
-2. **注释语法**：gscript Lexer 支持 `//` 单行注释，**不支持** `/* */` 块注释。语法高亮中保留了块注释规则仅供视觉参考，但运行带块注释的脚本会报错。
+1. **Java 版本**：需 Java 1.4+（源码与字节码目标均为 1.4，零外部依赖）。JDK 9+ 开发机构建时需临时将 pom.xml 改为 `1.6`。
+2. **注释语法**：gscript Lexer 同时支持 `//` 单行注释和 `/* */` 块注释（含跨行、行内、含斜杠路径）。
 3. **输出重定向**：Launch 模式下 `console.log` 输出会通过 DAP "output" 事件显示在「调试控制台」，而非直接写 stdout（stdout 被 DAP 协议占用）。
 4. **单线程模型**：gscript 解释器单线程，调试器固定线程 ID 为 1。
+5. **launch.json 属性**：v0.2.0+ 起 `localRoot`/`remoteRoot`/`stopOnEntry` 在 launch + attach 模式均允许。若仍报「属性不允许」，确认已安装 v0.2.0+（`code --list-extensions --show-versions`）。
