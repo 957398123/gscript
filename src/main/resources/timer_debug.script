@@ -1,0 +1,7 @@
+// timer_debug.script - setInterval 运行时附加调试测试
+// 脚本用 setInterval 持续运行（永不退出），适合 VSCode 运行时附加
+var counter = 0;
+setInterval(function() {
+    counter = counter + 1;
+    console.log("tick " + counter);
+}, 100);

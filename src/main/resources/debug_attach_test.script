@@ -1,0 +1,40 @@
+// gscript attach 调试测试脚本
+// 用法：
+//   1. mvn package
+//   2. java -cp target/gscript-1.0-SNAPSHOT.jar org.gscript.TestScript debug_attach_test compile
+//   3. java -cp target/gscript-1.0-SNAPSHOT.jar org.gscript.TestScript debug_attach_test debugagent
+//      或 debugagent-attach
+//   4. VSCode attach（端口 4711）
+
+var counter = 0;
+
+function calculateFactorial(n) {
+    if (n <= 1) {
+        return 1;
+    }
+    return n * calculateFactorial(n - 1);
+}
+
+function processItems(items) {
+    var total = 0;
+    var i = 0;
+    while (i < items.length) {
+        total = total + items[i];
+        i = i + 1;
+    }
+    return total;
+}
+
+console.log("=== attach 调试测试开始 ===");
+
+var fact5 = calculateFactorial(5);
+console.log("5! = " + fact5);
+
+var numbers = [10, 20, 30, 40, 50];
+var sum = processItems(numbers);
+console.log("sum = " + sum);
+
+counter = fact5 + sum;
+console.log("counter = " + counter);
+
+console.log("=== attach 调试测试结束 ===");

@@ -1,0 +1,44 @@
+// 模式二（运行时 attach）测试脚本
+// 设计为长时间运行，给 VSCode 留出足够时间附加调试器。
+// 用法：
+//   1. java -cp target/classes org.gscript.TestScript debug_attach_runtime compile
+//   2. java -cp target/classes org.gscript.TestScript debug_attach_runtime debugagent-attach
+//   3. VSCode 用 attach 配置连接端口 4711，附加后解释器自动暂停，
+//      可设断点、单步、查看变量，disconnect 后解释器继续运行至结束。
+
+// 计算斐波那契数列（递归，便于调试调用栈）
+function fib(n) {
+    if (n <= 1) {
+        return n;
+    }
+    return fib(n - 1) + fib(n - 2);
+}
+
+// 累加求和（循环，便于调试单步）
+function sumRange(start, end) {
+    var total = 0;
+    var i = start;
+    while (i <= end) {
+        total = total + i;
+        i = i + 1;
+    }
+    return total;
+}
+
+// 模拟长时间运行任务：多轮计算，每轮打印进度
+function runLongTask(rounds) {
+    var round = 0;
+    while (round < rounds) {
+        var f = fib(10 + (round % 5));
+        var s = sumRange(1, 100 + round * 10);
+        console.log("round=" + round + " fib=" + f + " sum=" + s);
+        round = round + 1;
+    }
+    return round;
+}
+
+// 主循环：100000 轮，每轮含递归+循环计算，运行时间足够长（10+ 秒）
+// 附加调试器后会自动暂停，可在此处设断点观察 round/total/f 等变量
+// 运行时 attach 模式需要脚本持续运行，给 VSCode 留出附加时间
+var result = runLongTask(100000);
+console.log("任务完成，共执行 " + result + " 轮");

@@ -1,0 +1,57 @@
+// timer_test.script - 定时器 API 测试
+// 覆盖：setTimeout 基本/传参/延迟顺序/0延迟/闭包/嵌套、setInterval 多次/clearInterval、clearTimeout
+
+// [8] clearTimeout：注册后立即取消，回调不应执行
+var cancelled = setTimeout(function() {
+    console.log("OUT:SHOULD_NOT_PRINT");
+}, 1000);
+clearTimeout(cancelled);
+console.log("OUT:cancel_ok");
+
+// [4] 0 延迟：主脚本结束后应最先执行
+setTimeout(function() {
+    console.log("OUT:zero");
+}, 0);
+
+// [1] 短延迟
+setTimeout(function() {
+    console.log("OUT:short");
+}, 50);
+
+// [3] 传参：额外参数透传给回调
+setTimeout(function(a, b) {
+    console.log("OUT:args=" + a + "," + b);
+}, 100, 11, 22);
+
+// [5] 闭包：回调应看到变量被修改后的值
+var shared = "init";
+setTimeout(function() {
+    console.log("OUT:closure=" + shared);
+}, 150);
+shared = "modified";
+
+// [6] 嵌套 setTimeout
+setTimeout(function() {
+    console.log("OUT:outer");
+    setTimeout(function() {
+        console.log("OUT:inner");
+    }, 100);
+}, 200);
+
+// [7] setInterval：tick 3 次后 clearInterval
+var ticks = 0;
+var iv = setInterval(function() {
+    ticks = ticks + 1;
+    console.log("OUT:tick=" + ticks);
+    if (ticks >= 3) {
+        clearInterval(iv);
+        console.log("OUT:cleared");
+    }
+}, 120);
+
+// [2] 长延迟
+setTimeout(function() {
+    console.log("OUT:long");
+}, 500);
+
+console.log("OUT:main_end");
