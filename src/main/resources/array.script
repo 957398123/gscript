@@ -1,0 +1,7 @@
+var a = [1, 2, 3, "你好"];
+
+for(var i = 0; i < a.length; ++i){
+    console.log("a index=" + i + ", value=" + a[i]);
+}
+
+console.log("test end");
