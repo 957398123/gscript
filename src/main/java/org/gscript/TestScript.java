@@ -56,9 +56,12 @@ public class TestScript {
         } else if ("debugagent-attach".equals(mode)) {
             // 新增：DebugAgent attachReady 模式（运行时附加）
             TestScript.debugAgent(name, true);
+        } else if ("batch".equals(mode)) {
+            // 迁移自 Test.main：遍历 resources 根目录所有 .script，批量编译为 .gtxt（不执行）
+            TestScript.batchCompile();
         } else {
             System.err.println("Unknown mode: " + mode);
-            System.err.println("Usage: TestScript <name> [run|dump|compile|rungclass|dumpgclass|hosttest|debugagent|debugagent-attach]");
+            System.err.println("Usage: TestScript <name> [run|dump|compile|rungclass|dumpgclass|hosttest|debugagent|debugagent-attach|batch]");
         }
     }
 
@@ -67,10 +70,10 @@ public class TestScript {
     }
 
     public static void gen(String fileName, boolean dump) throws Exception {
-        URL classUrl = Test.class.getResource("Test.class");
+        URL classUrl = TestScript.class.getResource("TestScript.class");
         // 获取classpath根目录
-        URL rootUrl = Test.class.getResource("/");
-        InputStream in = Test.class.getResourceAsStream("/" + fileName + ".script");
+        URL rootUrl = TestScript.class.getResource("/");
+        InputStream in = TestScript.class.getResourceAsStream("/" + fileName + ".script");
         if (in != null) {
             java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
             byte[] buf = new byte[4096];
@@ -85,9 +88,9 @@ public class TestScript {
             ByteCodeGenerator byteCodeGenerator = new ByteCodeGenerator();
             program.accept(byteCodeGenerator);
             // 使用File处理路径
-            java.io.File outputPath = new java.io.File(new java.io.File(rootUrl.toURI()), "gtxt");
+            java.io.File outputPath = new java.io.File(resourceUrlToFile(rootUrl), "gtxt");
             outputPath = new java.io.File(outputPath, fileName + ".gtxt");
-            Test.list2File(byteCodeGenerator.getFormatByteCode(), outputPath.toString());
+            list2File(byteCodeGenerator.getFormatByteCode(), outputPath.toString());
             // dump 模式：打印字节码索引和 sourceLine 对照（调试器源码映射验证用）
             if (dump) {
                 ArrayList bc = byteCodeGenerator.getByteCode();
@@ -120,8 +123,8 @@ public class TestScript {
      * .gclass 写到 classpath 根目录下的 gtxt/<name>.gclass（与 .gtxt 同目录）。
      */
     public static void compileGclass(String name) throws Exception {
-        URL rootUrl = Test.class.getResource("/");
-        InputStream in = Test.class.getResourceAsStream("/" + name + ".script");
+        URL rootUrl = TestScript.class.getResource("/");
+        InputStream in = TestScript.class.getResourceAsStream("/" + name + ".script");
         if (in == null) {
             System.err.println("Script not found: /" + name + ".script");
             return;
@@ -148,7 +151,7 @@ public class TestScript {
         // sourcePath 设为 name + ".script"（调试用标识，非绝对路径）
         // sourceContent 传入完整源码文本（attach 调试模式通过 source 请求返回）
         String sourcePath = name + ".script";
-        java.io.File gclassPath = new java.io.File(new java.io.File(rootUrl.toURI()), "gtxt");
+        java.io.File gclassPath = new java.io.File(resourceUrlToFile(rootUrl), "gtxt");
         gclassPath = new java.io.File(gclassPath, name + ".gclass");
         File gclassFile = gclassPath;
         gclassFile.getParentFile().mkdirs();  // 确保 gtxt 目录存在
@@ -216,7 +219,7 @@ public class TestScript {
      * @return GSClassData，文件不存在时返回 null
      */
     private static GSClassData loadGclass(String name) throws Exception {
-        InputStream in = Test.class.getResourceAsStream("/gtxt/" + name + ".gclass");
+        InputStream in = TestScript.class.getResourceAsStream("/gtxt/" + name + ".gclass");
         if (in == null) {
             System.err.println("gclass not found: /gtxt/" + name + ".gclass");
             System.err.println("请先运行: TestScript " + name + " compile");
@@ -228,6 +231,61 @@ public class TestScript {
         System.err.println("gclass loaded: /gtxt/" + name + ".gclass"
                 + " (bytecode=" + data.src.length + " instructions)");
         return data;
+    }
+
+    // =========================================================================
+    //  批量编译模式（迁移自 Test.java）
+    // =========================================================================
+
+    /**
+     * 批量编译 resources 根目录下所有 .script 文件为 .gtxt（不执行）。
+     * 原 Test.main 迁移，用于一次性刷新所有脚本的字节码 dump。
+     *
+     * <p>注意：本方法只编译不执行（与原 Test.gen 行为一致），
+     * 不能调用 {@link #gen(String)} 因为后者会执行脚本。
+     */
+    public static void batchCompile() throws Exception {
+        java.net.URL rootUrl = TestScript.class.getResource("/");
+        if (rootUrl == null) {
+            System.err.println("无法获取 resources 根目录（jar 内不支持，请用文件系统 classes 目录）");
+            return;
+        }
+        java.io.File scriptsDir = resourceUrlToFile(rootUrl);
+        java.io.File[] files = scriptsDir.listFiles(new java.io.FilenameFilter() {
+            public boolean accept(java.io.File dir, String name) { return name.endsWith(".script"); }
+        });
+        if (files == null) {
+            System.err.println("resources 目录不存在或非目录: " + scriptsDir);
+            return;
+        }
+        java.io.File gtxtDir = new java.io.File(resourceUrlToFile(rootUrl), "gtxt");
+        for (int i = 0; i < files.length; i++) {
+            String fileName = files[i].getName();
+            String baseName = fileName.substring(0, fileName.lastIndexOf('.'));
+            // 读取 .script 源码
+            InputStream in = TestScript.class.getResourceAsStream("/" + baseName + ".script");
+            if (in == null) {
+                System.err.println("skip (not found): " + baseName);
+                continue;
+            }
+            java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+            byte[] buf = new byte[4096];
+            int n;
+            while ((n = in.read(buf)) != -1) { bos.write(buf, 0, n); }
+            in.close();
+            String content = new String(bos.toByteArray(), "UTF-8");
+            // 编译
+            Lexer lexer = new Lexer();
+            List tokens = lexer.tokenize(content);
+            Parser parser = new Parser(tokens);
+            Node program = parser.parseProgram();
+            ByteCodeGenerator byteCodeGenerator = new ByteCodeGenerator();
+            program.accept(byteCodeGenerator);
+            // 写出 .gtxt（不执行）
+            java.io.File outputPath = new java.io.File(gtxtDir, baseName + ".gtxt");
+            list2File(byteCodeGenerator.getFormatByteCode(), outputPath.toString());
+            System.err.println("compiled: " + baseName + ".gtxt");
+        }
     }
 
     // =========================================================================
@@ -354,5 +412,39 @@ public class TestScript {
             sb.append(' ');
         }
         return sb.toString();
+    }
+
+    // =========================================================================
+    //  文件系统辅助（Java 1.4 兼容）
+    // =========================================================================
+
+    /**
+     * 从 classpath 资源 URL 构造 File（Java 1.4 兼容，替代 URL.toURI()）。
+     * URL.toURI() 是 Java 1.5+ API，1.4 用 URLDecoder.decode(url.getFile(), "UTF-8") 替代。
+     */
+    private static java.io.File resourceUrlToFile(java.net.URL url) throws java.io.IOException {
+        return new java.io.File(java.net.URLDecoder.decode(url.getFile(), "UTF-8"));
+    }
+
+    /**
+     * 把字符串列表写入文件（UTF-8，覆盖模式，自动 mkdirs）。
+     * 原 Test.list2File 迁移，供 gen 模式写出 .gtxt 用。
+     */
+    private static void list2File(ArrayList list, String filePath) throws java.io.IOException {
+        java.io.File path = new java.io.File(filePath).getParentFile();
+        if (path != null && !path.exists()) {
+            path.mkdirs();
+        }
+        java.io.BufferedWriter writer = new java.io.BufferedWriter(
+                new java.io.OutputStreamWriter(new java.io.FileOutputStream(filePath), "UTF-8"));
+        try {
+            for (int i = 0; i < list.size(); i++) {
+                String line = (String) list.get(i);
+                writer.write(line);
+                writer.newLine();
+            }
+        } finally {
+            try { writer.close(); } catch (Exception e) {}
+        }
     }
 }

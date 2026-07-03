@@ -6,13 +6,21 @@ import org.gscript.compile.gen.ByteCodeGenerator;
 import org.gscript.compile.gclass.BytecodeEncoder;
 import org.gscript.compile.gclass.EncodedBytecode;
 import org.gscript.compile.gclass.GSClassConstants;
+import org.gscript.compile.gclass.GSClassData;
+import org.gscript.compile.gclass.GSClassReader;
 import org.gscript.compile.node.Node;
 import org.gscript.compile.token.GSToken;
 import org.gscript.vm.debug.DebugAbortException;
+import org.gscript.vm.debug.DebugAgent;
 import org.gscript.vm.debug.DebugController;
+import org.gscript.vm.stdlib.Console;
 import org.gscript.vm.stdlib.TimerLib;
 import org.gscript.vm.value.*;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -74,6 +82,76 @@ public class GSInterpreter {
      */
     public DebugController getDebugController() {
         return debugController;
+    }
+
+    /**
+     * launch 调试模式：阻塞等待 VSCode 连接后执行 gclass。
+     *
+     * <p>封装 {@link DebugAgent#waitForDebuggerAndRun()} 的标准模板：
+     * <ol>
+     *   <li>创建 DebugAgent 监听端口</li>
+     *   <li>注册 gclass（含 sourceContent，供 VSCode source 请求）</li>
+     *   <li>设置本解释器为 agent 的执行解释器（使用当前实例的 global env、console、timer 等设置）</li>
+     *   <li>阻塞等待 VSCode 连接 + configurationDone</li>
+     *   <li>VSCode 连接后由 DapServer 创建 controller 并共享，解释器在子线程执行</li>
+     *   <li>阻塞直到 VSCode disconnect 或脚本执行完毕</li>
+     * </ol>
+     *
+     * <p>调用前应完成：addVariableToGlobal("console", new Console())、installTimerGlobals()、
+     * 其他自定义全局变量注入。本方法不返回直到调试会话结束。
+     *
+     * <p>线程模型：调用线程阻塞在 accept + DapServer.run；解释器在 DapServer 触发的
+     * "gscript-interpreter" 守护线程中执行。controller 由 DapServer.handleLaunchAttach 创建
+     * 并通过 agent.setController 共享，避免解释器拿到无 SuspendListener 的副本。
+     *
+     * @param data 待调试的 gclass 数据（须含 sourceContent）
+     * @param port VSCode DAP 连接端口（如 4711）
+     * @throws Exception 网络/调试协议异常
+     */
+    public void debugLaunch(GSClassData data, int port) throws Exception {
+        DebugAgent agent = new DebugAgent(port);
+        agent.setInterpreter(this);  // 使用当前解释器实例（保留 caller 的 console/timer/globals 设置）
+        agent.addGclass(data);
+        agent.waitForDebuggerAndRun();
+    }
+
+    /**
+     * attach 调试模式：解释器立即开始执行，VSCode 可随时附加。
+     *
+     * <p>封装 {@link DebugAgent#startAttachListener()} 的标准模板：
+     * <ol>
+     *   <li>创建 DebugAgent 监听端口（后台 "gscript-debug-accept" 守护线程）</li>
+     *   <li>设置本解释器为 agent 的执行解释器</li>
+     *   <li>注册 gclass（含 sourceContent）</li>
+     *   <li>startAttachListener 立即返回</li>
+     *   <li>当前线程执行 eval + runEventLoop（解释器全速运行）</li>
+     *   <li>VSCode 连接后由 DapServer 创建 controller，setController 立即设置到本解释器
+     *       （volatile 字段），下次 suspendCheck 时按 pauseOnAttach 挂起</li>
+     *   <li>runEventLoop 返回后调用 agent.stop() 清理</li>
+     * </ol>
+     *
+     * <p>调用前应完成：addVariableToGlobal("console", new Console())、installTimerGlobals()。
+     * 本方法阻塞直到脚本执行完毕（VSCode disconnect 仅分离调试器，不终止脚本——
+     * 若需在 disconnect 时终止，调用方应自行检查 controller 状态）。
+     *
+     * <p>线程模型：调用线程执行解释器；"gscript-debug-accept" 守护线程 accept VSCode 连接。
+     * 无死锁：pollReady 不持 TimerScheduler.lock，DebugAgent 线程不接触解释器字段。
+     *
+     * @param data 待调试的 gclass 数据（须含 sourceContent）
+     * @param port VSCode DAP 连接端口（如 4711）
+     * @throws Exception 网络/调试协议异常
+     */
+    public void debugAttach(GSClassData data, int port) throws Exception {
+        DebugAgent agent = new DebugAgent(port);
+        agent.setInterpreter(this);
+        agent.addGclass(data);
+        agent.startAttachListener();  // 后台监听，立即返回
+        try {
+            eval(data.src, data.constantPool, data.sourceLines, data.sourcePath, data.sourceContent);
+            runEventLoop();
+        } finally {
+            agent.stop();
+        }
     }
 
     /**
@@ -788,6 +866,134 @@ public class GSInterpreter {
         }
         if (stack.isEmpty()) return GSNull.NULL;
         return (GSValue) stack.pop();
+    }
+
+    // ===== 文件/流加载入口（带源码映射，供调试器使用）=====
+
+    /**
+     * 从文件系统读取 gscript 源码文件，编译并执行。
+     *
+     * <p>与 {@link #evalScript(String)} 的区别：本方法保留源码行号映射和源码内容，
+     * 供调试器断点/单步/源码查看使用。sourcePath 取文件名（非绝对路径），
+     * 与 {@link #eval(byte[][], Object[], int[], String, String)} 的多文件约定一致。
+     *
+     * <p>调用方负责在调用前 addVariableToGlobal("console", ...) 和 installTimerGlobals()，
+     * 以及在需要时调用 runEventLoop() 处理定时器回调。
+     *
+     * @param filePath .script 文件路径（绝对或相对当前工作目录）
+     * @throws IOException 文件读取失败
+     * @throws Exception   编译失败
+     */
+    public void evalScriptFile(String filePath) throws Exception {
+        File f = new File(filePath);
+        byte[] raw = readFileBytes(f);
+        String content = new String(raw, "UTF-8");
+        String sourcePath = f.getName();
+        evalScriptContent(content, sourcePath);
+    }
+
+    /**
+     * 从输入流读取 gscript 源码，编译并执行。
+     *
+     * <p>适用于 classpath 资源、网络流、zip 条目等非文件系统场景。
+     * sourcePath 由调用方指定（如 "myscript.script"），仅供调试器标识用。
+     *
+     * @param in         输入流（方法内会读取但不关闭，由调用方负责）
+     * @param sourcePath 源码标识路径（调试用，可为 null）
+     * @throws IOException 流读取失败
+     * @throws Exception   编译失败
+     */
+    public void evalScriptStream(InputStream in, String sourcePath) throws Exception {
+        byte[] raw = readStreamBytes(in);
+        String content = new String(raw, "UTF-8");
+        evalScriptContent(content, sourcePath);
+    }
+
+    /**
+     * 从文件系统读取 .gclass 二进制文件，反序列化并执行。
+     *
+     * <p>gclass 文件由 {@link org.gscript.compile.gclass.GSClassWriter} 序列化产生，
+     * 含字节码 + 常量池 + 源码映射 + 源码内容 + CRC32 校验。
+     * 本方法不调用 runEventLoop，调用方需自行处理定时器回调。
+     *
+     * @param filePath .gclass 文件路径
+     * @throws IOException 文件读取失败
+     * @throws Exception   反序列化或 CRC 校验失败
+     */
+    public void evalGclassFile(String filePath) throws Exception {
+        FileInputStream in = new FileInputStream(filePath);
+        try {
+            evalGclassStream(in);
+        } finally {
+            try { in.close(); } catch (Exception e) {}
+        }
+    }
+
+    /**
+     * 从输入流读取 .gclass 二进制数据，反序列化并执行。
+     *
+     * @param in 输入流（方法内会读取但不关闭，由调用方负责）
+     * @throws IOException 流读取失败
+     * @throws Exception   反序列化或 CRC 校验失败
+     */
+    public void evalGclassStream(InputStream in) throws Exception {
+        GSClassReader reader = new GSClassReader();
+        GSClassData data = reader.deserialize(in);
+        eval(data.src, data.constantPool, data.sourceLines, data.sourcePath, data.sourceContent);
+    }
+
+    /**
+     * 编译 gscript 源码并执行（带完整源码映射，供调试器使用）。
+     *
+     * <p>与 {@link #evalScript(String)} 的区别：保留 sourceLines + sourceContent + sourcePath，
+     * 使调试器能正确映射断点和 source 请求。内部走完整 ByteCodeGenerator 流水线
+     * （而非 {@link #compile(String)} 的简化版本，后者不返回 sourceLines）。
+     *
+     * @param code       gscript 源码
+     * @param sourcePath 源码标识路径（调试用，可为 null）
+     */
+    private void evalScriptContent(String code, String sourcePath) {
+        Lexer lexer = new Lexer();
+        List tokens = lexer.tokenize(code);
+        Parser parser = new Parser(tokens);
+        Node program = parser.parseProgram();
+        ByteCodeGenerator gen = new ByteCodeGenerator();
+        program.accept(gen);
+        String[] src = (String[]) gen.getByteCode().toArray(new String[0]);
+        ArrayList srcLineList = gen.getSourceLines();
+        int[] sourceLines = new int[srcLineList.size()];
+        for (int i = 0; i < srcLineList.size(); i++) {
+            sourceLines[i] = ((Integer) srcLineList.get(i)).intValue();
+        }
+        BytecodeEncoder encoder = new BytecodeEncoder();
+        EncodedBytecode encoded = encoder.encode(Arrays.asList(src));
+        eval(encoded.instructions, encoded.constantPool, sourceLines, sourcePath, code);
+    }
+
+    /** 读取文件全部字节（1.4 兼容，替代 Java 9 Files.readAllBytes）。 */
+    private static byte[] readFileBytes(File f) throws IOException {
+        long len = f.length();
+        int capacity = (int) Math.min(len, 8192);
+        java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream(capacity);
+        FileInputStream in = new FileInputStream(f);
+        try {
+            byte[] buf = new byte[4096];
+            int n;
+            while ((n = in.read(buf)) != -1) { bos.write(buf, 0, n); }
+        } finally {
+            try { in.close(); } catch (Exception e) {}
+        }
+        return bos.toByteArray();
+    }
+
+    /** 读取流全部字节直到 EOF（1.4 兼容，替代 Java 9 InputStream.readAllBytes）。
+     *  不关闭流（由调用方负责）。 */
+    private static byte[] readStreamBytes(InputStream in) throws IOException {
+        java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+        byte[] buf = new byte[4096];
+        int n;
+        while ((n = in.read(buf)) != -1) { bos.write(buf, 0, n); }
+        return bos.toByteArray();
     }
 
     /**
