@@ -678,7 +678,9 @@ public class DapServer implements DebugController.SuspendListener {
             if (srcContent != null) {
                 int ref = nextSourceRef++;
                 sourceRefs.put(ref, framePath);
-                source.addProperty("reference", ref);
+                // DAP 规范 Source 对象字段名为 sourceReference（非 reference），
+                // VSCode 据此发 source 请求时回填顶层 sourceReference，handleSource 用它查 sourceRefs
+                source.addProperty("sourceReference", ref);
                 source.addProperty("path", framePath);
             } else {
                 // launch 模式或无源码内容：VSCode 从磁盘读

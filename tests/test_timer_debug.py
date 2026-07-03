@@ -199,6 +199,17 @@ def test_debugagent_wait():
             check("stackTrace 有帧", len(frames) > 0)
             if frames:
                 check("栈顶帧行号=13（setTimeout 回调）", frames[0].get("line") == 13)
+                # source 请求验证（attach 模式源码来自 gclass 的 SourceContent 属性）
+                # 关键：DAP Source 对象字段名为 sourceReference（非 reference），
+                # VSCode 据此发 source 请求回填顶层 sourceReference，handleSource 查 sourceRefs 取源码
+                src = frames[0].get("source", {})
+                src_ref = src.get("sourceReference", 0)
+                check("source.sourceReference > 0（attach 源码来自 gclass）", src_ref > 0)
+                if src_ref > 0:
+                    resp = client.send_request("source", {"sourceReference": src_ref, "source": src})
+                    content = resp.get("body", {}).get("content", "")
+                    check("source 请求返回源码内容", len(content) > 0)
+                    check("源码内容含源码文本", "console.log" in content or "zero" in content)
                 # scopes + variables
                 fid = frames[0].get("id")
                 resp = client.send_request("scopes", {"frameId": fid})

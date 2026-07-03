@@ -5,7 +5,7 @@
 我的核心目标是帮助开发者 **[开发gscript项目的调试器]**。
 
 ## 2. 核心技术栈
-*   **语言**: [java9]
+*   **语言**: [java]
 
 ## 3. 目录结构映射 (关键)
 *   `/src/main/java/org/gscript/compile` - 编译gscript到字节码格式的java代码
