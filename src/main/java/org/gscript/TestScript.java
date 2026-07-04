@@ -121,9 +121,18 @@ public class TestScript {
             // 创建解释器，并执行脚本
             GSInterpreter interpreter = new GSInterpreter();  // 构造器已自动初始化定时器
             ArrayList src =  byteCodeGenerator.getByteCode();
+            ArrayList srcLines = byteCodeGenerator.getSourceLines();
             // 增加控制台输出
             interpreter.addVariableToGlobal("console", new Console());
-            interpreter.eval((String[]) src.toArray(new String[src.size()]));
+            // 传 sourceLines + sourcePath，使异常信息能输出源码行号（与 rungclass 路径一致）
+            int[] srcLineArr = null;
+            if (srcLines != null && !srcLines.isEmpty()) {
+                srcLineArr = new int[srcLines.size()];
+                for (int i = 0; i < srcLines.size(); i++) {
+                    srcLineArr[i] = ((Integer) srcLines.get(i)).intValue();
+                }
+            }
+            interpreter.eval((String[]) src.toArray(new String[src.size()]), srcLineArr, fileName + ".script");
             interpreter.runEventLoop();
         }
     }

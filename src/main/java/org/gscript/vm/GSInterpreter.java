@@ -386,7 +386,7 @@ public class GSInterpreter {
                             if (objRef.type <= 3) {
                                 stack.push(GSNull.NULL);
                             } else if (objRef.type == 8) {
-                                throw new GSException(frame.function.name, frame.getIP() - 1, new GSString("TypeError: Cannot read properties of null"));
+                                throw new GSException(frame, frame.getIP() - 1, new GSString("TypeError: Cannot read properties of null"));
                             } else {
                                 GSObject object = (GSObject) objRef;
                                 stack.push(object.getProperty(name));
@@ -402,7 +402,7 @@ public class GSInterpreter {
                                     GSObject object = (GSObject) objRef;
                                     object.setProperty(name, objValue);
                                 } else {
-                                    throw new GSException(frame.function.name, frame.getIP() - 1, new GSString("TypeError: Cannot set properties of null."));
+                                    throw new GSException(frame, frame.getIP() - 1, new GSString("TypeError: Cannot set properties of null."));
                                 }
                             }
                             stack.push(objValue);
@@ -648,6 +648,7 @@ public class GSInterpreter {
                                     // 否则调用者 handleException 会用 callee 的 ip 空间比对 caller 的 monitor 范围，
                                     // 导致跨函数抛出的异常无法被调用者的 try/catch 捕获
                                     ex.setIp(frame.getIP() - 1);
+                                    ex.appendCaller(frame);  // 追加 caller 帧到调用栈快照（供顶层打印）
                                     throw ex;
                                 }
                             } else if (methodRef.type == 9) {  // 本地函数（本地函数需要手动放值）
@@ -655,7 +656,7 @@ public class GSInterpreter {
                                 GSValue r = nativeFunction.eval(callArgs);
                                 stack.push(r);
                             } else {  // 函数引用为空
-                                throw new GSException(frame.function.name, frame.getIP() - 1, new GSString("TypeError: function not exist."));
+                                throw new GSException(frame, frame.getIP() - 1, new GSString("TypeError: function not exist."));
                             }
                             break;
                         }
@@ -682,6 +683,7 @@ public class GSInterpreter {
                                 } catch (GSException ex) {
                                     // 异常从被调用函数传播上来：用调用者指令位置重定位 ip（同 invoke）
                                     ex.setIp(frame.getIP() - 1);
+                                    ex.appendCaller(frame);  // 追加 caller 帧到调用栈快照（供顶层打印）
                                     throw ex;
                                 }
                                 // 这里需要取栈顶的数据，看看函数执行完成以后是不是一个对象，如果是，返回函数返回的对象
@@ -701,7 +703,7 @@ public class GSInterpreter {
                                 // 否则返回默认对象
                                 stack.push(object);
                             } else {
-                                throw new GSException(frame.function.name, frame.getIP() - 1, new GSString("TypeError: constructor function not exist."));
+                                throw new GSException(frame, frame.getIP() - 1, new GSString("TypeError: constructor function not exist."));
                             }
                             break;
                         }
@@ -735,7 +737,7 @@ public class GSInterpreter {
                         // ===== 异常处理 =====
                         case GSClassConstants.OP_THROW: {
                             GSValue origin = (GSValue) stack.pop();
-                            throw new GSException(frame.function.name, frame.getIP() - 1, origin);
+                            throw new GSException(frame, frame.getIP() - 1, origin);
                         }
                         case GSClassConstants.OP_TRY_START: {
                             // 往当前frame的异常监视表里面增加监视
@@ -803,7 +805,7 @@ public class GSInterpreter {
                     // 包装异常对象并再处理异常对象
                     GSValue origin = new GSString(e.getMessage());
                     int ip = frame.getIP() - 1;
-                    GSException exception = new GSException(frame.function.name, ip, origin);
+                    GSException exception = new GSException(frame, ip, origin);
                     // 进行异常处理，异常可能抛到上一个frame
                     GSValue value = frame.handleException(ip, exception);
                     if (value != null) {
@@ -866,7 +868,7 @@ public class GSInterpreter {
         } catch (DebugAbortException e) {
             // 调试会话被终止，正常退出，不输出未捕获异常信息
         } catch (GSException e) {
-            System.out.println("Uncaught Error: " + e.origin.toStringValue() + " at <anonymous>:" + e.getIp());
+            System.out.println(e.formatMessage());
         }
     }
 
@@ -926,7 +928,18 @@ public class GSInterpreter {
         ByteCodeGenerator gen = new ByteCodeGenerator();
         program.accept(gen);
         String[] src = (String[]) gen.getByteCode().toArray(new String[0]);
-        return new BytecodeEncoder().encode(Arrays.asList(src));
+        BytecodeEncoder encoder = new BytecodeEncoder();
+        EncodedBytecode encoded = encoder.encode(Arrays.asList(src));
+        // 保留 sourceLines 供异常映射（非调试模式也能输出源码行号）
+        ArrayList srcLineList = gen.getSourceLines();
+        if (srcLineList != null && !srcLineList.isEmpty()) {
+            int[] sourceLines = new int[srcLineList.size()];
+            for (int i = 0; i < srcLineList.size(); i++) {
+                sourceLines[i] = ((Integer) srcLineList.get(i)).intValue();
+            }
+            encoded.sourceLines = sourceLines;
+        }
+        return encoded;
     }
 
     /**
@@ -947,9 +960,9 @@ public class GSInterpreter {
             eval(data.src, data.constantPool, data.sourceLines,
                  data.sourcePath, data.sourceContent);
         } else {
-            // 非调试模式：简化 compile，无源码映射
+            // 非调试模式：compile 保留 sourceLines 供异常映射（无 sourcePath，显示 <anonymous>）
             EncodedBytecode encoded = compile(code);
-            eval(encoded.instructions, encoded.constantPool, null, null);
+            eval(encoded.instructions, encoded.constantPool, encoded.sourceLines, null);
         }
     }
 
@@ -968,14 +981,15 @@ public class GSInterpreter {
     public GSValue evalExpression(String expr) {
         stack.clear();  // 清空栈上残留值，确保返回值是本次表达式的结果
         if (!debugMode) {
-            // 非调试模式：简化 compile，无源码映射（现有路径完全保留）
+            // 非调试模式：compile 保留 sourceLines 供异常映射
             EncodedBytecode encoded = compile("return (" + expr + ");");
             GSFunction anonymous = new GSFunction("null", encoded.instructions, encoded.constantPool, global);
+            anonymous.sourceLines = encoded.sourceLines;
             GSFrame frame = new GSFrame(anonymous);
             try {
                 eval(frame, null);
             } catch (GSException e) {
-                System.out.println("Uncaught Error: " + e.origin.toStringValue() + " at <anonymous>:" + e.getIp());
+                System.out.println(e.formatMessage());
                 stack.clear();
                 return GSNull.NULL;
             } catch (DebugAbortException e) {
@@ -997,7 +1011,7 @@ public class GSInterpreter {
         try {
             eval(frame, null);
         } catch (GSException e) {
-            System.out.println("Uncaught Error: " + e.origin.toStringValue() + " at <anonymous>:" + e.getIp());
+            System.out.println(e.formatMessage());
             stack.clear();
             return GSNull.NULL;
         } catch (DebugAbortException e) {
@@ -1299,7 +1313,7 @@ public class GSInterpreter {
                 } catch (DebugAbortException e) {
                     throw e;  // 调试会话终止，传播
                 } catch (GSException e) {
-                    System.err.println("Uncaught Error: " + (e.origin != null ? e.origin.toStringValue() : "?"));
+                    System.err.println(e.formatMessage());
                 } catch (Throwable e) {
                     e.printStackTrace();
                 }

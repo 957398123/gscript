@@ -363,6 +363,10 @@ public class DebugController {
      * 异常断点检查。解释器在 catch 到 {@link GSException} 时调用。
      * 若开启了异常断点且异常未被本帧 try/catch 捕获（将向上抛出），则挂起。
      *
+     * <p>「只挂起一次」语义：同一异常对象在跨帧传播时会被每帧的 catch 块重复调用本方法，
+     * 但只在首次调用（throw 点所在帧）挂起并置 {@link GSException#setPaused true}，
+     * 后续传播路径上的调用见此标志即跳过。这样用户只需 continue 一次即可让异常传播到顶层打印。
+     *
      * @param frame     当前帧
      * @param depth     当前栈深度
      * @param exception 异常对象
@@ -370,6 +374,10 @@ public class DebugController {
      */
     public boolean checkException(GSFrame frame, int depth, GSException exception) {
         if (!pauseOnException) {
+            return false;
+        }
+        if (exception.isPaused()) {
+            // 同一异常已挂起过（throw 点），传播路径上不再重复挂起
             return false;
         }
         synchronized (lock) {
@@ -382,6 +390,7 @@ public class DebugController {
             suspendedDepth = depth;
             suspendedLine = currentLine(frame);
             suspendedReason = "exception";
+            exception.setPaused(true);  // 标记已挂起，避免跨帧传播时反复挂起
         }
         if (suspendListener != null) {
             suspendListener.onSuspended("exception", frame, depth, suspendedLine);

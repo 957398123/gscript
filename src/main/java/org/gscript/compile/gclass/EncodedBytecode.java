@@ -24,6 +24,15 @@ public class EncodedBytecode {
     /** 常量池（索引从 1 开始，0 不用；元素类型：String/Integer/Float/Boolean） */
     public final Object[] constantPool;
 
+    /**
+     * 字节码索引对应的源码行号数组（与 instructions 平行，1-based，0=未设置）。
+     *
+     * <p>非 final：{@link BytecodeEncoder#encode} 构造本对象时只产出指令与常量池，
+     * 调用方（如 {@link org.gscript.vm.GSInterpreter#compile}）在 encode 后填充此字段。
+     * 可为 null（无源码映射，非调试 REPL 路径兼容）。
+     */
+    public int[] sourceLines = null;
+
     public EncodedBytecode(byte[][] instructions, Object[] constantPool) {
         this.instructions = instructions;
         this.constantPool = constantPool;
