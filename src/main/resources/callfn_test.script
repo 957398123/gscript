@@ -1,0 +1,11 @@
+// 测试 callFunction 断点命中
+// 函数 addNumbers 在加载时仅定义不调用，由宿主 callFunction 触发执行。
+// 用于验证 attach 模式下虚拟源路径（sourceReference>0）的断点匹配。
+// 断点应设在函数体内（如第 6 行 var sum = a + b;），仅在 callFunction 调用时命中。
+
+function addNumbers(a, b) {
+    var sum = a + b;
+    return sum;
+}
+
+console.log("script loaded, addNumbers defined");

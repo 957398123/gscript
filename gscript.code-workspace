@@ -12,24 +12,5 @@
       "*.gs": "gscript"
     },
     "debug.trace": true
-  },
-  "launch": {
-    "version": "0.2.0",
-    "configurations": [
-      {
-        "type": "gscript",
-        "request": "launch",
-        "name": "Launch gscript",
-        "program": "${file}",
-        "stopOnEntry": false
-      },
-      {
-        "type": "gscript",
-        "request": "attach",
-        "name": "Attach to gscript",
-        "host": "localhost",
-        "port": 4711
-      }
-    ]
   }
 }

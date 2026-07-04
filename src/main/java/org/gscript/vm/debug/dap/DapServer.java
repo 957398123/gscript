@@ -542,15 +542,27 @@ public class DapServer implements DebugController.SuspendListener {
     /** setBreakpoints：设置指定文件的断点（按 source.path 区分多文件） */
     private void handleSetBreakpoints(int requestSeq, JsonObject args) {
         // 从 args.source.path 取断点所属文件路径（DAP 协议：每个文件发一次 setBreakpoints）
-        // 规范化路径，确保与 launch 时存的 scriptPaths（sourcePath）匹配
         String path = null;
         if (args.has("source") && args.getAsJsonObject("source").has("path")) {
-            path = canonicalize(args.getAsJsonObject("source").get("path").getAsString());
-            // attach 模式：本地路径 → 远程 sourcePath（gclass 中的 sourcePath）
-            // 例如 localRoot=e:\JProjects\gscript\src\main\resources，remoteRoot=""
-            // 本地 e:\...\resources\debug_attach_test.script → 远程 debug_attach_test.script
-            if (agent != null && localRoot != null && path != null) {
-                path = mapToRemotePath(path);
+            JsonObject sourceObj = args.getAsJsonObject("source");
+            path = sourceObj.get("path").getAsString();
+            // source.sourceReference > 0 表示虚拟源——path 是 DapServer 在 stackTrace 响应中
+            // 返回的 frame.function.sourcePath（可能是 JAR 资源路径如 "/com/scripts/x.script"，
+            // 不是本地文件系统路径）。此时 path 与 breakpoints Map 的 key（sourcePath）完全一致，
+            // 必须原样使用：canonicalize 会把前导 "/" 解析为当前盘根（如 /com/... → E:\com\...），
+            // mapToRemotePath 因不以 localRoot 开头也原样返回，导致 key 不匹配、断点不命中。
+            // sourceReference=0/缺失表示本地文件，走 canonicalize + mapToRemotePath 映射到远程 sourcePath。
+            int srcRef = (sourceObj.has("sourceReference")
+                    && !sourceObj.get("sourceReference").isJsonNull())
+                    ? sourceObj.get("sourceReference").getAsInt() : 0;
+            if (srcRef == 0) {
+                path = canonicalize(path);
+                // attach 模式：本地路径 → 远程 sourcePath（gclass 中的 sourcePath）
+                // 例如 localRoot=e:\JProjects\gscript\src\main\resources，remoteRoot=""
+                // 本地 e:\...\resources\debug_attach_test.script → 远程 debug_attach_test.script
+                if (agent != null && localRoot != null && path != null) {
+                    path = mapToRemotePath(path);
+                }
             }
         }
         List lines = new ArrayList();

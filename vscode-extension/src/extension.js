@@ -56,12 +56,12 @@ class GscriptDebugAdapterDescriptorFactory {
             // 路径未配置时返回错误，避免进程启动失败导致难以排查
             throw new Error(
                 '未配置 gscript 调试适配器 jar 路径。请在 VSCode 设置 "gscript.jarPath" 或在 launch.json 中设置 "jarPath"。' +
-                '\njar 由 mvn package 生成（target/gscript-1.0-SNAPSHOT.jar，含 Gson 的 fat jar）。'
+                '\njar 由 mvn package 生成（target/gscript-1.0-SNAPSHOT.jar，纯项目 jar 无外部依赖，约 190KB）。'
             );
         }
         if (!fs.existsSync(jarPath)) {
             throw new Error('gscript 调试适配器 jar 不存在: ' + jarPath +
-                '\n请先执行 mvn package 生成 fat jar。');
+                '\n请先执行 mvn package 生成 jar。');
         }
         const args = ['-jar', jarPath, '--stdio'];
         const options = {};

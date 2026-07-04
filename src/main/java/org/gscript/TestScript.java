@@ -12,6 +12,7 @@ import org.gscript.compile.token.GSToken;
 import org.gscript.vm.GSInterpreter;
 import org.gscript.vm.debug.DebugAgent;
 import org.gscript.vm.stdlib.Console;
+import org.gscript.vm.value.GSFunction;
 import org.gscript.vm.value.GSNull;
 import org.gscript.vm.value.GSValue;
 
@@ -68,12 +69,16 @@ public class TestScript {
         } else if ("debugagent-eval".equals(mode)) {
             // 新增：enableDebugMode + startAttachListener + 多次 eval 演示（交互式调试）
             TestScript.debugAgentEval(name);
+        } else if ("debugagent-callfn".equals(mode)) {
+            // 新增：waitForDebuggerAndAttach + eval + callFunction 演示
+            // 验证 attach 模式下宿主 callFunction 触发函数体内断点（虚拟源路径 sourceReference>0）
+            TestScript.debugAgentCallFn(name);
         } else if ("batch".equals(mode)) {
             // 迁移自 Test.main：遍历 resources 根目录所有 .script，批量编译为 .gtxt（不执行）
             TestScript.batchCompile();
         } else {
             System.err.println("Unknown mode: " + mode);
-            System.err.println("Usage: TestScript <name> [run|dump|compile|rungclass|dumpgclass|hosttest|debugagent|debugagent-attach|debugagent-waitattach|debugagent-eval|batch]");
+            System.err.println("Usage: TestScript <name> [run|dump|compile|rungclass|dumpgclass|hosttest|debugagent|debugagent-attach|debugagent-waitattach|debugagent-eval|debugagent-callfn|batch]");
         }
     }
 
@@ -511,6 +516,71 @@ public class TestScript {
         System.err.println("[测试] 所有 eval 执行结束");
         agent.notifyScriptCompleted();  // 通知 DapServer 发送 terminated 事件
         System.err.println("[测试] notifyScriptCompleted 已调用");
+        agent.stop();
+    }
+
+    /**
+     * waitForDebuggerAndAttach + eval + callFunction 演示。
+     *
+     * <p>验证 attach 模式下宿主通过 {@link GSInterpreter#callFunction} 回调 gscript 函数时，
+     * 函数体内断点能正确命中。复现用户场景：脚本加载时函数仅定义不调用，
+     * 后续由宿主 Java 代码直接 callFunction 触发执行。
+     *
+     * <p>关键验证点：
+     * <ol>
+     *   <li>脚本 eval 时函数体内断点不触发（函数未被调用）</li>
+     *   <li>callFunction 调用时断点命中（reason=breakpoint）</li>
+     *   <li>VSCode 通过 sourceReference（虚拟源）设置断点时路径匹配正确</li>
+     * </ol>
+     *
+     * <p>测试脚本 callfn_test.script 定义 addNumbers(a,b) 函数，eval 时仅 console.log，
+     * 函数体未被调用。eval 完成后宿主从 global 取出 addNumbers 并 callFunction 触发。
+     *
+     * @param name 脚本名（不含扩展名，需先 compile 生成 gclass）
+     */
+    public static void debugAgentCallFn(String name) throws Exception {
+        GSClassData data = loadGclass(name);
+        if (data == null) return;
+        if (data.sourceContent == null) {
+            System.err.println("警告: gclass 不含源码内容，attach 模式无法在 VSCode 显示源码");
+            System.err.println("请重新编译: TestScript " + name + " compile");
+        }
+        int port = 4711;
+        GSInterpreter interpreter = new GSInterpreter();  // 构造器已自动初始化定时器
+        interpreter.addVariableToGlobal("console", new Console());
+
+        DebugAgent agent = new DebugAgent(port);
+        interpreter.enableDebugMode(agent);  // 主入口：setInterpreter + setDebugMode(true)
+        agent.addGclass(data);          // 注册 sourceContent 供 VSCode source 请求
+
+        System.err.println("[测试] debugagent-callfn: 阻塞等待 VSCode 连接（端口 " + port + "）...");
+        agent.waitForDebuggerAndAttach();  // 阻塞直到 VSCode 连接 + configurationDone
+
+        // 连接后主线程继续执行脚本（首次 eval 命中 entryStopRequested → 挂起，reason=entry）
+        System.err.println("[测试] 主线程开始执行脚本（eval）");
+        interpreter.eval(data.src, data.constantPool, data.sourceLines,
+                data.sourcePath, data.sourceContent);
+        interpreter.runEventLoop();
+        System.err.println("[测试] eval 完成，addNumbers 已定义");
+
+        // 宿主从 global 取出 addNumbers 函数，通过 callFunction 回调
+        // 此时函数体内若有断点（通过 sourceReference 设置的虚拟源断点），应在此触发
+        GSValue fnVal = interpreter.getVariable("addNumbers");
+        if (fnVal instanceof GSFunction) {
+            GSFunction fn = (GSFunction) fnVal;
+            // OP_INVOKE 约定：args[0]=this（全局函数用 null），args[1..]=实际参数
+            ArrayList args = new ArrayList();
+            args.add(GSNull.NULL);              // args[0] = this
+            args.add(new org.gscript.vm.value.GSInt(10));   // a = 10
+            args.add(new org.gscript.vm.value.GSInt(20));   // b = 20
+            System.err.println("[测试] callFunction(addNumbers, [10, 20])");
+            GSValue result = interpreter.callFunction(fn, args);
+            System.err.println("[测试] callFunction 返回: " + result.toStringValue());
+        } else {
+            System.err.println("[测试] 未找到 addNumbers 函数: " + fnVal);
+        }
+
+        agent.notifyScriptCompleted();  // 通知 DapServer 发 terminated 事件
         agent.stop();
     }
 

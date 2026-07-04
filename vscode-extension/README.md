@@ -18,7 +18,7 @@ mvn package -DskipTests
 
 生成 `target/gscript-1.0-SNAPSHOT.jar`（纯项目 jar，零外部依赖）。
 
-> **JDK 9+ 开发机**：JDK 9 不支持 `-source 1.4`，需临时将 pom.xml 的 `<source>`/`<target>` 改为 `1.6` 再构建。代码本身仅用 Java 1.4 语法与 API。
+> **JDK 版本要求**：必须用 **JDK 1.8** 构建（`-source 1.4 -target 1.4`）。JDK 1.8 是最后一个支持 `-source 1.4` 的版本；JDK 9+ 最低只能 `-source 1.6`，无法生成真 1.4 字节码。代码本身仅用 Java 1.4 语法与 API，无泛型/枚举/注解/自动装箱。
 
 ### 2. 配置 jar 路径
 
@@ -55,7 +55,7 @@ cd vscode-extension
 npm install -g @vscode/vsce
 vsce package
 # 安装生成的 .vsix
-code --install-extension gscript-debug-0.1.0.vsix
+code --install-extension gscript-debug-0.2.1.vsix
 ```
 
 ## 使用
@@ -133,7 +133,7 @@ Attach 模式适用于：调试适配器需在 IDE 之外单独运行（容器�
 | 对象展开 | ✅ | 点击变量前的展开箭头 |
 | 表达式求值 | ✅ | 支持 `a.b.c` 形式的标识符与属性访问 |
 | 条件断点 | ❌ | 暂不支持 |
-| 异常断点 | ❌ | 暂不支持（预留） |
+| 异常断点 | ✅ | VSCode 断点面板勾选「Caught/Uncaught Exceptions」即生效；首次抛出挂起，continue 一次跨帧传播不再重复挂起 |
 | stopOnEntry | ✅ | 在首条指令前挂起 |
 
 ## 表达式求值说明
@@ -147,7 +147,7 @@ Attach 模式适用于：调试适配器需在 IDE 之外单独运行（容器�
 
 ## 注意事项
 
-1. **Java 版本**：需 Java 1.4+（源码与字节码目标均为 1.4，零外部依赖）。JDK 9+ 开发机构建时需临时将 pom.xml 改为 `1.6`。
+1. **Java 版本**：构建需 **JDK 1.8**（生成 major version=48 的真 1.4 字节码，可在 JDK 1.4 运行时执行）；运行调试适配器无版本下限要求。零外部依赖，原 Gson 已替换为自研 JSON 库。
 2. **注释语法**：gscript Lexer 同时支持 `//` 单行注释和 `/* */` 块注释（含跨行、行内、含斜杠路径）。
 3. **输出重定向**：Launch 模式下 `console.log` 输出会通过 DAP "output" 事件显示在「调试控制台」，而非直接写 stdout（stdout 被 DAP 协议占用）。
 4. **单线程模型**：gscript 解释器单线程，调试器固定线程 ID 为 1。
