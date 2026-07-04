@@ -14,6 +14,7 @@ import org.gscript.vm.debug.DebugAgent;
 import org.gscript.vm.debug.DebugController;
 import org.gscript.vm.stdlib.TimerLib;
 import org.gscript.vm.value.*;
+import org.gscript.util.AtomicCounter;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -55,14 +56,34 @@ public class GSInterpreter {
     private volatile DebugController debugController;
 
     /**
-     * 定时器调度器（lazy 初始化，首次 schedule 时创建）。
+     * 定时器调度器（构造时默认初始化，定时器是解释器核心机制）。
      *
      * <p>方案 B：守护线程只计时，到期任务入 readyQueue，由 {@link #runEventLoop()}
-     * 在主线程串行执行回调。null 表示无定时器任务、或调度器已 shutdown。
+     * 在主线程串行执行回调。shutdown 后置 null。
      */
     private TimerScheduler timerScheduler;
 
+    /**
+     * 调试模式标志：true=愿意被调试（eval 入口注册 source + 请求 entry stop）。
+     * 与 debugController 解耦：debugMode=true 但 controller=null 时 eval 正常运行
+     * （JS "DevTools 未连接" 语义）。
+     * volatile：宿主线程设置，解释器线程读取。
+     */
+    private volatile boolean debugMode = false;
+
+    /**
+     * 调试代理反向引用（供 eval 入口注册 source）。
+     * 由 {@link DebugAgent#setInterpreter} 回调 {@link #setDebugAgent} 设置。
+     * null 表示未关联 agent。
+     */
+    private DebugAgent debugAgent = null;
+
+    /** eval 入口 sourcePath 计数器（debug 模式下 evalScript/evalExpression 生成唯一路径） */
+    private final AtomicCounter evalPathCounter = new AtomicCounter(0);
+
     public GSInterpreter() {
+        ensureTimerScheduler();      // 构造时就绪 TimerScheduler（核心机制默认初始化）
+        installTimerGlobals();       // 默认注册 setTimeout/setInterval 等入口函数
     }
 
     /**
@@ -84,6 +105,86 @@ public class GSInterpreter {
     }
 
     /**
+     * 启用/关闭调试模式。
+     *
+     * <p>启用后，所有顶层 eval 入口（{@link #eval(byte[][], Object[], int[], String, String)} /
+     * {@link #evalScript(String)} / {@link #evalExpression(String)} / {@link #evalScriptFile(String)} 等）
+     * 会自动注册 source 并请求 entry stop（若 controller 已就位）。
+     * 未连接 VSCode 时 eval 正常执行（JS "DevTools 未连接" 语义）。
+     *
+     * @param mode true=启用调试模式
+     */
+    public void setDebugMode(boolean mode) {
+        this.debugMode = mode;
+    }
+
+    /** 查询调试模式是否启用。 */
+    public boolean isDebugMode() {
+        return debugMode;
+    }
+
+    /**
+     * 设置调试代理（反向引用）。
+     *
+     * <p>通常由 {@link DebugAgent#setInterpreter} 回调调用，宿主无需直接调用。
+     * eval 入口通过此引用调用 {@link DebugAgent#registerSource} 注册源码。
+     *
+     * @param agent 调试代理
+     */
+    public void setDebugAgent(DebugAgent agent) {
+        this.debugAgent = agent;
+    }
+
+    /** 查询调试代理。 */
+    public DebugAgent getDebugAgent() {
+        return debugAgent;
+    }
+
+    /**
+     * 便捷主入口：一步启用调试模式（setInterpreter + setDebugMode(true)）。
+     *
+     * <p>调用后可选择连接策略：
+     * <ul>
+     *   <li>{@link DebugAgent#startAttachListener()} - 后台监听，立即返回（VSCode 随时 attach）</li>
+     *   <li>{@link DebugAgent#waitForDebuggerAndAttach()} - 阻塞等连接（宿主手动等待）</li>
+     *   <li>{@link DebugAgent#addGclass} + {@link DebugAgent#waitForDebuggerAndRun()} - launch 模式</li>
+     * </ul>
+     *
+     * @param agent 调试代理
+     */
+    public void enableDebugMode(DebugAgent agent) {
+        agent.setInterpreter(this);  // 内部回调 setDebugAgent
+        this.debugMode = true;
+    }
+
+    /**
+     * 调试模式 eval 入口预处理：注册 source + 请求 entry stop。
+     *
+     * <p>在创建 frame 之前调用，确保首次 suspendCheck 能命中 entry stop。
+     * <ul>
+     *   <li>debugAgent==null 或 sourcePath/content 为 null 时跳过注册</li>
+     *   <li>debugController==null 时跳过 requestEntryStop（VSCode 未连接，正常运行）</li>
+     * </ul>
+     */
+    private void prepareDebugEntry(String sourcePath, String sourceContent) {
+        if (debugAgent != null && sourcePath != null && sourceContent != null) {
+            debugAgent.registerSource(sourcePath, sourceContent);
+        }
+        DebugController dc = this.debugController;
+        if (dc != null) {
+            dc.requestEntryStop();
+        }
+    }
+
+    /**
+     * 生成唯一 eval sourcePath（debug 模式下 evalScript/evalExpression 用）。
+     * 格式："eval-&lt;counter&gt;.script"，counter 自增。
+     */
+    private String generateEvalPath() {
+        return "eval-" + evalPathCounter.incrementAndGet() + ".script";
+    }
+
+    /**
      * launch 调试模式：阻塞等待 VSCode 连接后执行 gclass。
      *
      * <p>封装 {@link DebugAgent#waitForDebuggerAndRun()} 的标准模板：
@@ -96,8 +197,8 @@ public class GSInterpreter {
      *   <li>阻塞直到 VSCode disconnect 或脚本执行完毕</li>
      * </ol>
      *
-     * <p>调用前应完成：addVariableToGlobal("console", new Console())、installTimerGlobals()、
-     * 其他自定义全局变量注入。本方法不返回直到调试会话结束。
+     * <p>调用前应完成：addVariableToGlobal("console", new Console())、
+     * 其他自定义全局变量注入（定时器机制构造时已默认初始化）。本方法不返回直到调试会话结束。
      *
      * <p>线程模型：调用线程阻塞在 accept + DapServer.run；解释器在 DapServer 触发的
      * "gscript-interpreter" 守护线程中执行。controller 由 DapServer.handleLaunchAttach 创建
@@ -109,7 +210,7 @@ public class GSInterpreter {
      */
     public void debugLaunch(GSClassData data, int port) throws Exception {
         DebugAgent agent = new DebugAgent(port);
-        agent.setInterpreter(this);  // 使用当前解释器实例（保留 caller 的 console/timer/globals 设置）
+        enableDebugMode(agent);  // setInterpreter + setDebugMode(true)（保留 caller 的 console/timer/globals 设置）
         agent.addGclass(data);
         agent.waitForDebuggerAndRun();
     }
@@ -129,7 +230,8 @@ public class GSInterpreter {
      *   <li>runEventLoop 返回后调用 agent.stop() 清理</li>
      * </ol>
      *
-     * <p>调用前应完成：addVariableToGlobal("console", new Console())、installTimerGlobals()。
+     * <p>调用前应完成：addVariableToGlobal("console", new Console())
+     * （定时器机制构造时已默认初始化）。
      * 本方法阻塞直到脚本执行完毕（VSCode disconnect 仅分离调试器，不终止脚本——
      * 若需在 disconnect 时终止，调用方应自行检查 controller 状态）。
      *
@@ -142,12 +244,12 @@ public class GSInterpreter {
      */
     public void debugAttach(GSClassData data, int port) throws Exception {
         DebugAgent agent = new DebugAgent(port);
-        agent.setInterpreter(this);
+        enableDebugMode(agent);  // setInterpreter + setDebugMode(true)
         agent.addGclass(data);
         agent.startAttachListener();  // 后台监听，立即返回
         try {
             eval(data.src, data.constantPool, data.sourceLines, data.sourcePath, data.sourceContent);
-            runEventLoop();
+            runEventLoop();  // 保留：现有便捷封装语义，含定时器回调；宿主若不需要可用 enableDebugMode + evalScriptFile 自行控制
         } finally {
             agent.stop();
         }
@@ -749,6 +851,10 @@ public class GSInterpreter {
      * @param sourceContent 完整源码文本（attach 调试模式用，可为 null）
      */
     public void eval(byte[][] codes, Object[] constantPool, int[] sourceLines, String sourcePath, String sourceContent) {
+        // 调试模式入口预处理：注册 source + 请求 entry stop（controller 已就位时）
+        if (debugMode) {
+            prepareDebugEntry(sourcePath, sourceContent);
+        }
         GSFunction anonymous = new GSFunction("null", codes, constantPool, global);
         anonymous.sourceLines = sourceLines;
         anonymous.sourcePath = sourcePath;
@@ -833,8 +939,18 @@ public class GSInterpreter {
      * @param code gscript 源码
      */
     public void evalScript(String code) {
-        EncodedBytecode encoded = compile(code);
-        eval(encoded.instructions, encoded.constantPool, null, null);
+        if (debugMode) {
+            // 调试模式：用 compileScriptContent 生成 sourcePath + sourceLines + sourceContent
+            // 5-arg eval 内部会调 prepareDebugEntry 注册 source + 请求 entry stop
+            String path = generateEvalPath();
+            GSClassData data = compileScriptContent(code, path);
+            eval(data.src, data.constantPool, data.sourceLines,
+                 data.sourcePath, data.sourceContent);
+        } else {
+            // 非调试模式：简化 compile，无源码映射
+            EncodedBytecode encoded = compile(code);
+            eval(encoded.instructions, encoded.constantPool, null, null);
+        }
     }
 
     /**
@@ -851,9 +967,33 @@ public class GSInterpreter {
      */
     public GSValue evalExpression(String expr) {
         stack.clear();  // 清空栈上残留值，确保返回值是本次表达式的结果
-        EncodedBytecode encoded = compile("return (" + expr + ");");
-        GSFunction anonymous = new GSFunction("null", encoded.instructions, encoded.constantPool, global);
+        if (!debugMode) {
+            // 非调试模式：简化 compile，无源码映射（现有路径完全保留）
+            EncodedBytecode encoded = compile("return (" + expr + ");");
+            GSFunction anonymous = new GSFunction("null", encoded.instructions, encoded.constantPool, global);
+            GSFrame frame = new GSFrame(anonymous);
+            try {
+                eval(frame, null);
+            } catch (GSException e) {
+                System.out.println("Uncaught Error: " + e.origin.toStringValue() + " at <anonymous>:" + e.getIp());
+                stack.clear();
+                return GSNull.NULL;
+            } catch (DebugAbortException e) {
+                return GSNull.NULL;
+            }
+            if (stack.isEmpty()) return GSNull.NULL;
+            return (GSValue) stack.pop();
+        }
+        // 调试模式：用 compileScriptContent 生成 sourcePath + sourceLines + sourceContent
+        String path = generateEvalPath();
+        GSClassData data = compileScriptContent("return (" + expr + ");", path);
+        GSFunction anonymous = new GSFunction("null", data.src, data.constantPool, global);
+        anonymous.sourceLines = data.sourceLines;
+        anonymous.sourcePath = data.sourcePath;
+        anonymous.sourceContent = data.sourceContent;
+        anonymous.baseOffset = 0;
         GSFrame frame = new GSFrame(anonymous);
+        prepareDebugEntry(data.sourcePath, data.sourceContent);  // 注册 source + 请求 entry stop
         try {
             eval(frame, null);
         } catch (GSException e) {
@@ -876,8 +1016,10 @@ public class GSInterpreter {
      * 供调试器断点/单步/源码查看使用。sourcePath 取文件名（非绝对路径），
      * 与 {@link #eval(byte[][], Object[], int[], String, String)} 的多文件约定一致。
      *
-     * <p>调用方负责在调用前 addVariableToGlobal("console", ...) 和 installTimerGlobals()，
-     * 以及在需要时调用 runEventLoop() 处理定时器回调。
+     * <p>定时器机制（setTimeout/setInterval 等）在构造器中默认初始化，无需宿主显式调用
+     * installTimerGlobals()。若脚本使用了定时器且希望同步等待回调完成，调用方需在 eval
+     * 返回后调用 {@link #runEventLoop()}；否则可不调用（如宿主自行管理定时器线程）。
+     * 调试模式下本方法会自动触发 entry stop（断在第一行）。
      *
      * @param filePath .script 文件路径（绝对或相对当前工作目录）
      * @throws IOException 文件读取失败
@@ -941,17 +1083,52 @@ public class GSInterpreter {
         eval(data.src, data.constantPool, data.sourceLines, data.sourcePath, data.sourceContent);
     }
 
+    // ===== 源码 → GSClassData 编译入口（不执行，供宿主预编译多文件用）=====
+
     /**
-     * 编译 gscript 源码并执行（带完整源码映射，供调试器使用）。
+     * 从输入流编译 gscript 源码为 {@link GSClassData}（不执行）。
      *
-     * <p>与 {@link #evalScript(String)} 的区别：保留 sourceLines + sourceContent + sourcePath，
-     * 使调试器能正确映射断点和 source 请求。内部走完整 ByteCodeGenerator 流水线
-     * （而非 {@link #compile(String)} 的简化版本，后者不返回 sourceLines）。
+     * <p>供宿主程序预先编译多个脚本，再决定执行/调试模式（launch/attach）。
+     * 生成 GSClassData 含完整 sourceLines + sourceContent + sourcePath，可直接传给
+     * {@link org.gscript.vm.debug.DebugAgent#addGclass(GSClassData)} 或
+     * {@link #eval(byte[][], Object[], int[], String, String)}。
+     *
+     * <p>多文件调试场景典型用法：
+     * <pre>
+     * DebugAgent agent = new DebugAgent(4711);
+     * agent.setInterpreter(interp);
+     * for (int i = 0; i < streams.length; i++) {
+     *     GSClassData data = GSInterpreter.compileScriptStream(streams[i], paths[i]);
+     *     agent.addGclass(data);
+     * }
+     * agent.startAttachListener();
+     * </pre>
+     *
+     * @param in         输入流（不关闭，调用方负责）
+     * @param sourcePath 源码标识路径（调试用，多文件场景必须唯一，可为 null）
+     * @return 编译后的 GSClassData（含 sourceContent）
+     * @throws IOException 流读取失败
+     * @throws Exception   编译失败（词法/语法错误）
+     */
+    public static GSClassData compileScriptStream(InputStream in, String sourcePath) throws Exception {
+        byte[] raw = readStreamBytes(in);
+        String content = new String(raw, "UTF-8");
+        return compileScriptContent(content, sourcePath);
+    }
+
+    /**
+     * 从源码字符串编译为 {@link GSClassData}（不执行）。
+     *
+     * <p>与 {@link #compile(String)} 的区别：本方法走完整 ByteCodeGenerator 流水线，
+     * 保留 sourceLines + sourceContent，供调试器断点/source 请求使用；
+     * {@link #compile(String)} 是 REPL 用的简化版本，不返回 sourceLines。
      *
      * @param code       gscript 源码
      * @param sourcePath 源码标识路径（调试用，可为 null）
+     * @return 编译后的 GSClassData（含 sourceContent）
+     * @throws RuntimeException 编译失败（词法/语法错误）
      */
-    private void evalScriptContent(String code, String sourcePath) {
+    public static GSClassData compileScriptContent(String code, String sourcePath) {
         Lexer lexer = new Lexer();
         List tokens = lexer.tokenize(code);
         Parser parser = new Parser(tokens);
@@ -966,7 +1143,23 @@ public class GSInterpreter {
         }
         BytecodeEncoder encoder = new BytecodeEncoder();
         EncodedBytecode encoded = encoder.encode(Arrays.asList(src));
-        eval(encoded.instructions, encoded.constantPool, sourceLines, sourcePath, code);
+        return new GSClassData(encoded.instructions, encoded.constantPool,
+                sourceLines, sourcePath, null, code);
+    }
+
+    /**
+     * 编译 gscript 源码并执行（带完整源码映射，供调试器使用）。
+     *
+     * <p>与 {@link #evalScript(String)} 的区别：保留 sourceLines + sourceContent + sourcePath，
+     * 使调试器能正确映射断点和 source 请求。内部委托 {@link #compileScriptContent(String, String)}
+     * 编译后调用 {@link #eval(byte[][], Object[], int[], String, String)} 执行。
+     *
+     * @param code       gscript 源码
+     * @param sourcePath 源码标识路径（调试用，可为 null）
+     */
+    private void evalScriptContent(String code, String sourcePath) {
+        GSClassData data = compileScriptContent(code, sourcePath);
+        eval(data.src, data.constantPool, data.sourceLines, data.sourcePath, data.sourceContent);
     }
 
     /** 读取文件全部字节（1.4 兼容，替代 Java 9 Files.readAllBytes）。 */
@@ -1081,8 +1274,9 @@ public class GSInterpreter {
      * </ul>
      */
     public void runEventLoop() {
-        if (timerScheduler == null) {
-            return;  // 无定时器任务，直接返回
+        // timerScheduler 构造时默认初始化（不再为 null），无定时器任务时直接返回
+        if (timerScheduler == null || !timerScheduler.hasPending()) {
+            return;
         }
         try {
             while (timerScheduler.hasPending()) {

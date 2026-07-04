@@ -1086,9 +1086,8 @@ public class DapServer implements DebugController.SuspendListener {
      * 每个文件用各自的字节码与 sourceLines，并传入 sourcePath 供调试器区分文件。
      */
     private void startInterpreterThread() {
-        final GSInterpreter interp = new GSInterpreter();
+        final GSInterpreter interp = new GSInterpreter();  // 构造器已自动初始化 TimerScheduler + installTimerGlobals
         interp.addVariableToGlobal("console", new Console());
-        interp.installTimerGlobals();
         interp.setDebugController(controller);
         this.interpreter = interp;
 

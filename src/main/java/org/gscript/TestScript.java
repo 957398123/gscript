@@ -62,12 +62,18 @@ public class TestScript {
         } else if ("debugagent-attach".equals(mode)) {
             // 新增：DebugAgent attachReady 模式（运行时附加）
             TestScript.debugAgent(name, true);
+        } else if ("debugagent-waitattach".equals(mode)) {
+            // 新增：DebugAgent waitForDebuggerAndAttach 模式（主线程驱动 attach）
+            TestScript.debugAgentWaitAttach(name);
+        } else if ("debugagent-eval".equals(mode)) {
+            // 新增：enableDebugMode + startAttachListener + 多次 eval 演示（交互式调试）
+            TestScript.debugAgentEval(name);
         } else if ("batch".equals(mode)) {
             // 迁移自 Test.main：遍历 resources 根目录所有 .script，批量编译为 .gtxt（不执行）
             TestScript.batchCompile();
         } else {
             System.err.println("Unknown mode: " + mode);
-            System.err.println("Usage: TestScript <name> [run|dump|compile|rungclass|dumpgclass|hosttest|debugagent|debugagent-attach|batch]");
+            System.err.println("Usage: TestScript <name> [run|dump|compile|rungclass|dumpgclass|hosttest|debugagent|debugagent-attach|debugagent-waitattach|debugagent-eval|batch]");
         }
     }
 
@@ -113,11 +119,10 @@ public class TestScript {
                 return;  // dump 模式只打印不执行
             }
             // 创建解释器，并执行脚本
-            GSInterpreter interpreter = new GSInterpreter();
+            GSInterpreter interpreter = new GSInterpreter();  // 构造器已自动初始化定时器
             ArrayList src =  byteCodeGenerator.getByteCode();
             // 增加控制台输出
             interpreter.addVariableToGlobal("console", new Console());
-            interpreter.installTimerGlobals();
             interpreter.eval((String[]) src.toArray(new String[src.size()]));
             interpreter.runEventLoop();
         }
@@ -189,9 +194,8 @@ public class TestScript {
         GSClassData data = loadGclass(name);
         if (data == null) return;
 
-        GSInterpreter interpreter = new GSInterpreter();
+        GSInterpreter interpreter = new GSInterpreter();  // 构造器已自动初始化定时器
         interpreter.addVariableToGlobal("console", new Console());
-        interpreter.installTimerGlobals();
         interpreter.eval(data.src, data.constantPool, data.sourceLines, data.sourcePath, data.sourceContent);
         interpreter.runEventLoop();
     }
@@ -390,9 +394,8 @@ public class TestScript {
         DebugAgent agent = new DebugAgent(port);
         if (attachReady) {
             // 模式 2：先启动解释器运行，再监听附加
-            GSInterpreter interpreter = new GSInterpreter();
+            GSInterpreter interpreter = new GSInterpreter();  // 构造器已自动初始化定时器
             interpreter.addVariableToGlobal("console", new Console());
-            interpreter.installTimerGlobals();
             agent.setInterpreter(interpreter);
             agent.addGclass(data);
             agent.startAttachListener();  // 后台监听，立即返回
@@ -409,6 +412,97 @@ public class TestScript {
             agent.waitForDebuggerAndRun();  // 阻塞直到调试会话结束
             System.err.println("[测试] 调试会话结束");
         }
+    }
+
+    /**
+     * DebugAgent waitForDebuggerAndAttach 演示：主线程驱动 attach 模式。
+     *
+     * <p>验证模式 3：主线程阻塞等待 VSCode 连接，连接后 controller 注入 + pauseRequested，
+     * 主线程继续执行脚本，首次 eval 即挂起（reason=pause），continue 后执行完毕。
+     *
+     * <p>典型场景模拟：宿主 static 块加载脚本——主线程需先等调试器连接，再依次执行脚本。
+     *
+     * @param name 脚本名（不含扩展名，需先 compile 生成 gclass）
+     */
+    public static void debugAgentWaitAttach(String name) throws Exception {
+        GSClassData data = loadGclass(name);
+        if (data == null) return;
+        if (data.sourceContent == null) {
+            System.err.println("警告: gclass 不含源码内容，attach 模式无法在 VSCode 显示源码");
+            System.err.println("请重新编译: TestScript " + name + " compile");
+        }
+        int port = 4711;
+        GSInterpreter interpreter = new GSInterpreter();  // 构造器已自动初始化定时器
+        interpreter.addVariableToGlobal("console", new Console());
+
+        DebugAgent agent = new DebugAgent(port);
+        interpreter.enableDebugMode(agent);  // 主入口：setInterpreter + setDebugMode(true)
+        agent.addGclass(data);          // 注册 sourceContent 供 VSCode source 请求
+
+        System.err.println("[测试] waitForDebuggerAndAttach: 阻塞等待 VSCode 连接（端口 " + port + "）...");
+        agent.waitForDebuggerAndAttach();  // 阻塞直到 VSCode 连接 + configurationDone
+
+        // 连接后主线程继续执行脚本（首次 eval 命中 entryStopRequested → 挂起，reason=entry）
+        System.err.println("[测试] 主线程开始执行脚本");
+        interpreter.eval(data.src, data.constantPool, data.sourceLines,
+                data.sourcePath, data.sourceContent);
+        interpreter.runEventLoop();
+        System.err.println("[测试] 主线程执行结束");
+        agent.notifyScriptCompleted();  // 通知 DapServer 发 terminated 事件
+        agent.stop();
+    }
+
+    /**
+     * enableDebugMode + startAttachListener + 多次 eval 演示（交互式调试）。
+     *
+     * <p>验证调试模式核心语义：
+     * <ol>
+     *   <li>enableDebugMode 启用调试模式（主入口）</li>
+     *   <li>startAttachListener 后台监听，立即返回</li>
+     *   <li>VSCode 连接后，后续每次 eval（gclass/evalScript/evalExpression）都断第一行</li>
+     *   <li>evalScript/evalExpression 的 sourcePath=eval-N.script，VSCode 可查看源码</li>
+     *   <li>不调用 runEventLoop（主线程不被阻塞，适合宿主业务线程场景）</li>
+     * </ol>
+     *
+     * <p>典型场景：宿主主线程有自己的业务逻辑，偶尔调用解释器执行脚本/表达式，
+     * 调试模式下每次执行都断第一行，便于交互式调试。
+     *
+     * @param name 脚本名（不含扩展名，需先 compile 生成 gclass）
+     */
+    public static void debugAgentEval(String name) throws Exception {
+        GSClassData data = loadGclass(name);
+        if (data == null) return;
+        if (data.sourceContent == null) {
+            System.err.println("警告: gclass 不含源码内容，attach 模式无法在 VSCode 显示源码");
+            System.err.println("请重新编译: TestScript " + name + " compile");
+        }
+        int port = 4711;
+        GSInterpreter interp = new GSInterpreter();  // 构造器已自动初始化定时器
+        interp.addVariableToGlobal("console", new Console());
+
+        DebugAgent agent = new DebugAgent(port);
+        interp.enableDebugMode(agent);  // 主入口：setInterpreter + setDebugMode(true)
+        agent.addGclass(data);
+        agent.startAttachListener();  // 后台监听，立即返回
+
+        System.err.println("[测试] enableDebugMode 已启用，VSCode 可随时附加（端口 " + port + "）");
+        System.err.println("[测试] VSCode 未连：eval 正常执行；连接后：每次 eval 断第一行");
+
+        // 三次 eval 之间 sleep 1 秒，给 VSCode 附加留出时间（模拟宿主业务事件回调）
+        // 第一次 eval：从 gclass 执行（VSCode 连接后断第一行）
+        interp.eval(data.src, data.constantPool, data.sourceLines,
+                data.sourcePath, data.sourceContent);
+        Thread.sleep(1000);
+        // 第二次 eval：evalScript（sourcePath=eval-1.script）
+        interp.evalScript("console.log(\"second eval\");");
+        Thread.sleep(1000);
+        // 第三次 eval：表达式（sourcePath=eval-2.script，VSCode 可查看 "return (1 + 2);" 源码）
+        interp.evalExpression("1 + 2");
+
+        System.err.println("[测试] 所有 eval 执行结束");
+        agent.notifyScriptCompleted();  // 通知 DapServer 发送 terminated 事件
+        System.err.println("[测试] notifyScriptCompleted 已调用");
+        agent.stop();
     }
 
     // =========================================================================

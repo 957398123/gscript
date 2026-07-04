@@ -86,6 +86,12 @@ public class DebugController {
     private boolean stopOnEntryTriggered = false;
     /** 是否在抛出异常时暂停（exception breakpoints） */
     private volatile boolean pauseOnException = false;
+    /**
+     * eval 入口暂停请求（一次性，由解释器在顶层 eval 入口设置，debugMode=true 时）。
+     * 与 stopOnEntry（launch/attach 配置项，仅触发一次）正交：每次顶层 eval 入口都可设置。
+     * 触发后清除，挂起 reason="entry"。
+     */
+    private volatile boolean entryStopRequested = false;
 
     /** 同步锁：解释器线程 wait / DAP 线程 notify 均基于此对象 */
     private final Object lock = new Object();
@@ -192,6 +198,20 @@ public class DebugController {
     }
 
     /**
+     * 请求下次 suspendCheck 在 entry 处挂起（reason="entry"）。
+     *
+     * <p>由解释器在顶层 eval 入口调用（debugMode=true 且 controller 非 null 时）。
+     * 同时清除 pauseRequested：entry stop 隐含 pause 意图，
+     * 避免 VSCode 连接时设的 pauseRequested 在下次 eval 入口误触发 "pause" reason。
+     */
+    public void requestEntryStop() {
+        synchronized (lock) {
+            entryStopRequested = true;
+            pauseRequested = false;
+        }
+    }
+
+    /**
      * 终止调试会话。唤醒挂起的解释器线程，使其抛出 {@link DebugAbortException} 终止脚本。
      */
     public void terminate() {
@@ -199,6 +219,7 @@ public class DebugController {
             terminated = true;
             suspended = false;
             pauseRequested = false;
+            entryStopRequested = false;
             lock.notifyAll();
         }
     }
@@ -235,6 +256,14 @@ public class DebugController {
             // 1. 入口暂停（仅触发一次，确保只在脚本首条指令而非每个函数帧）
             if (stopOnEntry && !stopOnEntryTriggered) {
                 stopOnEntryTriggered = true;
+                shouldSuspend = true;
+                reason = "entry";
+            }
+            // 1.5 eval 入口暂停（每次顶层 eval 由解释器请求，一次性，debugMode=true 时）
+            //     与 stopOnEntry 正交：stopOnEntry 是 launch/attach 配置项（仅触发一次），
+            //     entryStopRequested 由解释器在每次 eval 入口设置，触发后清除
+            else if (entryStopRequested) {
+                entryStopRequested = false;
                 shouldSuspend = true;
                 reason = "entry";
             }

@@ -741,16 +741,19 @@ CRC32 覆盖 Header 偏移 0-15 + 20-EOF（不含偏移 16-19 的 CRC32 字段�
 
 ## 构建要求
 
-本项目已迁移为 **纯 Java 1.4** 实现，零外部依赖。
+本项目是 **纯 Java 1.4** 实现，零外部依赖。
 
 ### 环境要求
 
-- **Java 1.4+**（源码与目标均为 1.4，可在真实 JDK 1.4 环境编译执行）
+- **JDK 1.8**（用于编译，是最后一个支持 `-source 1.4 -target 1.4` 的版本）
 - **Maven 3.x**（仅用于构建，无任何外部依赖）
+- 产出的 class 文件 major version=48（真 1.4 字节码，可在真实 JDK 1.4 运行）
+
+> **JDK 9+ 不能用于编译**：JDK 9 最低支持 `-source 1.6`，无法生成 1.4 字节码。JDK 1.8 还能捕捉 JDK 9 + `-source 1.6` 无法发现的自动装箱缺陷和隐藏的 1.5 API 调用（如 `String.replace(CharSequence)`、`URL.toURI()`）。
 
 ### 关键设计
 
-| 迁移项 | 原实现（Java 9+） | 迁移后（Java 1.4） |
+| 项 | 原实现（Java 9+） | 现实现（Java 1.4） |
 |--------|-------------------|---------------------|
 | 语法特性 | 泛型、枚举、注解、增强 for、自动装箱、try-with-resources | 原始类型 + 显式 cast + Iterator + `new Integer()` |
 | 字符串构建 | `StringBuilder` | `StringBuffer` |
@@ -763,68 +766,19 @@ CRC32 覆盖 Header 偏移 0-15 + 20-EOF（不含偏移 16-19 的 CRC32 字段�
 
 ### 构建命令
 
-```bash
-mvn package -DskipTests
+```powershell
+# 必须用 JDK 1.8 编译（JDK 9+ 不支持 -source 1.4）
+$env:JAVA_HOME="C:\Program Files\Java\jdk1.8.0_202"
+mvn clean package -DskipTests
 ```
 
-生成 `target/gscript-1.0-SNAPSHOT.jar`，可直接 `java -jar` 运行调试适配器。
+生成 `target/gscript-1.0-SNAPSHOT.jar`（约 190KB，纯项目 jar，无 shade 无 fat jar），可直接 `java -jar` 运行调试适配器。
 
-> **注意**：JDK 9+ 编译器不支持 `-source 1.4`（最低 1.6）。在 JDK 9+ 环境验证时，需临时将 pom.xml 的 `<source>`/`<target>` 改为 `1.6`。代码本身仅使用 Java 1.4 语法与 API，在真实 JDK 1.4 环境可直接编译。
+## 快速开始
 
-## 在 Java 环境中使用 gscript（完整操作指南）
+### 1. 基础语法示例
 
-本节给出在 Java 环境中从零开始使用 gscript 的完整流程：环境配置 → 依赖引入 → 基础语法 → 常见使用场景。
-
-### 1. 环境配置
-
-| 项 | 要求 | 说明 |
-|----|------|------|
-| JDK | 1.4+ | 源码与字节码目标均为 1.4，可在真实 JDK 1.4 编译执行 |
-| Maven | 3.x | 仅用于构建，无任何外部依赖 |
-| OS | 跨平台 | 纯 Java，Windows/Linux/macOS 均可 |
-
-**JDK 9+ 开发机注意**：JDK 9 编译器最低支持 `-source 1.6`，无法直接用 1.4 编译。开发验证时需临时把 `pom.xml` 的 `<source>`/`<target>` 改为 `1.6`，构建完成后再改回 `1.4`。代码本身仅使用 Java 1.4 语法与 API，改回 1.4 后可在真实 JDK 1.4 环境直接编译。
-
-### 2. 依赖引入
-
-gscript **零外部依赖**（原 Gson 已替换为自研 JSON 库，`java.util.concurrent` 已替换为自研并发原语）。引入方式有两种：
-
-**方式 A：源码构建（推荐）**
-
-```bash
-git clone <repo> gscript
-cd gscript
-mvn package -DskipTests
-```
-
-生成 `target/gscript-1.0-SNAPSHOT.jar`（约 190KB，纯项目 jar，无 shade 无 fat jar）。
-
-**方式 B：直接引用 jar**
-
-将 `gscript-1.0-SNAPSHOT.jar` 加入应用 classpath：
-
-```bash
-# 命令行
-java -cp path/to/gscript-1.0-SNAPSHOT.jar org.gscript.TestScript hello run
-
-# Maven 项目（install 到本地仓库后）
-mvn install:install-file -Dfile=gscript-1.0-SNAPSHOT.jar \
-    -DgroupId=org.gscript -DartifactId=gscript -Dversion=1.0-SNAPSHOT -Dpackaging=jar
-```
-
-然后在 `pom.xml` 中引用（注意：gscript 本身零依赖，无需传递依赖）：
-
-```xml
-<dependency>
-  <groupId>org.gscript</groupId>
-  <artifactId>gscript</artifactId>
-  <version>1.0-SNAPSHOT</version>
-</dependency>
-```
-
-### 3. 基础语法示例
-
-gscript 是类 JS 语法的脚本语言，支持变量、函数、控制流、对象/数组、异常、定时器等。以下是一个覆盖主要语法的示例（保存为 `hello.script`）：
+gscript 是类 JS 语法的脚本语言，支持变量、函数、控制流、对象/数组、异常、定时器等。以下是一个覆盖主要语法的示例（保存为 `src/main/resources/hello.script`）：
 
 ```javascript
 // 变量与算术
@@ -864,43 +818,29 @@ try {
 } finally {
     console.log("finally");
 }
+
+// 定时器（构造器默认初始化，无需注册）
+var counter = 0;
+var id = setInterval(function() {
+    counter = counter + 1;
+    console.log("tick " + counter);
+    if (counter >= 3) { clearInterval(id); }
+}, 100);
 ```
 
-执行（详见下一节「常见使用场景」）：
+### 2. 执行脚本
 
 ```bash
+# 编译源码 + 立即执行（默认 run 模式）
 java -cp target/classes org.gscript.TestScript hello run
 ```
 
-更多语法细节见本文档开头的 [语法定义](#语法定义)，字面量成员访问见 [字面量上的成员访问](#字面量上的成员访问)。
+`<name>` 对应 `src/main/resources/<name>.script`（去掉扩展名）。更多命令行模式见下文 [TestScript 命令行模式](#testscript-命令行模式)。
 
-### 4. 常见使用场景
-
-#### 场景一：命令行执行脚本（CLI）
-
-最直接的方式，编译源码 + 立即执行：
-
-```bash
-java -cp target/classes org.gscript.TestScript <name> [run|dump|compile|rungclass|dumpgclass|hosttest]
-```
-
-| 模式 | 说明 |
-|------|------|
-| `run`（默认） | 编译源码 + 执行 |
-| `dump` | 编译源码 + 打印字节码↔源码行映射 |
-| `compile` | 编译源码 + 写出 `.gclass` 文件 |
-| `rungclass` | 加载 `.gclass` + 执行 |
-| `dumpgclass` | 加载 `.gclass` + 打印字节码映射 + FunctionTable |
-| `hosttest` | 宿主交互 API 演示（Java 调用 gscript 解释器） |
-
-`<name>` 对应 `src/main/resources/<name>.script`（去掉扩展名）。详见下文 [TestScript 命令行模式](#testscript-命令行模式)。
-
-#### 场景二：Java 宿主嵌入（应用集成）
-
-在 Java 应用中直接 `new GSInterpreter()` 执行 gscript 代码、读写变量，实现 Java ↔ gscript 双向交互：
+### 3. Java 宿主嵌入
 
 ```java
-GSInterpreter interpreter = new GSInterpreter();
+GSInterpreter interpreter = new GSInterpreter();  // 构造器默认初始化定时器
 interpreter.addVariableToGlobal("console", new Console());
 
 interpreter.evalScript("var x = 10; function add(a, b) { return a + b; }");
@@ -914,60 +854,41 @@ GSValue v = interpreter.evalExpression("config.timeout");
 
 完整 API 与类型映射见下文 [宿主交互 API](#宿主交互-api)。
 
-#### 场景三：.gclass 二进制缓存
-
-将 `.script` 编译为 `.gclass` 二进制文件（含 CRC32 校验、SourceMap、FunctionTable），用于网络传输或磁盘缓存，加载时无需重新编译：
-
-```bash
-# 编译
-java -cp target/classes org.gscript.TestScript hello compile
-# 加载执行
-java -cp target/classes org.gscript.TestScript hello rungclass
-```
-
-`.gclass` 文件格式详见 [编译文件格式（.gclass）](#编译文件格式gclass)。
-
-#### 场景四：定时器与事件循环
-
-gscript 内置 JS 风格的 `setTimeout`/`setInterval`/`clearTimeout`/`clearInterval`，单线程事件循环语义，回调内断点天然工作：
-
-```javascript
-var counter = 0;
-var id = setInterval(function() {
-    counter = counter + 1;
-    console.log("tick " + counter);
-    if (counter >= 3) { clearInterval(id); }
-}, 100);
-```
-
-完整 API 与事件循环语义见下文 [定时器 API](#定时器-api-settimeout--setinterval)。
-
-## 运行
-
-
-### 从源码运行
-
-加载 `.script` 源码，编译为字节码后立即执行（内部用 `BytecodeEncoder` 编码为 `byte[][]` + 常量池）。
-
-### 从 .gclass 运行
-
-加载 `.gclass` 二进制文件，反序列化后直接执行 `byte[][]` 字节码，无需重新编译。
-相当于加载一个匿名函数并立即执行。同文件所有函数共享同一个常量池引用。
-
-### TestScript 命令行模式
+## TestScript 命令行模式
 
 ```
-java -cp target/classes org.gscript.TestScript <name> [run|dump|compile|rungclass|dumpgclass|hosttest]
+java -cp target/classes org.gscript.TestScript <name> [mode]
 ```
+
+`<name>` 对应 `src/main/resources/<name>.script`（去掉扩展名）。`<name>.gclass` 文件位于 `target/classes/gtxt/<name>.gclass`。
 
 | 模式 | 说明 |
 |------|------|
-| `run`（默认） | 编译源码 + 执行 |
-| `dump` | 编译源码 + 打印字节码↔源码行映射 |
-| `compile` | 编译源码 + 写出 `.gclass` 文件 |
-| `rungclass` | 加载 `.gclass` + 执行 |
-| `dumpgclass` | 加载 `.gclass` + 打印字节码映射 + FunctionTable |
-| `hosttest` | 宿主交互 API 演示（Java 调用 gscript 解释器） |
+| `run`（默认） | 编译源码 + 立即执行（含 runEventLoop，pump 定时器队列） |
+| `dump` | 编译源码 + 打印字节码索引↔源码行映射（调试器源码映射验证用） |
+| `compile` | 编译源码 + 写出 `.gclass` 二进制文件（含 CRC32/SourceMap/FunctionTable） |
+| `rungclass` | 加载 `.gclass` + 反序列化 + 执行（无需重新编译） |
+| `dumpgclass` | 加载 `.gclass` + 打印字节码映射 + FunctionTable（验证反序列化正确性） |
+| `hosttest` | 宿主交互 API 演示（Java 调用 gscript 解释器：evalScript/evalExpression/getVariable/setVariable） |
+| `debugagent` | DebugAgent launch 模式（`waitForDebuggerAndRun`，阻塞等 VSCode 连接后由 agent 后台线程执行 gclass） |
+| `debugagent-attach` | DebugAgent 运行时 attach 模式（`startAttachListener`，解释器先运行，VSCode 随后附加） |
+| `debugagent-waitattach` | DebugAgent 主线程驱动 attach 模式（`waitForDebuggerAndAttach`，主线程阻塞等连接后继续执行） |
+| `debugagent-eval` | enableDebugMode + startAttachListener + 多次 eval 演示（交互式调试，验证每次 eval 断第一行） |
+| `batch` | 遍历 `src/main/resources` 根目录所有 `.script`，批量编译为 `.gtxt`（不执行） |
+
+### 调试模式测试入口
+
+`debugagent` / `debugagent-attach` / `debugagent-waitattach` / `debugagent-eval` 四个模式用于调试器测试，需先用 `compile` 生成 `.gclass`：
+
+```bash
+# 1. 编译生成 gclass（含 sourceContent，供 VSCode source 请求）
+java -cp target/classes org.gscript.TestScript timer_debug compile
+
+# 2. 启动调试代理（任选一种模式）
+java -cp target/classes org.gscript.TestScript timer_debug debugagent-waitattach
+```
+
+然后在 VSCode 中按 F5 附加（attach 配置，端口 4711）。详见下文 [调试模式](#调试模式)。
 
 ## 宿主交互 API
 
@@ -976,12 +897,63 @@ gscript → Java 方向已通过 `GSNativeFunction`（如 `Console`）实现；�
 
 ### GSInterpreter 方法
 
+#### 执行入口
+
 | 方法 | 说明 |
 |------|------|
-| `evalScript(String code)` | 在当前全局上下文中执行一段 gscript 源码（语句序列），共享 global 环境 |
+| `evalScript(String code)` | 在当前全局上下文执行一段 gscript 源码（语句序列），共享 global 环境（REPL 风格，无源码映射） |
 | `evalExpression(String expr)` | 求值一个 gscript 表达式并返回结果（包装为 `return (expr);` 执行）；出错返回 `GSNull.NULL` |
+| `evalScriptFile(String filePath)` | 从文件系统读 `.script` 编译并执行（**带源码映射**，供调试器使用） |
+| `evalScriptStream(InputStream in, String sourcePath)` | 从输入流读源码编译并执行（**带源码映射**）；流不关闭，调用方负责 |
+| `evalGclassFile(String filePath)` | 从 `.gclass` 二进制文件反序列化并执行 |
+| `evalGclassStream(InputStream in)` | 从输入流读 `.gclass` 反序列化并执行；流不关闭 |
+| `eval(byte[][] codes, Object[] cp, int[] sourceLines, String sourcePath)` | 执行二进制字节码（4 参数版，sourceContent=null） |
+| `eval(byte[][] codes, Object[] cp, int[] sourceLines, String sourcePath, String sourceContent)` | 执行二进制字节码（5 参版，attach 调试模式用，sourceContent 随函数继承供 DAP source 请求） |
+| `eval(String[] src, int[] sourceLines, String sourcePath)` | 执行文本字节码（内部用 `BytecodeEncoder` 编码为二进制后委托 4 参版） |
+| `eval(String[] src)` | 执行文本字节码（无源码映射，非调试入口） |
+
+#### 预编译（只编译不执行）
+
+| 方法 | 说明 |
+|------|------|
+| `static compileScriptStream(InputStream in, String sourcePath)` | 从流编译为 `GSClassData`（含 sourceLines/sourceContent），供 `DebugAgent.addGclass()` 预注册 |
+| `static compileScriptContent(String code, String sourcePath)` | 从源码字符串编译为 `GSClassData`（含 sourceLines/sourceContent） |
+
+> `compileScriptStream` / `compileScriptContent` 是 `static` 方法，不需要解释器实例，纯粹走编译流水线（Lexer → Parser → ByteCodeGenerator → BytecodeEncoder），返回的 `GSClassData` 含完整 sourceLines + sourceContent + sourcePath，可直接传给 `DebugAgent.addGclass()` 或 `eval(byte[][], Object[], int[], String, String)`。是**多文件 attach 调试**的关键入口。
+
+#### 变量读写
+
+| 方法 | 说明 |
+|------|------|
 | `getVariable(String name)` | 从全局作用域获取变量；未定义返回 `GSNull.NULL` |
-| `setVariable(String name, Object value)` | 设置全局变量，自动包装 Java 对象为 GSValue |
+| `setVariable(String name, Object value)` | 设置全局变量，自动包装 Java 对象为 GSValue（支持 Integer/Float/Double/String/Boolean/Map/List/null/GSValue） |
+| `addVariableToGlobal(String name, GSValue value)` | 直接添加 GSValue 到全局域（不自动包装） |
+| `callFunction(GSFunction fn, ArrayList args)` | 调用 gscript 函数（native 回调 gscript 的唯一入口，定时器回调用） |
+
+#### 调试模式 API
+
+| 方法 | 说明 |
+|------|------|
+| `enableDebugMode(DebugAgent agent)` | **主入口**：一步完成 `agent.setInterpreter(this)`（内部回调 `setDebugAgent`）+ `setDebugMode(true)`。替代旧的 `setInterpreter` + `setPauseOnAttach` |
+| `setDebugMode(boolean mode)` | 启用/关闭调试模式。启用后所有顶层 eval 入口会自动注册 source 并请求 entry stop（若 controller 已就位） |
+| `isDebugMode()` | 查询调试模式是否启用 |
+| `setDebugController(DebugController dc)` | 设置调试控制器（由 DapServer 创建并共享，宿主一般不直接调用） |
+| `getDebugController()` | 获取调试控制器，非调试模式返回 null |
+| `setDebugAgent(DebugAgent agent)` | 设置调试代理（通常由 `DebugAgent.setInterpreter` 回调调用） |
+| `getDebugAgent()` | 查询调试代理 |
+| `debugLaunch(GSClassData data, int port)` | launch 调试便捷封装：`enableDebugMode` + `addGclass` + `waitForDebuggerAndRun`（阻塞到 disconnect） |
+| `debugAttach(GSClassData data, int port)` | attach 调试便捷封装：`enableDebugMode` + `addGclass` + `startAttachListener` + `eval` + `runEventLoop` |
+| `getCallStackSnapshot()` | 获取调用栈的线程安全快照（synchronized，调试器挂起期间 DAP 线程读取用） |
+
+#### 定时器 API
+
+| 方法 | 说明 |
+|------|------|
+| `scheduleTimeout(GSFunction cb, long delay, ArrayList args)` | 调度一次性定时器（setTimeout），返回 timer id |
+| `scheduleInterval(GSFunction cb, long period, ArrayList args)` | 调度周期性定时器（setInterval），返回 timer id |
+| `cancelTimer(int id)` | 取消定时器（clearTimeout/clearInterval 共用） |
+| `runEventLoop()` | 事件循环：pump 定时器队列直到排空（无定时器任务时立即返回） |
+| `installTimerGlobals()` | 注册 setTimeout/setInterval/clearTimeout/clearInterval 到 global 域（构造器已默认调用，宿主一般无需显式调用） |
 
 ### GSValue 类型转换方法
 
@@ -1007,7 +979,7 @@ gscript → Java 方向已通过 `GSNativeFunction`（如 `Console`）实现；�
 ### 使用示例
 
 ```java
-GSInterpreter interpreter = new GSInterpreter();
+GSInterpreter interpreter = new GSInterpreter();  // 构造器默认初始化定时器
 interpreter.addVariableToGlobal("console", new Console());
 
 // 1. 执行一段 gscript 代码
@@ -1022,17 +994,20 @@ GSValue sum = interpreter.evalExpression("add(x, y)");
 System.out.println(sum.toIntValue());  // 30
 
 // 4. 设置变量（自动包装 Java 值为 GSValue）
-interpreter.setVariable("z", 100);
-interpreter.setVariable("config", Map.of("timeout", 5000, "retries", 3));
+interpreter.setVariable("z", new Integer(100));
+Map config = new LinkedHashMap();
+config.put("timeout", new Integer(5000));
+config.put("retries", new Integer(3));
+interpreter.setVariable("config", config);
 interpreter.evalScript("console.log(z); console.log(config.timeout);");
 
 // 5. GSValue → Java 对象（递归转换）
 GSValue obj = interpreter.evalExpression("{name: \"Alice\", age: 30, scores: [90, 85, 95]}");
-Map<String, Object> javaObj = (Map<String, Object>) obj.toJavaObject();
+Map javaObj = (Map) obj.toJavaObject();
 // javaObj = {name="Alice", age=30, scores=[90, 85, 95]}
 
 // 6. Java 对象 → GSValue（注入 gscript）
-List<Integer> tags = Arrays.asList(1, 2, 3);
+List tags = new ArrayList(Arrays.asList(new Integer[]{new Integer(1), new Integer(2), new Integer(3)}));
 interpreter.setVariable("tags", tags);
 GSValue first = interpreter.evalExpression("tags[0]");
 System.out.println(first.toIntValue());  // 1
@@ -1045,11 +1020,32 @@ System.out.println(first.toIntValue());  // 1
 - top-level `return` 合法（EBNF: `Program = { Statement }`，`ReturnStatement` 属于 `Statement`），`OP_RETURN` 将返回值留在共享栈上供 `evalExpression` 弹出
 - `getVariable` 基于 `global.getVariableValue(name)`——top-level `var` 声明直接落入 global（`ProgramNode` 不 emit `pushenv`）
 
-## 定时器 API（setTimeout / setInterval）
+## 定时器机制（EventLoop）
 
-gscript 提供 JS 风格的定时器，采用**单线程事件循环**语义：守护线程 `gscript-timer` 只负责计时（不执行字节码），到期任务入队后由主线程串行执行回调。回调内设置的断点/单步天然工作。
+gscript 内置 JS 风格的 `setTimeout`/`setInterval`/`clearTimeout`/`clearInterval`，采用**单线程事件循环**语义：守护线程 `gscript-timer` 只负责计时（不执行字节码），到期任务入队后由主线程串行执行回调。回调内设置的断点/单步天然工作。
 
-### 全局函数
+### 三层设计（核心机制默认就绪）
+
+定时器机制采用三层解耦设计，**核心机制在解释器构造时就绪**，不依赖入口函数注册：
+
+| 层次 | 说明 | API |
+|------|------|-----|
+| ① 核心机制 | `TimerScheduler`（计时守护线程 + readyQueue），构造时默认就绪 | `ensureTimerScheduler()`（构造器调用） |
+| ② 入口函数 | `setTimeout`/`setInterval`/`clearTimeout`/`clearInterval` 注册到 global 域，gscript 脚本用 | `installTimerGlobals()`（构造器调用） |
+| ③ 宿主直调 API | `scheduleTimeout`/`scheduleInterval`/`cancelTimer`，公开方法供宿主直接调度 | `GSInterpreter.scheduleTimeout` 等 |
+
+**解耦关系**：`ensureTimerScheduler()` 在 `installTimerGlobals()` 之前调用，核心机制不依赖入口函数注册。即使宿主从 global 移除 `setTimeout`，`TimerScheduler` 仍存在，宿主可通过 `scheduleTimeout` 直调。
+
+```java
+public GSInterpreter() {
+    ensureTimerScheduler();      // 构造时就绪 TimerScheduler（核心机制默认初始化）
+    installTimerGlobals();       // 默认注册 setTimeout/setInterval 等入口函数到 global 域
+}
+```
+
+> **无需显式调用 `installTimerGlobals()`**：构造器已默认调用。所有 `new GSInterpreter()` 后定时器机制立即可用。若宿主想自定义入口函数（如重命名），可从 global 移除默认函数后用 `scheduleTimeout` 自行封装。
+
+### 全局函数（gscript 脚本用）
 
 | 函数 | 说明 | 返回值 |
 |------|------|--------|
@@ -1062,13 +1058,16 @@ gscript 提供 JS 风格的定时器，采用**单线程事件循环**语义：�
 - `delayMs` / `periodMs` 为整数毫秒；负数延迟当 0 处理，`periodMs < 1` 当 1 处理（避免忙等）
 - `...args` 透传给回调（回调内从第 1 个参数起取，`this` 为 `null`）
 
-### 事件循环
+### 事件循环（runEventLoop）
 
-主脚本 `eval` 返回后，解释器自动进入事件循环 `runEventLoop`，pump 定时器队列直到排空（`hasPending() == false`）：
+主脚本 `eval` 返回后，调用 `runEventLoop` pump 定时器队列直到排空（`hasPending() == false`）：
 
+- **非阻塞**：`runEventLoop` 检查 `timerScheduler == null || !timerScheduler.hasPending()`，无定时器任务时立即返回
 - **纯 setTimeout 脚本**：所有回调执行完后队列排空，事件循环退出，进程正常终止
 - **纯 setInterval 脚本**：永不退出（需 `clearInterval` 或进程终止）
 - **异常策略（类 JS）**：回调内未捕获异常打印到 stderr 后继续下一个任务；`DebugAbortException`（调试终止请求）传播出循环终止事件循环
+
+> **何时调用 `runEventLoop`**：仅在脚本使用了定时器且需同步等待回调完成时调用。宿主自行管理定时器线程的场景（如 `debugagent-eval` 模式）可不调用，主线程不被阻塞。
 
 ### 调试器交互
 
@@ -1100,16 +1099,181 @@ setTimeout(function(a, b) {
 }, 0, 10, 20);  // 输出 sum=30
 ```
 
+## 调试模式
+
+gscript 调试器支持 VSCode 插件调试，采用 DAP（Debug Adapter Protocol）协议通过 TCP socket 通信。
+
+### enableDebugMode 主入口
+
+`GSInterpreter.enableDebugMode(DebugAgent agent)` 是所有调试场景的统一入口，一步完成：
+1. `agent.setInterpreter(this)`（内部回调 `setDebugAgent`，建立双向引用）
+2. `setDebugMode(true)`（启用调试模式）
+
+```java
+GSInterpreter interp = new GSInterpreter();  // 构造器默认初始化定时器
+interp.addVariableToGlobal("console", new Console());
+
+DebugAgent agent = new DebugAgent(4711);
+interp.enableDebugMode(agent);  // 主入口：setInterpreter + setDebugMode(true)
+```
+
+### debugMode 与 debugController 解耦
+
+- `debugMode=true` 表示"愿意被调试"，所有顶层 eval 入口会调 `prepareDebugEntry` 注册 source + 请求 entry stop
+- `debugController=null` 表示"VSCode 未连接"，`prepareDebugEntry` 跳过 `requestEntryStop`，eval 正常执行（JS "DevTools 未连接" 语义，不阻塞）
+
+两者独立：`debugMode=true` 但 `controller=null` 时 eval 正常执行。VSCode 连接后由 DapServer 创建 controller 并通过 `agent.setController()` 共享（volatile 字段），下次 `suspendCheck` 时按需挂起。
+
+### entryStopRequested 机制
+
+`DebugController.entryStopRequested` 是独立的一次性标志（volatile，与 `stopOnEntry`/`pauseRequested` 正交）：
+
+- `requestEntryStop()` 设置标志 + 清除 `pauseRequested`
+- `suspendCheck` 检查顺序：`stopOnEntry` → **`entryStopRequested`** → `pauseRequested`
+- 触发后 stopped 事件的 `reason="entry"`
+
+`prepareDebugEntry` 在所有顶层 eval 入口（5-arg eval / evalScript / evalExpression / evalScriptFile）调用，确保首次 `suspendCheck` 命中 entry stop。
+
+### eval sourcePath 生成
+
+debug 模式下，`evalScript` / `evalExpression` 用 `generateEvalPath()` 生成唯一 sourcePath（`"eval-" + counter + ".script"`，AtomicCounter 自增），VSCode 可通过 source 请求获取源码内容。`evalExpression` 的源码形式为 `"return (1 + 2);"`。
+
+### DebugAgent 三种调试模式
+
+宿主程序接入 VSCode 调试有三种模式，按"谁驱动脚本执行"选择：
+
+| 模式 | 方法 | 阻塞调用线程 | 谁执行脚本 | 适用场景 |
+|------|------|-------------|-----------|---------|
+| launch | `waitForDebuggerAndRun()` | 是（到 disconnect） | agent 后台 `gscript-interpreter` 线程 | agent 负责执行脚本，宿主只注册 gclass |
+| 运行时 attach | `startAttachListener()` | 否（立即返回） | 宿主主线程（已运行） | 程序已运行，VSCode 随后附加 |
+| **主线程驱动 attach** | `waitForDebuggerAndAttach()` | 是（到 configurationDone） | 宿主主线程（连接后开始） | **主线程是脚本驱动者，需先连接调试器再执行** |
+
+三种模式都用 `"request": "attach"` launch.json 配置（`localRoot`/`remoteRoot` 路径映射），区别仅在宿主调用哪个 API。
+
+#### 模式 1：launch（waitForDebuggerAndRun）
+
+agent 后台线程执行 gclass，调用线程阻塞到 VSCode disconnect。
+
+```java
+GSClassData data = GSInterpreter.compileScriptStream(in, "myscript.script");
+
+GSInterpreter interp = new GSInterpreter();
+interp.addVariableToGlobal("console", new Console());
+
+DebugAgent agent = new DebugAgent(4711);
+interp.enableDebugMode(agent);
+agent.addGclass(data);
+agent.waitForDebuggerAndRun();  // 阻塞到 disconnect，脚本在子线程执行
+```
+
+#### 模式 2：运行时 attach（startAttachListener）
+
+立即返回，解释器在主线程全速运行，VSCode 随后附加。
+
+```java
+DebugAgent agent = new DebugAgent(4711);
+interp.enableDebugMode(agent);
+agent.addGclass(data);
+agent.startAttachListener();  // 后台监听，立即返回
+
+// 主线程执行脚本（VSCode 连接后 controller 注入，下次 suspendCheck 挂起）
+interp.eval(data.src, data.constantPool, data.sourceLines,
+        data.sourcePath, data.sourceContent);
+interp.runEventLoop();
+agent.notifyScriptCompleted();  // 通知 DapServer 发 terminated 事件
+agent.stop();
+```
+
+#### 模式 3：主线程驱动 attach（waitForDebuggerAndAttach）
+
+**专为宿主 `static` 块加载脚本场景设计**：主线程阻塞等 VSCode 连接，连接后 controller 已注入并请求 entry stop，方法返回让主线程继续执行——首次 `eval` 即挂起。
+
+```java
+static {
+    GSInterpreter interp = new GSInterpreter();
+    interp.addVariableToGlobal("console", new Console());
+
+    DebugAgent agent = new DebugAgent(4711);
+    interp.enableDebugMode(agent);
+
+    // 预编译 + 注册（sourceContent 供 VSCode source 请求）
+    String[] scripts = {"vars.script", "util.script", "battle.script"};
+    List datas = new ArrayList();
+    for (int i = 0; i < scripts.length; i++) {
+        InputStream is = MyApp.class.getResourceAsStream("/scripts/" + scripts[i]);
+        GSClassData data = GSInterpreter.compileScriptStream(is, scripts[i]);
+        agent.addGclass(data);
+        datas.add(data);
+    }
+
+    // 阻塞等 VSCode 连接，连接后返回（controller 已注入 + entryStopRequested）
+    agent.waitForDebuggerAndAttach();
+
+    // 主线程依次执行脚本（首次 eval 命中 entryStopRequested → 挂起，reason=entry）
+    for (int i = 0; i < datas.size(); i++) {
+        GSClassData d = (GSClassData) datas.get(i);
+        interp.eval(d.src, d.constantPool, d.sourceLines, d.sourcePath, d.sourceContent);
+    }
+    interp.runEventLoop();
+    agent.notifyScriptCompleted();  // 通知 DapServer 发 terminated 事件
+    agent.stop();
+}
+```
+
+**与模式 2 的区别**：模式 2 立即返回，连接前脚本已开始执行，无法调试初始加载；模式 3 阻塞到连接后才放行，保证初始加载即可调试。
+
+### notifyScriptCompleted（重要）
+
+`startAttachListener` / `waitForDebuggerAndAttach` 模式下，脚本执行完毕后 DapServer **不会自动**发 terminated 事件（仅 launch 模式才会）。宿主必须在 eval 结束后调用 `agent.notifyScriptCompleted()` 让 DapServer 发 terminated，否则 VSCode 永远等不到会话结束。`agent.stop()` 只关闭 server socket + terminate controller，不发 terminated。
+
+### 多文件 attach 调试
+
+多文件调试用 `compileScriptStream` / `compileScriptContent` **预编译**为 `GSClassData`（不执行），再注册到 `DebugAgent.addGclass()` 或自行 `eval`：
+
+```java
+GSInterpreter interp = new GSInterpreter();
+interp.addVariableToGlobal("console", new Console());
+
+DebugAgent agent = new DebugAgent(4711);
+interp.enableDebugMode(agent);
+
+// 多个 .script 流（sourcePath 必须唯一，作为 DAP source 标识）
+String[] paths = {"a.script", "b.script", "c.script"};
+InputStream[] streams = {...};
+List datas = new ArrayList();
+for (int i = 0; i < streams.length; i++) {
+    GSClassData data = GSInterpreter.compileScriptStream(streams[i], paths[i]);
+    agent.addGclass(data);          // 注册供 VSCode source 请求返回源码
+    datas.add(data);
+}
+
+agent.startAttachListener();        // 后台监听，立即返回
+try {
+    // 主线程依次 eval（VSCode 连上后 controller 注入，下次 suspendCheck 挂起）
+    for (int i = 0; i < datas.size(); i++) {
+        GSClassData d = (GSClassData) datas.get(i);
+        interp.eval(d.src, d.constantPool, d.sourceLines, d.sourcePath, d.sourceContent);
+    }
+    interp.runEventLoop();          // 定时器回调
+    agent.notifyScriptCompleted();
+} finally {
+    agent.stop();
+}
+```
+
+**多文件语义**：所有文件共享同一 `interpreter.global` 环境，后加载文件定义的同名函数覆盖前文件（global 域变量被覆盖赋值），与 DapServer launch 模式的多文件行为一致。每个文件 sourcePath 必须唯一（DAP source 请求用它作 key）。
+
 ## VSCode 调试
 
-gscript 提供 VSCode 扩展（`gscript-debug`），支持 **Launch**（stdio，本地启动）和 **Attach**（socket，附加到已运行进程）两种调试模式，覆盖断点、单步、调用栈、变量查看、表达式求值等完整调试能力。
+gscript 提供 VSCode 扩展（`gscript-debug` v0.2.1），支持 **Launch**（stdio，本地启动）和 **Attach**（socket，附加到已运行进程）两种调试模式，覆盖断点、单步、调用栈、变量查看、表达式求值等完整调试能力。
 
 ### 前置准备
 
 1. **构建调试适配器 jar**
 
-   ```bash
-   mvn package -DskipTests
+   ```powershell
+   $env:JAVA_HOME="C:\Program Files\Java\jdk1.8.0_202"
+   mvn clean package -DskipTests
    ```
 
    生成 `target/gscript-1.0-SNAPSHOT.jar`（纯项目 jar，无外部依赖）。
@@ -1117,13 +1281,12 @@ gscript 提供 VSCode 扩展（`gscript-debug`），支持 **Launch**（stdio，
 2. **安装 VSCode 扩展**
 
    ```powershell
-   # 方式 A：用项目内置脚本打包并安装
+   # 用项目内置脚本打包并安装
    powershell -ExecutionPolicy Bypass -File tests\build_vsix.ps1
-   code --install-extension $env:TEMP\gscript-debug-0.2.0.vsix --force
-
-   # 方式 B：开发模式（推荐开发期）
-   # 将 vscode-extension 目录在 VSCode「扩展开发宿主」中打开，按 F5 调试
+   code --install-extension vscode-extension\gscript-debug-0.2.1.vsix --force
    ```
+
+   > **VSCode 插件 schema 重要教训**：VSCode 对 launch.json 属性校验基于**已安装扩展**的 package.json schema，而非工作区源码。即使源码 package.json 已定义某属性，若已安装 VSIX 是旧版，VSCode 仍按旧 schema 报错。修复必须：①改源码 package.json schema；②bump 版本；③重新打包 VSIX；④`code --install-extension --force` 安装。
 
 3. **配置 jar 路径**
 
@@ -1205,32 +1368,31 @@ VSCode 启动调试适配器子进程（`java -jar <jarPath> --stdio`），通�
 
 调试适配器以 socket 模式独立运行（`java -jar <jar> --port=4711`），VSCode 通过 `host`/`port` 连接。适用于：调试适配器需在 IDE 之外单独运行（容器内、远程机器、或 gscript 进程已启动后动态附加）。
 
-Attach 模式有两种启用方式：
+Attach 模式有三种启用方式（对应 [DebugAgent 三种调试模式](#debugagent-三种调试模式)）：
 
-#### 方式一：debug 模式（`waitForDebugger`，阻塞等待）
+#### 方式一：launch（`waitForDebuggerAndRun`，阻塞等待）
 
-gscript 程序启动时即进入 debug 模式，**阻塞等待** VSCode 连接后才开始执行。适合从程序入口调试。
+gscript 程序启动时即进入 debug 模式，**阻塞等待** VSCode 连接后由 agent 后台线程执行 gclass。适合从程序入口调试。
 
-1. 启动调试适配器（socket 模式）：
-
-   ```bash
-   java -jar target/gscript-1.0-SNAPSHOT.jar --port=4711
-   ```
-
-2. gscript 程序以 debug 模式启动（具体取决于宿主如何调用解释器；程序会阻塞等待调试器连接）
-
+1. 编译 gclass：`java -cp target/classes org.gscript.TestScript <name> compile`
+2. 启动：`java -cp target/classes org.gscript.TestScript <name> debugagent`（阻塞等连接）
 3. VSCode 选择 attach 配置，按 F5 连接，程序开始执行
 
-#### 方式二：运行时 attach（`attachReady`，动态附加）
+#### 方式二：运行时 attach（`startAttachListener`，动态附加）
 
 gscript 程序已正常运行，VSCode **随后连接**附加调试。适合调试运行时才出现的问题（如同 `node --inspect`）。
 
-1. gscript 程序正常运行（已加载脚本并执行）
-2. 启动调试适配器（socket 模式）：
-   ```bash
-   java -jar target/gscript-1.0-SNAPSHOT.jar --port=4711
-   ```
+1. 编译 gclass：`java -cp target/classes org.gscript.TestScript <name> compile`
+2. 启动：`java -cp target/classes org.gscript.TestScript <name> debugagent-attach`（解释器先运行）
 3. VSCode 选择 attach 配置，按 F5 附加，在当前位置挂起
+
+#### 方式三：主线程驱动 attach（`waitForDebuggerAndAttach`）
+
+主线程阻塞等 VSCode 连接，连接后 controller 注入 + entryStopRequested，主线程继续执行——首次 eval 即挂起（reason=entry）。专为宿主 `static` 块加载脚本场景设计。
+
+1. 编译 gclass：`java -cp target/classes org.gscript.TestScript <name> compile`
+2. 启动：`java -cp target/classes org.gscript.TestScript <name> debugagent-waitattach`（阻塞等连接）
+3. VSCode 选择 attach 配置，按 F5 连接，主线程开始执行并断在首次 eval
 
 #### 配置
 
@@ -1267,7 +1429,7 @@ gscript 程序已正常运行，VSCode **随后连接**附加调试。适合调�
 | `host` | `string` | 调试适配器主机地址，默认 `localhost` |
 | `localRoot` | `string` | 本地源码根目录（VSCode 端），用于映射断点路径到远程 sourcePath |
 | `remoteRoot` | `string` | 远程源码根目录前缀（gclass sourcePath 的前缀），默认空串表示 sourcePath 为相对路径 |
-| `stopOnEntry` | `boolean` | 连接后是否在当前位置暂停（`attachReady` 模式自动暂停；此选项用于 `waitForDebugger` 模式） |
+| `stopOnEntry` | `boolean` | 连接后是否在当前位置暂停（`startAttachListener` 模式自动暂停；此选项用于 `waitForDebugger` 模式） |
 
 #### 路径映射（`localRoot` / `remoteRoot`）
 
@@ -1286,12 +1448,7 @@ Attach 模式下源码可能来自 gclass 携带的 `sourcePath`（远程/相对
 
 Attach 模式下若 gclass 携带 `SourceContent` 属性，VSCode 会通过 DAP source 请求获取源码内容并显示。stackTrace 响应中 `source.sourceReference > 0` 时触发该请求。
 
-#### 调试技巧
-
-- **disconnect 行为**：attach 模式 disconnect **仅分离调试器**（如同 `node --inspect`），gscript 程序（含 `setInterval`）继续运行；需发送 `terminate` 请求或 kill 进程终止。
-- **`setInterval` 程序**：attach 后可调试周期回调；detach 后程序存活，可再次 attach。
-- **`stopOnEntry`**：`waitForDebugger` 模式下控制连接后是否暂停；`attachReady` 模式默认在当前位置暂停。
-- **调试日志**：DapServer 主循环异常写入 `dap_debug.log`，用于分析 VSCode 实际通信的 DAP 消息（断点不命中、堆栈异常等问题排查）。
+> **DAP Source 字段名**：DAP 协议 Source 对象的源码引用字段名是 `sourceReference`（**非** `reference`）。误写成 `reference` 会导致 VSCode 认 source 字段不存在，source 请求返回 "source not available"。
 
 ### 调试功能矩阵
 
@@ -1314,8 +1471,50 @@ Attach 模式下若 gclass 携带 `SourceContent` 属性，VSCode 会通过 DAP 
 | 现象 | 排查方向 |
 |------|----------|
 | 断点不命中（空心灰点） | 检查 `localRoot`/`remoteRoot` 映射；查看 `dap_debug.log` 的 setBreakpoints 请求路径；确认 `source.path` 经 `getCanonicalPath()` 规范化后与脚本一致 |
-| launch.json 属性「不允许」错误 | 确认已安装扩展 v0.2.0+（`code --list-extensions --show-versions`）；`localRoot`/`remoteRoot`/`stopOnEntry` 在 launch + attach 均允许 |
+| launch.json 属性「不允许」错误 | 确认已安装扩展 v0.2.1+（`code --list-extensions --show-versions`）；旧版 VSIX 需重新打包安装 |
 | 「未配置 jar 路径」错误 | 在 VSCode 设置 `gscript.jarPath` 或 launch.json 配置 `jarPath` 字段 |
 | attach 连接失败 | 确认调试适配器已以 `--port=<port>` 启动；`host`/`port` 一致；防火墙未拦截 |
 | 变量面板看不到顶层变量 | 顶层 `var` 在 Global 作用域，展开「变量」面板的 Global 节点 |
 | stepIn 跨文件不挂起 | 单步逻辑需同时比较行号和文件路径（已修复，若复现查看 `dap_debug.log`） |
+| VSCode 收不到 terminated 事件 | `startAttachListener`/`waitForDebuggerAndAttach` 模式下需显式调用 `agent.notifyScriptCompleted()`（launch 模式自动发） |
+| source 请求返回 "source not available" | 确认 gclass 含 sourceContent（`compile` 模式生成）；确认 DAP Source 字段名是 `sourceReference`（非 `reference`） |
+
+## 测试
+
+测试脚本位于 `tests/` 目录，使用 Python 编写，通过 socket DAP 客户端验证调试协议。
+
+### 公共模块
+
+- `tests/dap_client.py`：`SocketDapClient`（修复版 `wait_event`，不匹配事件放回队列）+ `ensure_gclass` + `start_java` + `check` + `wait_stderr_ready`。供 `test_debug_mode_*.py` 系列复用。
+
+### 测试入口
+
+`TestScript <name> debugagent-eval` 启动 `enableDebugMode` + `startAttachListener` + 3 次 eval（gclass/evalScript/evalExpression，间隔 1 秒）+ `notifyScriptCompleted`，供 `test_debug_mode_basic`/`multi_eval`/`eval_expression`/`unconnected` 使用。
+
+### 全量测试
+
+```powershell
+cd tests
+python run_baseline.py
+```
+
+当前测试覆盖（228 passed, 0 failed）：
+
+| 测试文件 | 用例数 | 覆盖内容 |
+|----------|--------|----------|
+| test_timer.py | 15 | 定时器基础语义 |
+| test_host_interaction.py | 12 | 宿主交互 API |
+| test_gclass.py | 65 | gclass 序列化/反序列化 |
+| test_dap_e2e.py | 17 | DAP 端到端 |
+| test_while_breakpoint.py | 9 | while 循环断点 |
+| test_multi_file.py | 19 | 多文件调试 |
+| test_cross_file_step.py | 7 | 跨文件单步 |
+| test_step_catch.py | 7 | 单步 catch |
+| test_path_mismatch.py | 3 | 路径不匹配 |
+| test_timer_debug.py | 25 | 定时器调试 |
+| test_wait_attach.py | 18 | waitForDebuggerAndAttach |
+| test_debug_mode_basic.py | 14 | enableDebugMode 基础 |
+| test_debug_mode_multi_eval.py | 10 | 多次 eval |
+| test_debug_mode_eval_expression.py | 8 | evalExpression 调试 |
+| test_debug_mode_unconnected.py | 6 | VSCode 未连不阻塞 |
+| test_debug_mode_wait_attach.py | 10 | waitAttach 模式 |

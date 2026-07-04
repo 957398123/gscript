@@ -19,6 +19,7 @@ TESTS = [
     "test_step_catch.py",
     "test_path_mismatch.py",
     "test_timer_debug.py",
+    "test_wait_attach.py",
 ]
 
 def main():
