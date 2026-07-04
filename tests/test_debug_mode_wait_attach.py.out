@@ -1,0 +1,13 @@
+=== 测试: enableDebugMode + waitForDebuggerAndAttach（entry 断点）===
+  [PASS] initialize 成功
+  [PASS] attach 成功
+  [PASS] 收到 stopped
+  [PASS] stopped 原因 = entry（enableDebugMode 触发）
+  [PASS] stackTrace 有帧
+  [PASS] source.sourceReference > 0
+  [PASS] source 返回 gclass 源码
+  [PASS] 收到 terminated 事件
+  [PASS] Java 进程正常退出
+  [PASS] stdout 含 '5! = 120'
+
+=== 结果: 10 passed, 0 failed ===

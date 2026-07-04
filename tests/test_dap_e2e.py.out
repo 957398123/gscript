@@ -1,0 +1,59 @@
+[INFO] 启动调试适配器: C:\Program Files\Java\jdk-9.0.4\bin\java.exe -jar E:\JProjects\gscript\target\gscript-1.0-SNAPSHOT.jar --stdio
+
+[1] initialize
+  [PASS] initialize 响应成功
+  [PASS] initialize 返回 supportsConfigurationDoneRequest
+
+[2] launch
+  [PASS] launch 响应成功
+
+[3] setBreakpoints (行 52)
+  [PASS] setBreakpoints 响应成功
+  [PASS] 断点已验证
+
+[4] configurationDone
+  [PASS] configurationDone 响应成功
+
+[5] 等待 stopped 事件（断点命中）
+  [PASS] stopped 原因是 breakpoint
+  [PASS] stopped 返回 threadId=1
+
+[6] threads
+  [PASS] threads 返回 1 个线程
+
+[7] stackTrace
+  [PASS] stackTrace 返回帧列表
+  [PASS] 栈顶帧行号是断点行
+       栈顶帧: name=<anonymous>, line=52
+
+[8] scopes
+  [PASS] scopes 返回 Local + Global
+  [PASS] Local 作用域存在
+
+[9] variables (Local)
+  [PASS] variables 返回非空
+       局部变量: ['console', 'fibonacci', 'setTimeout', 'sumRange', 'setInterval', 'buildPerson', 'clearTimeout', 'tryCatchDemo', 'globalCount', 'clearInterval']
+  [PASS] 能找到 globalCount 变量
+
+[10] continue
+  [PASS] continue 响应成功
+
+[11] 等待 terminated 事件
+       [output:stdout] fibonacci(10) = 55
+       [output:stdout] 
+       [output:stdout] Hello, I am Alice
+       [output:stdout] 
+       [output:stdout] first hobby: reading
+       [output:stdout] 
+       [output:stdout] sum(1..100) = 5050
+       [output:stdout] 
+       [output:stdout] caught: custom error
+       [output:stdout] 
+       [output:stdout] globalCount = 1
+       [output:stdout] 
+       [output:stdout] === 测试完成 ===
+       [output:stdout] 
+  [PASS] 收到 terminated 事件
+
+==================================================
+结果: 17 通过, 0 失败

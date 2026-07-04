@@ -1,0 +1,17 @@
+=== 测试: enableDebugMode + startAttachListener（VSCode 连接后 entry 断）===
+  [PASS] initialize 成功
+  [PASS] attach 成功
+  [PASS] 收到 stopped（eval 入口断）
+  [PASS] stopped 原因 = entry
+  [PASS] stackTrace 有帧
+  [PASS] 栈顶帧行号 > 0
+  [PASS] source.sourceReference > 0
+  [PASS] source 请求返回源码内容
+  [PASS] 源码含脚本文本
+  [PASS] scopes 返回
+  [PASS] 收到 terminated 事件
+  [PASS] Java 进程正常退出
+  [PASS] stdout 含 '5! = 120'
+  [PASS] stdout 含 'second eval'
+
+=== 结果: 14 passed, 0 failed ===

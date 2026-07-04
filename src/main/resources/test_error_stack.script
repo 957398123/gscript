@@ -1,0 +1,14 @@
+function add(a, b) {
+    return a + b;
+}
+
+function callBad() {
+    var f = null;
+    f();
+}
+
+function main() {
+    callBad();
+}
+
+main();

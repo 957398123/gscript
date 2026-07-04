@@ -1,0 +1,2 @@
+=== 模式 1 冒烟测试（waitForDebugger）===
+错误: 端口 4711 无监听，请先启动 debugagent/debugagent-attach 模式

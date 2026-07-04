@@ -1,0 +1,6 @@
+function badCall() {
+    var f = null;
+    f();
+}
+
+badCall();

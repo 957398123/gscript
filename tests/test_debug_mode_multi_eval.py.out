@@ -1,0 +1,13 @@
+=== 测试: 多次 eval 每次断第一行（sourcePath 自增）===
+  [PASS] 第 1 次 stopped reason=entry
+  [PASS] 第 1 次 sourceReference > 0
+  [PASS] 第 1 次 source 内容非空
+  [PASS] 第 2 次 stopped reason=entry
+  [PASS] 第 2 次 sourceReference > 0
+  [PASS] 第 2 次 source 内容非空
+  [PASS] 收到多次 stopped（实际 2 次，预期 >=2）
+  [PASS] sourcePath 各不相同（['eval-1.script', 'eval-2.script']）
+  [PASS] 收到 terminated 事件
+  [PASS] Java 进程正常退出
+
+=== 结果: 10 passed, 0 failed ===

@@ -1,0 +1,10 @@
+[INFO] 启动调试适配器
+  [PASS] initialize 成功
+  [PASS] launch 成功
+  [PASS] setBreakpoints 成功
+  [PASS] 断点命中 line 5 (throw a)
+  [PASS] stepIn 后停在 line 7 (catch 行)
+  [PASS] stepIn 后停在 line 8 (console.log(e))
+  [PASS] 脚本正常终止
+
+==== 结果: 7 passed, 0 failed ====

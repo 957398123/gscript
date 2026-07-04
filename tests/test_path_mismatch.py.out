@@ -1,0 +1,7 @@
+[INFO] launch path (mixed slash):  e:/JProjects/gscript/src/main/resources/multi_a.script
+[INFO] setBreakpoints path (norm): E:\JProjects\gscript\src\main\resources\multi_a.script
+  [PASS] 断点命中 line 5（路径格式不匹配场景）
+  [PASS] 断点原因是 breakpoint
+  [PASS] 脚本正常终止
+
+==== 3 passed, 0 failed ====

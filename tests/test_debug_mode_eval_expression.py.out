@@ -1,0 +1,11 @@
+=== 测试: evalExpression 在 debug 模式（source 含 return）===
+  [PASS] stopped reason=entry（entry）
+  [PASS] stopped reason=entry（entry）
+  [PASS] evalExpression source 内容非空
+  [PASS] evalExpression source 含 'return'（内容: 'return (1 + 2);'）
+  [PASS] evalExpression source 含表达式 '1 + 2'
+  [PASS] 找到 evalExpression 的 stopped（eval-2.script）
+  [PASS] 收到 terminated 事件
+  [PASS] Java 进程正常退出
+
+=== 结果: 8 passed, 0 failed ===

@@ -1,0 +1,9 @@
+=== 测试: debugMode=true 但 VSCode 未连（eval 正常执行）===
+  [PASS] Java 进程正常退出（未阻塞）
+  [PASS] stderr 含 'enableDebugMode 已启用'
+  [PASS] stderr 含 '所有 eval 执行结束'
+  [PASS] stdout 含 '5! = 120'（gclass eval 正常）
+  [PASS] stdout 含 'second eval'（evalScript 正常）
+  [PASS] stdout 含 'attach 调试测试结束'
+
+=== 结果: 6 passed, 0 failed ===
