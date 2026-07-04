@@ -1,0 +1,117 @@
+// 类型转换全局函数测试：parseInt / parseFloat / isNaN / String / Number / Boolean
+// 每个 check 打印 期望 vs 实际，便于人工核对
+
+function check(name, expected, actual) {
+    var mark = (expected == actual) ? "OK" : "FAIL";
+    console.log("[" + mark + "] " + name + ": expected=" + expected + ", actual=" + actual);
+}
+
+console.log("=== [1] parseInt ===");
+check("parseInt('123')", 123, parseInt("123"));
+check("parseInt('-456')", -456, parseInt("-456"));
+check("parseInt('+789')", 789, parseInt("+789"));
+check("parseInt 容错('123abc')", 123, parseInt("123abc"));
+check("parseInt 容错前导空白", 42, parseInt("   42"));
+check("parseInt 空串", "NaN", "" + parseInt(""));
+check("parseInt 纯字母", "NaN", "" + parseInt("abc"));
+check("parseInt('ff',16)", 255, parseInt("ff", 16));
+check("parseInt('FF',16)", 255, parseInt("FF", 16));
+check("parseInt('101',2)", 5, parseInt("101", 2));
+check("parseInt('777',8)", 511, parseInt("777", 8));
+check("parseInt('z',36)", 35, parseInt("z", 36));
+check("parseInt 进制无效", "NaN", "" + parseInt("10", 1));  // radix<2
+check("parseInt 进制无效2", "NaN", "" + parseInt("10", 37));  // radix>36
+check("parseInt 容错+进制", 255, parseInt("ffxyz", 16));  // 提取前导 ff
+check("parseInt 符号+进制", -255, parseInt("-ff", 16));
+
+console.log("=== [2] parseFloat ===");
+check("parseFloat('3.14')", 3.14, parseFloat("3.14"));
+check("parseFloat('-2.5')", -2.5, parseFloat("-2.5"));
+check("parseFloat('42')", 42, parseFloat("42"));
+check("parseFloat 容错('3.14abc')", 3.14, parseFloat("3.14abc"));
+check("parseFloat 容错前导空白", 1.5, parseFloat("   1.5"));
+check("parseFloat 科学计数", 1500, parseFloat("1.5e3"));  // 1.5e3 = 1500
+check("parseFloat 空串", "NaN", "" + parseFloat(""));
+check("parseFloat 纯字母", "NaN", "" + parseFloat("abc"));
+check("parseFloat 无效('3.14e')", 3.14, parseFloat("3.14e"));  // e 后无数字，回退到 3.14
+check("parseFloat 仅小数点", "NaN", "" + parseFloat("."));
+
+console.log("=== [3] isNaN ===");
+check("isNaN(NaN)", true, isNaN(NaN));
+check("isNaN('abc')", true, isNaN("abc"));
+check("isNaN('123')", false, isNaN("123"));
+check("isNaN(123)", false, isNaN(123));
+check("isNaN(3.14)", false, isNaN(3.14));
+check("isNaN('')", true, isNaN(""));  // JS 特例：空串 isNaN=true
+check("isNaN('  ')", true, isNaN("  "));  // trim 后空串
+check("isNaN(true)", false, isNaN(true));
+check("isNaN(false)", false, isNaN(false));
+check("isNaN(null)", false, isNaN(null));  // Number(null)=0
+
+console.log("=== [4] String ===");
+check("String(123)", "123", String(123));
+check("String(3.14)", "3.14", String(3.14));
+check("String(true)", "true", String(true));
+check("String(false)", "false", String(false));
+check("String(null)", "null", String(null));
+check("String('abc')", "abc", String("abc"));
+check("String() 空参", "", String());
+
+console.log("=== [5] Number ===");
+check("Number('123')", 123, Number("123"));
+check("Number('3.14')", 3.14, Number("3.14"));
+check("Number('-42')", -42, Number("-42"));
+check("Number(true)", 1, Number(true));
+check("Number(false)", 0, Number(false));
+check("Number(null)", 0, Number(null));
+check("Number('')", 0, Number(""));  // 空串 → 0
+check("Number('  ')", 0, Number("  "));  // trim 后空串 → 0
+check("Number('123abc')", "NaN", "" + Number("123abc"));  // 严格语义
+check("Number('abc')", "NaN", "" + Number("abc"));
+check("Number(123)", 123, Number(123));
+check("Number(3.14)", 3.14, Number(3.14));
+
+console.log("=== [6] Boolean ===");
+check("Boolean(true)", true, Boolean(true));
+check("Boolean(false)", false, Boolean(false));
+check("Boolean(0)", false, Boolean(0));  // falsy
+check("Boolean(1)", true, Boolean(1));  // truthy
+check("Boolean(-1)", true, Boolean(-1));  // 非零数 truthy
+check("Boolean('')", false, Boolean(""));  // 空串 falsy
+check("Boolean('x')", true, Boolean("x"));  // 非空串 truthy
+check("Boolean(null)", false, Boolean(null));  // null falsy
+check("Boolean(NaN)", false, Boolean(NaN));  // NaN falsy
+check("Boolean(3.14)", true, Boolean(3.14));  // 非零浮点 truthy
+
+console.log("=== [7] parseInt vs Number 对比 ===");
+// 核心差异：parseInt 容错提取前缀，Number 要求整体合法
+check("parseInt('123abc')", 123, parseInt("123abc"));
+check("Number('123abc')", "NaN", "" + Number("123abc"));
+check("parseInt('  42px')", 42, parseInt("  42px"));
+check("Number('  42px')", "NaN", "" + Number("  42px"));
+check("parseInt('3.14')", 3, parseInt("3.14"));  // parseInt 截断小数
+check("Number('3.14')", 3.14, Number("3.14"));  // Number 保留浮点
+
+console.log("=== [8] 实际场景组合 ===");
+// 字符串解析 + 数值运算
+var input = "  42.5 degrees  ";
+var num = parseFloat(input);
+check("parseFloat 提取", 42.5, num);
+check("解析后运算", 85, num * 2);
+check("解析后比较", true, num > 40);
+
+// 类型判断
+function isNumeric(v) {
+    return !isNaN(v) && v !== null && v !== "";
+}
+check("isNumeric(123)", true, isNumeric(123));
+check("isNumeric('123')", true, isNumeric("123"));
+check("isNumeric('abc')", false, isNumeric("abc"));
+check("isNumeric(NaN)", false, isNumeric(NaN));
+
+// 进制转换（parseInt 支持 radix，Number.toString(radix) 暂未实现故不测）
+check("hex to dec", 255, parseInt("ff", 16));
+check("bin to dec", 255, parseInt("11111111", 2));
+check("oct to dec", 511, parseInt("777", 8));
+
+console.log("=== 测试完成 ===");

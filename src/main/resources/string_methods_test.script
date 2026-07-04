@@ -1,0 +1,114 @@
+// 字符串方法测试：charAt/charCodeAt/indexOf/lastIndexOf/substring/slice/substr
+//   /split/replace/trim/startsWith/endsWith/includes/repeat/concat
+//   /toUpperCase/toLowerCase
+// 每个 check 打印 期望 vs 实际，便于人工核对
+
+function check(name, expected, actual) {
+    // 用 ==（松散相等）：string vs number 时一方为字符串会走 toStringValue 比较
+    var mark = (expected == actual) ? "OK" : "FAIL";
+    console.log("[" + mark + "] " + name + ": expected=" + expected + ", actual=" + actual);
+}
+
+var s = "Hello, World!";
+
+console.log("=== [1] length + charAt + charCodeAt ===");
+check("length", 13, s.length);
+check("charAt(0)", "H", s.charAt(0));
+check("charAt(7)", "W", s.charAt(7));
+check("charAt(12)", "!", s.charAt(12));
+check("charAt 越界", "", s.charAt(100));
+check("charAt 负索引", "", s.charAt(-1));
+check("charCodeAt(0)", 72, s.charCodeAt(0));  // 'H' = 72
+check("charCodeAt(7)", 87, s.charCodeAt(7));  // 'W' = 87
+check("charCodeAt 越界", "NaN", "" + s.charCodeAt(100));
+
+console.log("=== [2] indexOf + lastIndexOf ===");
+check("indexOf('o')", 4, s.indexOf("o"));
+check("indexOf('World')", 7, s.indexOf("World"));
+check("indexOf 未找到", -1, s.indexOf("xyz"));
+check("lastIndexOf('o')", 8, s.lastIndexOf("o"));
+check("lastIndexOf('l')", 10, s.lastIndexOf("l"));
+check("lastIndexOf 未找到", -1, s.lastIndexOf("xyz"));
+
+console.log("=== [3] substring + slice + substr ===");
+check("substring(0,5)", "Hello", s.substring(0, 5));
+check("substring(7)", "World!", s.substring(7));
+check("substring 交换", "Hello", s.substring(5, 0));  // start>end 交换
+check("substring 负索引归零", "Hello", s.substring(-3, 5));
+check("slice(0,5)", "Hello", s.slice(0, 5));
+check("slice(7)", "World!", s.slice(7));
+check("slice(-6)", "World!", s.slice(-6));  // 负索引
+check("slice(-6, -1)", "World", s.slice(-6, -1));
+check("slice(7, 0) 空串", "", s.slice(7, 0));  // start>end 返回空串（不交换）
+check("substr(7)", "World!", s.substr(7));
+check("substr(7, 5)", "World", s.substr(7, 5));
+check("substr(-6, 5)", "World", s.substr(-6, 5));  // 负索引
+
+console.log("=== [4] toUpperCase + toLowerCase ===");
+check("toUpperCase", "HELLO, WORLD!", s.toUpperCase());
+check("toLowerCase", "hello, world!", s.toLowerCase());
+check("原串不变", "Hello, World!", s);
+
+console.log("=== [5] trim ===");
+check("trim 两端", "abc", "  abc  ".trim());
+check("trim 仅左", "abc", "  abc".trim());
+check("trim 仅右", "abc", "abc  ".trim());
+check("trim 无空白", "abc", "abc".trim());
+check("trim 全空白", "", "   ".trim());
+
+console.log("=== [6] startsWith + endsWith + includes ===");
+check("startsWith('Hello')", true, s.startsWith("Hello"));
+check("startsWith('World', 7)", true, s.startsWith("World", 7));
+check("startsWith 不匹配", false, s.startsWith("World"));
+check("endsWith('!')", true, s.endsWith("!"));
+check("endsWith('World')", false, s.endsWith("World"));
+check("endsWith('World', 12)", true, s.endsWith("World", 12));  // endPosition=12 → "Hello, World"
+check("includes('World')", true, s.includes("World"));
+check("includes('xyz')", false, s.includes("xyz"));
+check("includes('o', 5)", true, s.includes("o", 5));  // 从位置5开始找
+check("includes 空串", true, s.includes(""));
+
+console.log("=== [7] replace ===");
+check("replace 首次", "HellX, World!", s.replace("o", "X"));
+check("replace 字符串", "Hi, World!", s.replace("Hello", "Hi"));
+check("replace 未找到", "Hello, World!", s.replace("xyz", "ABC"));
+check("replace 空串插开头", "XHello, World!", s.replace("", "X"));
+check("原串不变", "Hello, World!", s);
+
+console.log("=== [8] split ===");
+var parts = "a,b,c,d".split(",");
+check("split length", 4, parts.length);
+check("split[0]", "a", parts[0]);
+check("split[3]", "d", parts[3]);
+check("split 无参 length", 1, "abc".split().length);
+check("split 无参[0]", "abc", "abc".split()[0]);
+check("split 空串按字符 length", 3, "abc".split("").length);
+check("split 空串[0]", "a", "abc".split("")[0]);
+check("split 空串[2]", "c", "abc".split("")[2]);
+check("split 连续分隔", 3, "a,,b".split(",").length);  // ["a", "", "b"]
+check("split 连续分隔[1]", "", "a,,b".split(",")[1]);
+
+console.log("=== [9] repeat + concat ===");
+check("repeat(3)", "abcabcabc", "abc".repeat(3));
+check("repeat(0)", "", "abc".repeat(0));
+check("repeat(1)", "abc", "abc".repeat(1));
+check("repeat 空串", "", "".repeat(5));
+check("concat 2个", "HelloWorld", "Hello".concat("World"));
+check("concat 多个", "a-b-c", "a".concat("-", "b", "-", "c"));
+check("concat 无参", "abc", "abc".concat());
+
+console.log("=== [10] repeat 异常 + 链式调用 ===");
+var caught = "";
+try {
+    "abc".repeat(-1);
+} catch (e) {
+    caught = e;
+}
+check("repeat(-1) 抛异常", "RangeError: Invalid count value", caught);
+
+// 链式调用
+check("链式 trim+upper", "HELLO", "  hello  ".trim().toUpperCase());
+check("链式 replace+slice", "Hi", "Hello".replace("Hello", "Hi").slice(0, 2));
+check("链式 split+length", 3, "a-b-c".split("-").length);
+
+console.log("=== 测试完成 ===");
