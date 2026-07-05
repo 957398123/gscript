@@ -13,6 +13,7 @@ import org.gscript.vm.debug.DebugAbortException;
 import org.gscript.vm.debug.DebugAgent;
 import org.gscript.vm.debug.DebugController;
 import org.gscript.vm.stdlib.TimerLib;
+import org.gscript.vm.stdlib.TypeLib;
 import org.gscript.vm.value.*;
 import org.gscript.util.AtomicCounter;
 
@@ -1352,227 +1353,27 @@ public class GSInterpreter {
     /**
      * 注册类型转换全局函数（parseInt/parseFloat/isNaN/String/Number/Boolean）到 global 域。
      *
-     * <p>对标 JS 全局函数。构造器默认调用，与 {@link #installTimerGlobals()} 并列。
-     * 宿主若需移除可直接 {@code global} 域覆盖对应变量名。
+     * <p>6 个函数都是无状态纯函数，声明为 {@link org.gscript.vm.stdlib.TypeLib} 的 static final
+     * 共享实例（所有 interpreter 共用同一组函数对象，语义等价于 JS 的全局函数对象）。
+     * 本方法仅将引用注册到 global 域，不创建新对象，与 {@link #installTimerGlobals()} 的 per-interpreter
+     * 创建模式不同（定时器函数依赖 interpreter 实例，类型转换函数不需要）。
      *
      * <p>语义要点：
      * <ul>
      *   <li>{@code parseInt(str[, radix])}：JS 容错语义，提取前导数字部分（"123abc"→123），
-     *       支持 2-36 进制，无效返回 NaN</li>
-     *   <li>{@code parseFloat(str)}：提取前导浮点部分（"3.14abc"→3.14），无效返回 NaN</li>
+     *       支持 2-36 进制、"0x" 前缀检测，数值类型短路（int/float 直接截断），无效返回 NaN</li>
+     *   <li>{@code parseFloat(str)}：提取前导浮点部分（"3.14abc"→3.14），数值类型短路，无效返回 NaN</li>
      *   <li>{@code Number(value)}：严格语义，整体必须合法数字（"123abc"→NaN），
      *       bool→0/1，null→0，其他→NaN</li>
-     *   <li>{@code isNaN(value)}：判断 value 是否 NaN（type==10）</li>
+     *   <li>{@code isNaN(value)}：判断 value 是否 NaN（type==10），或字符串转 Number 后是否 NaN</li>
      * </ul>
      */
     public void installTypeGlobals() {
-        // parseInt(str[, radix]): 解析整数，支持进制，JS 容错语义（提取前导数字）
-        addVariableToGlobal("parseInt", new GSNativeFunction("parseInt") {
-            public GSValue call(ArrayList args) {
-                if (args.size() < 2) {
-                    return GSNaN.NAN;
-                }
-                String raw = ((GSValue) args.get(1)).toStringValue();
-                int radix = 10;
-                if (args.size() >= 3) {
-                    radix = ((GSValue) args.get(2)).toIntValue();
-                    if (radix < 2 || radix > 36) {
-                        return GSNaN.NAN;
-                    }
-                }
-                // trim 前导空白（JS 语义）
-                int i = 0;
-                int len = raw.length();
-                while (i < len && raw.charAt(i) <= ' ') {
-                    i++;
-                }
-                if (i >= len) {
-                    return GSNaN.NAN;
-                }
-                // 可选符号
-                boolean negative = false;
-                if (raw.charAt(i) == '+' || raw.charAt(i) == '-') {
-                    negative = (raw.charAt(i) == '-');
-                    i++;
-                }
-                if (i >= len) {
-                    return GSNaN.NAN;
-                }
-                // 提取连续有效数字（按 radix 判断字符范围）
-                int digitStart = i;
-                while (i < len) {
-                    char ch = raw.charAt(i);
-                    int digit = Character.digit(ch, radix);
-                    if (digit < 0) {
-                        break;
-                    }
-                    i++;
-                }
-                if (i == digitStart) {
-                    return GSNaN.NAN;  // 无有效数字
-                }
-                String numPart = raw.substring(digitStart, i);
-                try {
-                    int result = Integer.parseInt(numPart, radix);
-                    if (negative) {
-                        result = -result;
-                    }
-                    return new GSInt(result);
-                } catch (NumberFormatException e) {
-                    return GSNaN.NAN;
-                }
-            }
-        });
-
-        // parseFloat(str): 解析浮点，提取前导浮点部分，无效返回 NaN
-        addVariableToGlobal("parseFloat", new GSNativeFunction("parseFloat") {
-            public GSValue call(ArrayList args) {
-                if (args.size() < 2) {
-                    return GSNaN.NAN;
-                }
-                String raw = ((GSValue) args.get(1)).toStringValue();
-                // trim 前导空白
-                int i = 0;
-                int len = raw.length();
-                while (i < len && raw.charAt(i) <= ' ') {
-                    i++;
-                }
-                if (i >= len) {
-                    return GSNaN.NAN;
-                }
-                int start = i;
-                // 可选符号
-                if (i < len && (raw.charAt(i) == '+' || raw.charAt(i) == '-')) {
-                    i++;
-                }
-                // 整数部分
-                while (i < len && Character.isDigit(raw.charAt(i))) {
-                    i++;
-                }
-                // 小数部分
-                if (i < len && raw.charAt(i) == '.') {
-                    i++;
-                    while (i < len && Character.isDigit(raw.charAt(i))) {
-                        i++;
-                    }
-                }
-                // 指数部分
-                if (i < len && (raw.charAt(i) == 'e' || raw.charAt(i) == 'E')) {
-                    int saved = i;
-                    i++;
-                    if (i < len && (raw.charAt(i) == '+' || raw.charAt(i) == '-')) {
-                        i++;
-                    }
-                    if (i < len && Character.isDigit(raw.charAt(i))) {
-                        while (i < len && Character.isDigit(raw.charAt(i))) {
-                            i++;
-                        }
-                    } else {
-                        i = saved;  // 指数无有效数字，回退
-                    }
-                }
-                if (i == start) {
-                    return GSNaN.NAN;
-                }
-                try {
-                    return new GSFloat(Float.parseFloat(raw.substring(start, i)));
-                } catch (NumberFormatException e) {
-                    return GSNaN.NAN;
-                }
-            }
-        });
-
-        // isNaN(value): 判断是否 NaN
-        addVariableToGlobal("isNaN", new GSNativeFunction("isNaN") {
-            public GSValue call(ArrayList args) {
-                if (args.size() < 2) {
-                    return GSBool.TRUE;
-                }
-                GSValue v = (GSValue) args.get(1);
-                // NaN 直接判断
-                if (v.type == 10) {
-                    return GSBool.TRUE;
-                }
-                // 字符串/对象等转 Number 后判断（JS 语义：isNaN(x) 等价于 isNaN(Number(x))）
-                if (v.type == 5) {
-                    String s = v.toStringValue().trim();
-                    if (s.length() == 0) {
-                        return GSBool.TRUE;  // 空串 Number()=0，但 isNaN("")=true（JS 特例）
-                    }
-                    try {
-                        Integer.parseInt(s);
-                        return GSBool.FALSE;
-                    } catch (NumberFormatException e1) {
-                        try {
-                            Float.parseFloat(s);
-                            return GSBool.FALSE;
-                        } catch (NumberFormatException e2) {
-                            return GSBool.TRUE;
-                        }
-                    }
-                }
-                // 数值类型（int/float/bool）都不是 NaN
-                return GSBool.FALSE;
-            }
-        });
-
-        // String(value): 转 GSString
-        addVariableToGlobal("String", new GSNativeFunction("String") {
-            public GSValue call(ArrayList args) {
-                if (args.size() < 2) {
-                    return new GSString("");
-                }
-                return new GSString(((GSValue) args.get(1)).toStringValue());
-            }
-        });
-
-        // Number(value): 严格转数字，bool→0/1，null→0，纯数字串→数值，其他→NaN
-        addVariableToGlobal("Number", new GSNativeFunction("Number") {
-            public GSValue call(ArrayList args) {
-                if (args.size() < 2) {
-                    return GSNaN.NAN;
-                }
-                GSValue v = (GSValue) args.get(1);
-                switch (v.type) {
-                    case 1:  // bool
-                        return v.toBoolean() ? new GSInt(1) : new GSInt(0);
-                    case 2:  // int
-                        return new GSInt(v.toIntValue());
-                    case 3:  // float
-                        return new GSFloat(v.toFloatValue());
-                    case 8:  // null
-                        return new GSInt(0);
-                    case 10: // NaN
-                        return GSNaN.NAN;
-                    case 5: {  // string：严格语义，整体必须是合法数字
-                        String s = v.toStringValue().trim();
-                        if (s.length() == 0) {
-                            return new GSInt(0);  // 空串 → 0（JS 语义）
-                        }
-                        try {
-                            return new GSInt(Integer.parseInt(s));
-                        } catch (NumberFormatException e1) {
-                            try {
-                                return new GSFloat(Float.parseFloat(s));
-                            } catch (NumberFormatException e2) {
-                                return GSNaN.NAN;
-                            }
-                        }
-                    }
-                    default:  // object/array/function → NaN
-                        return GSNaN.NAN;
-                }
-            }
-        });
-
-        // Boolean(value): 转 GSBool（等价 toBoolean）
-        addVariableToGlobal("Boolean", new GSNativeFunction("Boolean") {
-            public GSValue call(ArrayList args) {
-                if (args.size() < 2) {
-                    return GSBool.FALSE;
-                }
-                return GSBool.getGSBool(((GSValue) args.get(1)).toBoolean());
-            }
-        });
+        addVariableToGlobal("parseInt", TypeLib.PARSE_INT);
+        addVariableToGlobal("parseFloat", TypeLib.PARSE_FLOAT);
+        addVariableToGlobal("isNaN", TypeLib.IS_NAN);
+        addVariableToGlobal("String", TypeLib.STRING);
+        addVariableToGlobal("Number", TypeLib.NUMBER);
+        addVariableToGlobal("Boolean", TypeLib.BOOLEAN);
     }
 }

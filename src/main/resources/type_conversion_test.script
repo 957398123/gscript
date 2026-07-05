@@ -114,4 +114,42 @@ check("hex to dec", 255, parseInt("ff", 16));
 check("bin to dec", 255, parseInt("11111111", 2));
 check("oct to dec", 511, parseInt("777", 8));
 
+console.log("=== [9] parseInt 0x 前缀处理 ===");
+// JS 语义：未指定 radix + "0x" → 自动切 16 进制并跳过前缀
+check("parseInt('0xff')", 255, parseInt("0xff"));
+check("parseInt('0XFF')", 255, parseInt("0XFF"));
+check("parseInt('0xzz')", "NaN", "" + parseInt("0xzz"));  // 0x 后非 hex 字符
+// 显式 radix=16 + "0x" → 跳过前缀（允许可选）
+check("parseInt('0xff',16)", 255, parseInt("0xff", 16));
+check("parseInt('ff',16)", 255, parseInt("ff", 16));  // 无 0x 前缀也 OK
+// 显式 radix=10 + "0x" → 不特殊处理：'0' 解析为 0，'x' 停止
+check("parseInt('0xff',10)", 0, parseInt("0xff", 10));
+// "0x" 前缀 + 符号
+check("parseInt('-0xff')", -255, parseInt("-0xff"));
+// "0x" 前缀 + 容错后缀
+check("parseInt('0xffzz')", 255, parseInt("0xffzz"));  // 提取 ff 后停止
+
+console.log("=== [10] parseInt 数值类型短路 ===");
+// JS 语义：parseInt(123)=123, parseInt(3.14)=3（截断小数）, parseInt(NaN)=NaN
+// 注意：parseInt(true)=NaN（ToString="true"），不是 toIntValue 的 1
+check("parseInt(123)", 123, parseInt(123));
+check("parseInt(3.14)", 3, parseInt(3.14));
+check("parseInt(-3.14)", -3, parseInt(-3.14));
+check("parseInt(NaN)", "NaN", "" + parseInt(NaN));
+check("parseInt(true)", "NaN", "" + parseInt(true));  // bool 不短路
+check("parseInt(false)", "NaN", "" + parseInt(false));  // bool 不短路
+check("parseInt(null)", "NaN", "" + parseInt(null));  // ToString="null"
+// 数值类型短路 + radix（不短路，走 toString）
+check("parseInt(123, 16)", 291, parseInt(123, 16));  // "123" in hex = 291
+
+console.log("=== [11] parseFloat 数值类型短路 ===");
+// JS 语义：parseFloat(123)=123, parseFloat(3.14)=3.14, parseFloat(NaN)=NaN
+// 注意：parseFloat(true)=NaN（ToString="true"）
+check("parseFloat(123)", 123, parseFloat(123));
+check("parseFloat(3.14)", 3.14, parseFloat(3.14));
+check("parseFloat(-2.5)", -2.5, parseFloat(-2.5));
+check("parseFloat(NaN)", "NaN", "" + parseFloat(NaN));
+check("parseFloat(true)", "NaN", "" + parseFloat(true));  // bool 不短路
+check("parseFloat(null)", "NaN", "" + parseFloat(null));  // ToString="null"
+
 console.log("=== 测试完成 ===");
