@@ -1,0 +1,126 @@
+// 隐式类型转换测试：对齐 JS 语义
+// 覆盖：关系比较 / 宽松相等 / 算术 / 一元负号 / 位运算 / 自增自减
+// 每个 check 打印 期望 vs 实际，便于人工核对
+
+function check(name, expected, actual) {
+    var mark = (expected == actual) ? "OK" : "FAIL";
+    console.log("[" + mark + "] " + name + ": expected=" + expected + ", actual=" + actual);
+}
+
+console.log("=== [1] 关系比较（字符串 vs 数值）===");
+// 核心 bug 修复：string 与 number 比较时，string 经 toNumber 转换
+check("\"23\" > 0", true, "23" > 0);            // 23 > 0 = true
+check("\"23\" < 5", false, "23" < 5);            // 23 < 5 = false
+check("\"23\" >= 23", true, "23" >= 23);         // 23 >= 23 = true
+check("\"23\" <= 23", true, "23" <= 23);         // 23 <= 23 = true
+check("\"23\" > 24", false, "23" > 24);          // 23 > 24 = false
+check("\"3.14\" > 3", true, "3.14" > 3);         // 3.14 > 3 = true
+check("\"abc\" > 0", false, "abc" > 0);          // NaN > 0 = false
+check("\"abc\" < 0", false, "abc" < 0);          // NaN < 0 = false
+check("\"abc\" >= 0", false, "abc" >= 0);        // NaN >= 0 = false
+check("\"abc\" <= 0", false, "abc" <= 0);        // NaN <= 0 = false
+
+console.log("=== [2] 关系比较（null 转数值）===");
+// JS 语义：关系比较中 null → 0
+check("null > -1", true, null > -1);             // 0 > -1 = true
+check("null < 1", true, null < 1);               // 0 < 1 = true
+check("null >= 0", true, null >= 0);             // 0 >= 0 = true
+check("null <= 0", true, null <= 0);             // 0 <= 0 = true
+check("null > 0", false, null > 0);              // 0 > 0 = false
+check("null < 0", false, null < 0);              // 0 < 0 = false
+
+console.log("=== [3] 关系比较（两边字符串走字典序）===");
+check("\"10\" < \"9\"", true, "10" < "9");        // 字典序 "1" < "9"
+check("\"10\" < 9", false, "10" < 9);            // 数值 10 < 9 = false
+check("\"abc\" < \"abd\"", true, "abc" < "abd"); // 字典序
+check("\"abc\" > \"ab\"", true, "abc" > "ab");   // 长串 > 短串前缀
+
+console.log("=== [4] 宽松相等 == ===");
+// JS Abstract Equality：string vs number → string 转 number 后比较
+check("\"23\" == 23", true, "23" == 23);         // 23 == 23
+check("\"23\" != 24", true, "23" != 24);         // 23 != 24
+check("\"3.0\" == 3", true, "3.0" == 3);         // 3.0 == 3（原 bug：字符串比较 "3.0" != "3"）
+check("\"\" == 0", true, "" == 0);               // Number("")=0，0==0（原 bug：false）
+check("\"  \" == 0", true, "  " == 0);           // Number("  ")=0（trim 后空串）
+check("\"abc\" == 0", false, "abc" == 0);        // Number("abc")=NaN，NaN==0=false
+check("true == \"1\"", true, true == "1");       // 1 == 1（原 bug：字符串比较 "true" != "1"）
+check("false == \"0\"", true, false == "0");     // 0 == 0
+check("false == \"\"", true, false == "");       // 0 == Number("")=0
+check("true == \"true\"", false, true == "true");// 1 == NaN = false
+check("null == 0", false, null == 0);            // null 仅等于 null
+check("null == false", false, null == false);    // null 仅等于 null
+check("null == \"\"", false, null == "");        // null 仅等于 null
+check("null == null", true, null == null);
+check("NaN == NaN", false, NaN == NaN);          // NaN 不等于任何值
+check("NaN != NaN", true, NaN != NaN);
+
+console.log("=== [5] 算术运算（字符串转数值）===");
+check("\"23\" - 5", 18, "23" - 5);               // 23 - 5 = 18
+check("\"23\" * 2", 46, "23" * 2);               // 23 * 2 = 46
+check("\"3.14\" * 2", 6.28, "3.14" * 2);         // 3.14 * 2 = 6.28
+check("\"10\" / 2", 5, "10" / 2);                // 10 / 2 = 5（浮点除法）
+check("\"10\" % 3", 1, "10" % 3);                // 10 % 3 = 1
+check("\"abc\" - 5 is NaN", true, isNaN("abc" - 5));  // NaN - 5 = NaN
+check("\"abc\" * 2 is NaN", true, isNaN("abc" * 2));  // NaN * 2 = NaN
+
+console.log("=== [6] 算术运算（null/bool 转数值）===");
+check("null + 1", 1, null + 1);                  // 0 + 1 = 1（原 bug："null1"）
+check("1 + null", 1, 1 + null);                  // 1 + 0 = 1
+check("null + null", 0, null + null);            // 0 + 0 = 0（原 bug："nullnull"）
+check("null * 5", 0, null * 5);                  // 0 * 5 = 0
+check("null - 5", -5, null - 5);                 // 0 - 5 = -5
+check("true + 1", 2, true + 1);                  // 1 + 1 = 2
+check("false + 10", 10, false + 10);             // 0 + 10 = 10
+check("NaN + 1 is NaN", true, isNaN(NaN + 1));   // NaN + 1 = NaN
+
+console.log("=== [7] 加法字符串拼接（保留 JS 语义）===");
+check("\"5\" + 3", "53", "5" + 3);               // 字符串拼接
+check("5 + \"3\"", "53", 5 + "3");               // 字符串拼接
+check("\"\" + null", "null", "" + null);         // "null"
+check("\"\" + true", "true", "" + true);         // "true"
+check("\"\" + 0", "0", "" + 0);                  // "0"
+check("0 + \"\"", "0", 0 + "");                  // "0"
+
+console.log("=== [8] 一元负号 ===");
+check("-\"23\"", -23, -"23");                     // -23（原 bug：NaN）
+check("-null", 0, -null);                        // -0 = 0（原 bug：NaN）
+check("-true", -1, -true);                       // -1
+check("-\"abc\" is NaN", true, isNaN(-"abc"));   // -NaN = NaN
+check("-3.14", -3.14, -3.14);                    // 浮点取负
+
+console.log("=== [9] 位运算（字符串转 int32）===");
+check("\"23\" & 3", 3, "23" & 3);                // 23 & 3 = 3（原 bug：0 & 3 = 0）
+check("\"5\" | 2", 7, "5" | 2);                  // 5 | 2 = 7（原 bug：0 | 2 = 2）
+check("\"23\" ^ 1", 22, "23" ^ 1);               // 23 ^ 1 = 22
+check("~\"23\"", -24, ~"23");                    // ~23 = -24（原 bug：~0 = -1）
+check("1 << \"2\"", 4, 1 << "2");                // 1 << 2 = 4（原 bug：NaN）
+check("\"10\" >> 1", 5, "10" >> 1);              // 10 >> 1 = 5（原 bug：NaN）
+check("null & 3", 0, null & 3);                  // 0 & 3 = 0
+check("true & 1", 1, true & 1);                  // 1 & 1 = 1
+check("5.7 & 3", 1, 5.7 & 3);                    // 5 & 3 = 1（float 截断）
+
+console.log("=== [10] 自增自减（字符串转数值）===");
+var s = "23";
+s++;
+check("var s=\"23\"; s++; s", 24, s);            // s 变为 24（原 bug：NaN）
+var t = "10";
+t--;
+check("var t=\"10\"; t--; t", 9, t);             // t 变为 9
+var f = "3.5";
+f++;
+check("var f=\"3.5\"; f++; f", 4.5, f);          // f 变为 4.5（float）
+
+console.log("=== [11] 综合场景 ===");
+// 用户报告的核心问题
+var a = "23";
+check("用户案例 a > 0", true, a > 0);
+check("用户案例 a < 100", true, a < 100);
+check("用户案例 a == 23", true, a == 23);
+check("用户案例 a === 23", false, a === 23);     // 严格相等：类型不同
+check("用户案例 a * 2", 46, a * 2);
+
+// 字符串数值混合运算链
+check("\"12\" + 0 == 12", false, "12" + 0 == 12);   // "120" == 12 → false（拼接优先）
+check("\"12\" - 0 == 12", true, "12" - 0 == 12);    // 12 == 12 → true
+
+console.log("=== 测试完成 ===");

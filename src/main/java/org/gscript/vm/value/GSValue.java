@@ -53,68 +53,151 @@ public abstract class GSValue {
     public abstract boolean toBoolean();
 
     /**
-     * 对当前GSValue进行自增操作
+     * JS ToNumber 抽象操作：将任意 GSValue 转为数值类型 (GSInt/GSFloat/GSNaN)。
+     * <ul>
+     *   <li>bool → 0/1 (GSInt)</li>
+     *   <li>int/float → 自身</li>
+     *   <li>null → 0 (GSInt)</li>
+     *   <li>NaN → 自身</li>
+     *   <li>string → 严格解析（trim 后整体合法）：int/float/NaN</li>
+     *   <li>array → 先 toString 再按 string 规则解析（[] → "" → 0，[5] → "5" → 5，[1,2] → "1,2" → NaN）</li>
+     *   <li>object/function → NaN</li>
+     * </ul>
+     * 算术/比较/位运算的隐式类型转换统一经此入口（对齐 JS 语义）。
+     *
+     * @param v 输入值
+     * @return 数值类型的 GSValue（GSInt/GSFloat/GSNaN）
+     */
+    public static GSValue toNumber(GSValue v) {
+        switch (v.type) {
+            case 1:  // bool → 0/1
+                return new GSInt(v.toIntValue());
+            case 2:  // int
+            case 3:  // float
+                return v;
+            case 7: {  // array → toString → 再按 string 规则解析（JS 语义）
+                // [] → "" → 0, [5] → "5" → 5, [1,2] → "1,2" → NaN
+                return toNumber(new GSString(v.toStringValue()));
+            }
+            case 8:  // null → 0
+                return new GSInt(0);
+            case 10: // NaN
+                return GSNaN.NAN;
+            case 5: {  // string：严格解析（trim 后整体合法），对标 JS Number(string)
+                String s = v.toStringValue().trim();
+                if (s.length() == 0) {
+                    return new GSInt(0);  // 空串 → 0（JS 语义）
+                }
+                try {
+                    return new GSInt(Integer.parseInt(s));
+                } catch (NumberFormatException e1) {
+                    try {
+                        return new GSFloat(Float.parseFloat(s));
+                    } catch (NumberFormatException e2) {
+                        return GSNaN.NAN;
+                    }
+                }
+            }
+            default:  // object/function → NaN
+                return GSNaN.NAN;
+        }
+    }
+
+    /**
+     * JS ToInt32 抽象操作（位运算用）：toNumber 后取整，NaN/null→0，float 截断。
+     *
+     * @param v 输入值
+     * @return 32 位整数
+     */
+    private static int toInt32(GSValue v) {
+        GSValue n = toNumber(v);
+        if (n.type == 10) {
+            return 0;  // NaN → 0
+        }
+        return n.toIntValue();
+    }
+
+    /**
+     * 对当前GSValue进行自增操作（JS 语义：先 ToNumber 再 +1）
      *
      * @return 值
      */
     public GSValue incr() {
-        if (type <= 3) {
-            if (type == 3) {
-                return new GSFloat(toFloatValue() + 1);
-            } else {
-                return new GSInt(toIntValue() + 1);
-            }
-        } else {
+        GSValue n = toNumber(this);
+        if (n.type == 10) {
             return GSNaN.NAN;
         }
+        if (n.type == 3) {
+            return new GSFloat(n.toFloatValue() + 1);
+        }
+        return new GSInt(n.toIntValue() + 1);
     }
 
     /**
-     * 对当前GSValue进行自减操作
+     * 对当前GSValue进行自减操作（JS 语义：先 ToNumber 再 -1）
      *
      * @return 值
      */
     public GSValue decr() {
-        if (type <= 3) {
-            if (type == 3) {
-                return new GSFloat(toFloatValue() - 1);
-            } else {
-                return new GSInt(toIntValue() - 1);
-            }
-        } else {
+        GSValue n = toNumber(this);
+        if (n.type == 10) {
             return GSNaN.NAN;
         }
+        if (n.type == 3) {
+            return new GSFloat(n.toFloatValue() - 1);
+        }
+        return new GSInt(n.toIntValue() - 1);
     }
 
     /**
-     * 判断2个值是否相等
+     * 判断2个值是否宽松相等（==，JS Abstract Equality Comparison 算法）
+     * <ul>
+     *   <li>两边 null → true；仅一边 null → false（gscript 无 undefined）</li>
+     *   <li>任一 NaN → false</li>
+     *   <li>两边数值类型（含 bool）→ 数值比较</li>
+     *   <li>一边数值(含 bool) / 一边字符串 → 字符串 toNumber 后比较</li>
+     *   <li>两边字符串 → 字符串比较</li>
+     *   <li>其余（对象/数组/函数）→ 引用比较</li>
+     * </ul>
      *
      * @param v1 值1
      * @param v2 值2
      * @return 计算结果
      */
     public static final boolean eq(GSValue v1, GSValue v2) {
+        // null 仅与 null 宽松相等（gscript 无 undefined）
+        if (v1.type == 8 || v2.type == 8) {
+            return v1.type == 8 && v2.type == 8;
+        }
         // NaN 与任何值都不相等（IEEE 754 规范）
         if (v1.type == 10 || v2.type == 10) {
             return false;
         }
-        // null 仅与 null 宽松相等（不与 "null" 字符串等相等）
-        if (v1.type == 8 || v2.type == 8) {
-            return v1.type == 8 && v2.type == 8;
-        }
-        if (v1.type <= 3 && v2.type <= 3) {  // 数值类型（含 bool）
+        // 两边数值类型（含 bool）→ 数值比较
+        if (v1.type <= 3 && v2.type <= 3) {
             if (v1.type == 3 || v2.type == 3) {
                 return v1.toFloatValue() == v2.toFloatValue();
-            } else {
-                return v1.toIntValue() == v2.toIntValue();
             }
-        } else if (v1.type == 5 || v2.type == 5) {  // 任意一个是字符串
-            String strValue1 = v1.toStringValue();
-            String strValue2 = v2.toStringValue();
-            return strValue1.equals(strValue2);
-        } else {
-            return v1 == v2;
+            return v1.toIntValue() == v2.toIntValue();
         }
+        // 一边数值(含 bool) / 一边字符串 → 字符串 toNumber 后比较
+        if ((v1.type <= 3 && v2.type == 5) || (v1.type == 5 && v2.type <= 3)) {
+            GSValue n1 = toNumber(v1);
+            GSValue n2 = toNumber(v2);
+            if (n1.type == 10 || n2.type == 10) {
+                return false;  // 字符串非数字 → NaN → false
+            }
+            if (n1.type == 3 || n2.type == 3) {
+                return n1.toFloatValue() == n2.toFloatValue();
+            }
+            return n1.toIntValue() == n2.toIntValue();
+        }
+        // 两边字符串 → 字符串比较
+        if (v1.type == 5 && v2.type == 5) {
+            return v1.toStringValue().equals(v2.toStringValue());
+        }
+        // 其余（对象/数组/函数）→ 引用比较
+        return v1 == v2;
     }
 
     /**
@@ -151,7 +234,8 @@ public abstract class GSValue {
     }
 
     /**
-     * 判断值1是否大于值2
+     * 判断值1是否大于值2（JS Abstract Relational Comparison 算法）
+     * <p>两边都是字符串 → 字典序比较；否则两边 toNumber 后数值比较，任一 NaN → false。
      *
      * @param v1 值1
      * @param v2 值2
@@ -162,19 +246,21 @@ public abstract class GSValue {
         if (v1.type == 5 && v2.type == 5) {
             return v1.toStringValue().compareTo(v2.toStringValue()) > 0;
         }
-        if (v1.type <= 3 && v2.type <= 3) {
-            if (v1.type == 3 || v2.type == 3) {
-                return v1.toFloatValue() > v2.toFloatValue();
-            } else {
-                return v1.toIntValue() > v2.toIntValue();
-            }
-        } else {
-            return false;
+        // 否则 toNumber 后数值比较
+        GSValue n1 = toNumber(v1);
+        GSValue n2 = toNumber(v2);
+        if (n1.type == 10 || n2.type == 10) {
+            return false;  // NaN 比较始终返回 false
         }
+        if (n1.type == 3 || n2.type == 3) {
+            return n1.toFloatValue() > n2.toFloatValue();
+        }
+        return n1.toIntValue() > n2.toIntValue();
     }
 
     /**
-     * 判断值1是否大于等于值2
+     * 判断值1是否大于等于值2（JS Abstract Relational Comparison 算法）
+     * <p>两边都是字符串 → 字典序比较；否则两边 toNumber 后数值比较，任一 NaN → false。
      *
      * @param v1 值1
      * @param v2 值2
@@ -185,19 +271,21 @@ public abstract class GSValue {
         if (v1.type == 5 && v2.type == 5) {
             return v1.toStringValue().compareTo(v2.toStringValue()) >= 0;
         }
-        if (v1.type > 3 || v2.type > 3) {
-            return false;
-        } else {
-            if (v1.type == 3 || v2.type == 3) {
-                return v1.toFloatValue() >= v2.toFloatValue();
-            } else {
-                return v1.toIntValue() >= v2.toIntValue();
-            }
+        // 否则 toNumber 后数值比较
+        GSValue n1 = toNumber(v1);
+        GSValue n2 = toNumber(v2);
+        if (n1.type == 10 || n2.type == 10) {
+            return false;  // NaN 比较始终返回 false
         }
+        if (n1.type == 3 || n2.type == 3) {
+            return n1.toFloatValue() >= n2.toFloatValue();
+        }
+        return n1.toIntValue() >= n2.toIntValue();
     }
 
     /**
-     * 判断值1是否小于值2
+     * 判断值1是否小于值2（JS Abstract Relational Comparison 算法）
+     * <p>两边都是字符串 → 字典序比较；否则两边 toNumber 后数值比较，任一 NaN → false。
      *
      * @param v1 值1
      * @param v2 值2
@@ -208,19 +296,21 @@ public abstract class GSValue {
         if (v1.type == 5 && v2.type == 5) {
             return v1.toStringValue().compareTo(v2.toStringValue()) < 0;
         }
-        if (v1.type > 3 || v2.type > 3) {
-            return false;
-        } else {
-            if (v1.type == 3 || v2.type == 3) {
-                return v1.toFloatValue() < v2.toFloatValue();
-            } else {
-                return v1.toIntValue() < v2.toIntValue();
-            }
+        // 否则 toNumber 后数值比较
+        GSValue n1 = toNumber(v1);
+        GSValue n2 = toNumber(v2);
+        if (n1.type == 10 || n2.type == 10) {
+            return false;  // NaN 比较始终返回 false
         }
+        if (n1.type == 3 || n2.type == 3) {
+            return n1.toFloatValue() < n2.toFloatValue();
+        }
+        return n1.toIntValue() < n2.toIntValue();
     }
 
     /**
-     * 判断值1是否小于等于值2
+     * 判断值1是否小于等于值2（JS Abstract Relational Comparison 算法）
+     * <p>两边都是字符串 → 字典序比较；否则两边 toNumber 后数值比较，任一 NaN → false。
      *
      * @param v1 值1
      * @param v2 值2
@@ -231,221 +321,217 @@ public abstract class GSValue {
         if (v1.type == 5 && v2.type == 5) {
             return v1.toStringValue().compareTo(v2.toStringValue()) <= 0;
         }
-        if (v1.type <= 3 && v2.type <= 3) {
-            if (v1.type == 3 || v2.type == 3) {
-                return v1.toFloatValue() <= v2.toFloatValue();
-            } else {
-                return v1.toIntValue() <= v2.toIntValue();
-            }
-        } else {
-            return false;
+        // 否则 toNumber 后数值比较
+        GSValue n1 = toNumber(v1);
+        GSValue n2 = toNumber(v2);
+        if (n1.type == 10 || n2.type == 10) {
+            return false;  // NaN 比较始终返回 false
         }
+        if (n1.type == 3 || n2.type == 3) {
+            return n1.toFloatValue() <= n2.toFloatValue();
+        }
+        return n1.toIntValue() <= n2.toIntValue();
     }
 
     /**
-     * 对值进行负号操作
+     * 对值进行负号操作（JS 语义：先 ToNumber 再取负）
      *
      * @param v1 值
      * @return 结果
      */
     public static final GSValue neg(GSValue v1) {
-        if (v1.type == 3) {
-            return new GSFloat(-v1.toFloatValue());
-        } else if (v1.type < 3) {
-            return new GSInt(-v1.toIntValue());
-        } else {
+        GSValue n = toNumber(v1);
+        if (n.type == 10) {
             return GSNaN.NAN;
         }
+        if (n.type == 3) {
+            return new GSFloat(-n.toFloatValue());
+        }
+        return new GSInt(-n.toIntValue());
     }
 
     /**
-     * 对值进行加法运算
+     * 对值进行加法运算（JS 语义）
+     * <p>任一为字符串/对象/数组/函数 → 字符串拼接（ToPrimitive 默认 hint=string）；
+     * 否则（bool/int/float/null/NaN）→ toNumber 后数值加法。
      *
      * @param v1 值1
      * @param v2 值2
      * @return 结果
      */
     public static final GSValue plus(GSValue v1, GSValue v2) {
-        // 字符串拼接优先：任一操作数为字符串时走拼接（JS 语义）
-        if (v1.type == 5 || v2.type == 5) {
+        // 对象类类型（str/object/array/function/native）→ 字符串拼接
+        // JS + 运算符：ToPrimitive(default hint) 对这些类型走 toString
+        // null/NaN/bool/int/float → toNumber 后数值加法
+        boolean v1Concat = (v1.type > 3 && v1.type != 8 && v1.type != 10);
+        boolean v2Concat = (v2.type > 3 && v2.type != 8 && v2.type != 10);
+        if (v1Concat || v2Concat) {
             return new GSString(v1.toStringValue() + v2.toStringValue());
         }
-        // NaN 传播：任一操作数为 NaN 且无字符串时结果为 NaN
-        if (v1.type == 10 || v2.type == 10) {
+        // 数值加法（bool/int/float/null/NaN）
+        GSValue n1 = toNumber(v1);
+        GSValue n2 = toNumber(v2);
+        if (n1.type == 10 || n2.type == 10) {
             return GSNaN.NAN;
         }
-        if (v1.type <= 3 && v2.type <= 3) {  // 数值类型计算
-            // float类型提升
-            if (v1.type == 3 || v2.type == 3) {
-                return new GSFloat(v1.toFloatValue() + v2.toFloatValue());
-            } else {
-                return new GSInt(v1.toIntValue() + v2.toIntValue());
-            }
-        } else {
-            return new GSString(v1.toStringValue() + v2.toStringValue());
+        if (n1.type == 3 || n2.type == 3) {
+            return new GSFloat(n1.toFloatValue() + n2.toFloatValue());
         }
+        return new GSInt(n1.toIntValue() + n2.toIntValue());
     }
 
     /**
-     * 对值进行减法运算
+     * 对值进行减法运算（JS 语义：两边 toNumber 后计算）
      *
      * @param v1 值1
      * @param v2 值2
      * @return 结果
      */
     public static final GSValue minus(GSValue v1, GSValue v2) {
-        if (v1.type <= 3 && v2.type <= 3) {  // 数值类型计算
-            // float类型提升
-            if (v1.type == 3 || v2.type == 3) {
-                return new GSFloat(v1.toFloatValue() - v2.toFloatValue());
-            } else {
-                return new GSInt(v1.toIntValue() - v2.toIntValue());
-            }
-        } else {
-            // 其中有一个不是数字，返回非数
+        GSValue n1 = toNumber(v1);
+        GSValue n2 = toNumber(v2);
+        if (n1.type == 10 || n2.type == 10) {
             return GSNaN.NAN;
         }
+        if (n1.type == 3 || n2.type == 3) {
+            return new GSFloat(n1.toFloatValue() - n2.toFloatValue());
+        }
+        return new GSInt(n1.toIntValue() - n2.toIntValue());
     }
 
     /**
-     * 对值进行乘法运算
+     * 对值进行乘法运算（JS 语义：两边 toNumber 后计算）
      *
      * @param v1 值1
      * @param v2 值2
      * @return 结果
      */
     public static final GSValue mul(GSValue v1, GSValue v2) {
-        if (v1.type <= 3 && v2.type <= 3) {  // 数值类型计算
-            // float类型提升
-            if (v1.type == 3 || v2.type == 3) {
-                return new GSFloat(v1.toFloatValue() * v2.toFloatValue());
-            } else {
-                return new GSInt(v1.toIntValue() * v2.toIntValue());
-            }
-        } else {
-            // 其中有一个不是数字，返回非数
+        GSValue n1 = toNumber(v1);
+        GSValue n2 = toNumber(v2);
+        if (n1.type == 10 || n2.type == 10) {
             return GSNaN.NAN;
         }
+        if (n1.type == 3 || n2.type == 3) {
+            return new GSFloat(n1.toFloatValue() * n2.toFloatValue());
+        }
+        return new GSInt(n1.toIntValue() * n2.toIntValue());
     }
 
     /**
-     * 对值进行除法运算
+     * 对值进行除法运算（JS 语义：两边 toNumber 后计算）
+     * <p>JS 语义：/ 总是浮点除法（7/2=3.5 而非截断为 3）；
+     * 除零返回 NaN（gscript 无 Infinity 表示）。
      *
      * @param v1 值1
      * @param v2 值2
      * @return 结果
      */
     public static final GSValue div(GSValue v1, GSValue v2) {
-        if (v1.type <= 3 && v2.type <= 3) {  // 数值类型计算
-            // JS 语义：/ 总是浮点除法（7/2=3.5 而非截断为 3）
-            // 除零返回 NaN（gscript 无 Infinity 表示）
-            float b = v2.toFloatValue();
-            if (b == 0) {
-                return GSNaN.NAN;
-            }
-            return new GSFloat(v1.toFloatValue() / b);
-        } else {
-            // 其中有一个不是数字，返回非数
+        GSValue n1 = toNumber(v1);
+        GSValue n2 = toNumber(v2);
+        if (n1.type == 10 || n2.type == 10) {
             return GSNaN.NAN;
         }
+        float b = n2.toFloatValue();
+        if (b == 0) {
+            return GSNaN.NAN;
+        }
+        return new GSFloat(n1.toFloatValue() / b);
     }
 
     /**
-     * 对值进行取模运算（JS 的 % 语义：截断除法的余数，与 Java % 一致）
+     * 对值进行取模运算（JS 语义：两边 toNumber 后计算；JS % 截断除法的余数）
      *
      * @param v1 值1
      * @param v2 值2
      * @return 结果
      */
     public static final GSValue modulo(GSValue v1, GSValue v2) {
-        if (v1.type <= 3 && v2.type <= 3) {  // 数值类型计算
-            // float类型提升
-            if (v1.type == 3 || v2.type == 3) {
-                return new GSFloat(v1.toFloatValue() % v2.toFloatValue());
-            } else {
-                return new GSInt(v1.toIntValue() % v2.toIntValue());
-            }
-        } else {
-            // 其中有一个不是数字，返回非数
+        GSValue n1 = toNumber(v1);
+        GSValue n2 = toNumber(v2);
+        if (n1.type == 10 || n2.type == 10) {
             return GSNaN.NAN;
         }
+        if (n1.type == 3 || n2.type == 3) {
+            // float 模 0 返回 NaN（JS 语义），Java float % 0 不抛异常
+            float f2 = n2.toFloatValue();
+            if (f2 == 0) {
+                return GSNaN.NAN;
+            }
+            return new GSFloat(n1.toFloatValue() % f2);
+        }
+        // int 模 0 返回 NaN（JS 语义），避免 Java ArithmeticException: / by zero
+        int i2 = n2.toIntValue();
+        if (i2 == 0) {
+            return GSNaN.NAN;
+        }
+        return new GSInt(n1.toIntValue() % i2);
     }
 
     /**
-     * 对值进行左移位运算
+     * 对值进行左移位运算（JS 语义：两边 toInt32 后移位）
      *
      * @param v1 值1
      * @param v2 值2
      * @return 结果
      */
     public static final GSValue ls(GSValue v1, GSValue v2) {
-        if (v1.type <= 3 && v2.type <= 3) {  // 数值类型计算
-            // float类型提升
-            return new GSInt(v1.toIntValue() << v2.toIntValue());
-        } else {
-            // 其中有一个不是数字，返回非数
-            return GSNaN.NAN;
-        }
+        return new GSInt(toInt32(v1) << toInt32(v2));
     }
 
     /**
-     * 对值进行右移位运算
+     * 对值进行右移位运算（JS 语义：两边 toInt32 后移位）
      *
      * @param v1 值1
      * @param v2 值2
      * @return 结果
      */
     public static final GSValue rs(GSValue v1, GSValue v2) {
-        if (v1.type <= 3 && v2.type <= 3) {  // 数值类型计算
-            // float类型提升
-            return new GSInt(v1.toIntValue() >> v2.toIntValue());
-        } else {
-            // 其中有一个不是数字，返回非数
-            return GSNaN.NAN;
-        }
+        return new GSInt(toInt32(v1) >> toInt32(v2));
     }
 
     /**
-     * 对值进行按位与运算
+     * 对值进行按位与运算（JS 语义：两边 toInt32）
      *
      * @param v1 值1
      * @param v2 值2
      * @return 结果
      */
     public static final GSValue b_and(GSValue v1, GSValue v2) {
-        return new GSInt(v1.toIntValue() & v2.toIntValue());
+        return new GSInt(toInt32(v1) & toInt32(v2));
     }
 
     /**
-     * 对值进行按位或运算
+     * 对值进行按位或运算（JS 语义：两边 toInt32）
      *
      * @param v1 值1
      * @param v2 值2
      * @return 结果
      */
     public static final GSValue b_or(GSValue v1, GSValue v2) {
-        return new GSInt(v1.toIntValue() | v2.toIntValue());
+        return new GSInt(toInt32(v1) | toInt32(v2));
     }
 
     /**
-     * 对值进行按位异或运算
+     * 对值进行按位异或运算（JS 语义：两边 toInt32）
      *
      * @param v1 值1
      * @param v2 值2
      * @return 结果
      */
     public static final GSValue b_xor(GSValue v1, GSValue v2) {
-        return new GSInt(v1.toIntValue() ^ v2.toIntValue());
+        return new GSInt(toInt32(v1) ^ toInt32(v2));
     }
 
     /**
-     * 对值进行按位取反运算
+     * 对值进行按位取反运算（JS 语义：toInt32 后取反）
      *
      * @param v1 值1
      * @return 结果
      */
     public static final GSValue b_not(GSValue v1) {
-        return new GSInt(~v1.toIntValue());
+        return new GSInt(~toInt32(v1));
     }
 
     /**

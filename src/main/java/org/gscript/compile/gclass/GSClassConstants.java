@@ -109,6 +109,7 @@ public final class GSClassConstants {
     public static final byte RELA_B_XOR = 3;
     public static final byte RELA_B_NOT = 4;
     public static final byte RELA_L_NOT = 5;
+    public static final byte RELA_TYPEOF = 6;
 
     // ===== 子操作码：pushenv =====
     public static final byte PUSHENV_FUNCTION = 1;
@@ -216,6 +217,7 @@ public final class GSClassConstants {
         RELA_SUB.put("b_xor", new Byte(RELA_B_XOR)); RELA_SUB_REV.put(new Byte(RELA_B_XOR), "b_xor");
         RELA_SUB.put("b_not", new Byte(RELA_B_NOT)); RELA_SUB_REV.put(new Byte(RELA_B_NOT), "b_not");
         RELA_SUB.put("l_not", new Byte(RELA_L_NOT)); RELA_SUB_REV.put(new Byte(RELA_L_NOT), "l_not");
+        RELA_SUB.put("typeof", new Byte(RELA_TYPEOF)); RELA_SUB_REV.put(new Byte(RELA_TYPEOF), "typeof");
 
         PUSHENV_SUB.put("function", new Byte(PUSHENV_FUNCTION)); PUSHENV_SUB_REV.put(new Byte(PUSHENV_FUNCTION), "function");
         PUSHENV_SUB.put("loop", new Byte(PUSHENV_LOOP));         PUSHENV_SUB_REV.put(new Byte(PUSHENV_LOOP), "loop");

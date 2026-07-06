@@ -614,6 +614,35 @@ public class GSInterpreter implements TimerScheduler.TaskDispatcher {
                                     stack.push(GSValue.l_not(v2));
                                     break;
                                 }
+                                case GSClassConstants.RELA_TYPEOF: {
+                                    // typeof: 返回 JS 类型名字符串
+                                    // bool(1)→"boolean"  int(2)/float(3)/nan(10)→"number"
+                                    // str(5)→"string"  function(6)/native(9)→"function"
+                                    // object(4)/array(7)/null(8)→"object"
+                                    String typeName;
+                                    switch (v2.type) {
+                                        case 1:
+                                            typeName = "boolean";
+                                            break;
+                                        case 2:
+                                        case 3:
+                                        case 10:
+                                            typeName = "number";
+                                            break;
+                                        case 5:
+                                            typeName = "string";
+                                            break;
+                                        case 6:
+                                        case 9:
+                                            typeName = "function";
+                                            break;
+                                        default:  // 4 object, 7 array, 8 null → "object"
+                                            typeName = "object";
+                                            break;
+                                    }
+                                    stack.push(new GSString(typeName));
+                                    break;
+                                }
                                 default:
                                     throw new Error("VMError: the virtual machine does not support this bytecode");
                             }

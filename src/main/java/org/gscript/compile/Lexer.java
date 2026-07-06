@@ -22,7 +22,7 @@ public class Lexer {
     private static final Set keywords = new HashSet(Arrays.asList(new String[]{
         "function", "do", "var", "if", "else", "break", "for", "while",
         "true", "false", "null", "switch", "case", "default", "return",
-        "continue", "new", "try", "catch", "finally", "throw", "NaN"
+        "continue", "new", "try", "catch", "finally", "throw", "NaN", "typeof"
     }));
 
     public Lexer() {
@@ -487,6 +487,7 @@ public class Lexer {
                     else if (value.equals("throw")) { token = GSTokenType.THROW; }
                     else if (value.equals("new")) { token = GSTokenType.NEW; }
                     else if (value.equals("NaN")) { token = GSTokenType.NaN; }
+                    else if (value.equals("typeof")) { token = GSTokenType.TYPEOF; }
                     tokens.add(new GSToken(token, value, line, column));
                 } else {
                     tokens.add(new GSToken(GSTokenType.IDENTIFIER, value, line, column));

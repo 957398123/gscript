@@ -247,42 +247,15 @@ public class TypeLib {
         }
     };
 
-    /** Number(value): 严格转数字，bool→0/1，null→0，纯数字串→数值，其他→NaN */
+    /** Number(value): 严格转数字，bool→0/1，null→0，纯数字串→数值，其他→NaN
+     *  <p>内部委托 {@link GSValue#toNumber(GSValue)}（JS ToNumber 抽象操作），
+     *  保证 Number(x) 与算术/比较运算的隐式转换语义一致。 */
     public static final GSNativeFunction NUMBER = new GSNativeFunction("Number") {
         public GSValue call(ArrayList args) {
             if (args.size() < 2) {
                 return GSNaN.NAN;
             }
-            GSValue v = (GSValue) args.get(1);
-            switch (v.type) {
-                case 1:  // bool → 0/1
-                    return new GSInt(v.toIntValue());
-                case 2:  // int
-                    return new GSInt(v.toIntValue());
-                case 3:  // float
-                    return new GSFloat(v.toFloatValue());
-                case 8:  // null → 0
-                    return new GSInt(0);
-                case 10: // NaN
-                    return GSNaN.NAN;
-                case 5: {  // string：严格语义，整体必须是合法数字
-                    String s = v.toStringValue().trim();
-                    if (s.length() == 0) {
-                        return new GSInt(0);  // 空串 → 0（JS 语义）
-                    }
-                    try {
-                        return new GSInt(Integer.parseInt(s));
-                    } catch (NumberFormatException e1) {
-                        try {
-                            return new GSFloat(Float.parseFloat(s));
-                        } catch (NumberFormatException e2) {
-                            return GSNaN.NAN;
-                        }
-                    }
-                }
-                default:  // object/array/function → NaN
-                    return GSNaN.NAN;
-            }
+            return GSValue.toNumber((GSValue) args.get(1));
         }
     };
 

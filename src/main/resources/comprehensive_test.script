@@ -1,0 +1,280 @@
+// gscript 综合测试 - 第 1 部分：算术/比较/位运算/类型转换/自增自减
+// 目的：系统探测 gscript 引擎在基础运算与类型语义上的隐藏 bug
+// 输出格式：[OK]/[FAIL] 名称: expected=期望值, actual=实际值
+
+function check(name, expected, actual) {
+    var expStr = "" + expected;
+    var actStr = "" + actual;
+    var mark = (expStr == actStr) ? "OK" : "FAIL";
+    console.log("[" + mark + "] " + name + ": expected=" + expStr + ", actual=" + actStr);
+}
+
+// ============ 1. 算术运算边界 ============
+console.log("=== [1] 算术运算边界 ===");
+check("1+2", 3, 1 + 2);
+check("10-3", 7, 10 - 3);
+check("4*5", 20, 4 * 5);
+check("20/4", 5.0, 20 / 4);       // gscript: 浮点除法返回 5.0
+check("7/2", 3.5, 7 / 2);
+check("-7/2", -3.5, -7 / 2);
+check("7%3", 1, 7 % 3);
+check("10%4", 2, 10 % 4);
+check("-7%3", -1, -7 % 3);        // JS: -1 (符号跟随被除数)
+check("7%-3", 1, 7 % -3);          // JS: 1
+check("-7%-3", -1, -7 % -3);       // JS: -1
+check("10/0", NaN, 10 / 0);        // gscript: NaN (无 Infinity)
+check("0/0", NaN, 0 / 0);
+check("-10/0", NaN, -10 / 0);      // JS: -Infinity, gscript: NaN
+check("10%0", NaN, 10 % 0);        // 修复后：模0返回NaN（JS 语义）
+check("0%0", NaN, 0 % 0);          // 修复后：模0返回NaN（JS 语义）
+check("2.5+1.5", 4.0, 2.5 + 1.5);
+check("2.5-1.5", 1.0, 2.5 - 1.5);
+check("2.5*2", 5.0, 2.5 * 2);
+check("1.0+2.0", 3.0, 1.0 + 2.0);  // float+float = float
+check("大整数乘法", 1000000, 1000 * 1000);
+check("int溢溢出", (0 - 2147483647 - 1), 2147483647 + 1);  // Java int 溢出（结果用表达式避免字面量溢出）
+check("INT_MIN字面量", (0 - 2147483647 - 1), 0 - 2147483647 - 1);  // 避免直接写 2147483648 字面量
+check("INT_MIN直接字面量", -2147483648, -2147483648);  // 修复后：2147483648 字面量回退为 float，再 neg
+
+// ============ 2. 隐式类型转换 - 算术 ============
+console.log("=== [2] 隐式类型转换（算术）===");
+check("null+1", 1, null + 1);
+check("1+null", 1, 1 + null);
+check("null+null", 0, null + null);
+check("null*5", 0, null * 5);
+check("null-5", -5, null - 5);
+check("true+1", 2, true + 1);
+check("false+10", 10, false + 10);
+check("true-1", 0, true - 1);
+check("false*5", 0, false * 5);
+check("true*3", 3, true * 3);
+check("NaN+1 isNaN", true, isNaN(NaN + 1));
+check("NaN*0 isNaN", true, isNaN(NaN * 0));
+check("5+NaN isNaN", true, isNaN(5 + NaN));
+check("1/NaN isNaN", true, isNaN(1 / NaN));
+
+// ============ 3. 加法字符串拼接 ============
+console.log("=== [3] 加法字符串拼接 ===");
+check("\"5\"+3", "53", "5" + 3);
+check("5+\"3\"", "53", 5 + "3");
+check("\"\"+null", "null", "" + null);
+check("\"\"+true", "true", "" + true);
+check("\"\"+0", "0", "" + 0);
+check("0+\"\"", "0", 0 + "");
+check("\"\"+NaN", "NaN", "" + NaN);
+check("1+[2,3]", "12,3", 1 + [2, 3]);    // JS: [2,3].toString()="2,3"，1+"2,3"="12,3"
+check("[1,2]+3", "1,23", [1, 2] + 3);
+check("[1,2]+[3,4]", "1,23,4", [1, 2] + [3, 4]);
+check("{}+1", "[object Object]1", {} + 1);
+check("1+{}", "1[object Object]", 1 + {});
+check("\"x\"+{}", "x[object Object]", "x" + {});
+check("\"x\"+[]", "x", "x" + []);
+check("\"x\"+null", "xnull", "x" + null);
+check("\"x\"+true", "xtrue", "x" + true);
+check("\"x\"+NaN", "xNaN", "x" + NaN);
+check("null+\"\"", "null", null + "");   // null vs string → 拼接
+
+// ============ 4. 比较运算 ============
+console.log("=== [4] 比较运算 ===");
+// 关系比较 - 字符串与数值
+check("\"23\">0", true, "23" > 0);
+check("\"23\"<5", false, "23" < 5);
+check("\"23\">=23", true, "23" >= 23);
+check("\"23\"<=23", true, "23" <= 23);
+check("\"23\">24", false, "23" > 24);
+check("\"3.14\">3", true, "3.14" > 3);
+check("\"abc\">0", false, "abc" > 0);    // NaN 比较
+check("\"abc\"<0", false, "abc" < 0);
+check("\"abc\">=0", false, "abc" >= 0);
+check("\"abc\"<=0", false, "abc" <= 0);
+// null 关系比较（→0）
+check("null>-1", true, null > -1);
+check("null<1", true, null < 1);
+check("null>=0", true, null >= 0);
+check("null<=0", true, null <= 0);
+check("null>0", false, null > 0);
+check("null<0", false, null < 0);
+// 两边字符串 - 字典序
+check("\"10\"<\"9\"", true, "10" < "9");    // 字典序 '1'<'9'
+check("\"10\"<9", false, "10" < 9);          // 数值 10<9=false
+check("\"abc\"<\"abd\"", true, "abc" < "abd");
+check("\"abc\">\"ab\"", true, "abc" > "ab");
+check("\"\"<\"a\"", true, "" < "a");
+// NaN 关系比较
+check("NaN>0", false, NaN > 0);
+check("NaN<0", false, NaN < 0);
+check("NaN>=0", false, NaN >= 0);
+check("NaN<=0", false, NaN <= 0);
+check("NaN>NaN", false, NaN > NaN);
+check("1>NaN", false, 1 > NaN);
+
+// ============ 5. 宽松相等 == ============
+console.log("=== [5] 宽松相等 == ===");
+check("\"23\"==23", true, "23" == 23);
+check("\"23\"!=24", true, "23" != 24);
+check("\"3.0\"==3", true, "3.0" == 3);
+check("\"\"==0", true, "" == 0);
+check("\"  \"==0", true, "  " == 0);
+check("\"abc\"==0", false, "abc" == 0);
+check("true==\"1\"", true, true == "1");
+check("false==\"0\"", true, false == "0");
+check("false==\"\"", true, false == "");
+check("true==\"true\"", false, true == "true");
+check("null==0", false, null == 0);
+check("null==false", false, null == false);
+check("null==\"\"", false, null == "");
+check("null==null", true, null == null);
+check("NaN==NaN", false, NaN == NaN);
+check("NaN!=NaN", true, NaN != NaN);
+check("1==1.0", true, 1 == 1.0);
+check("0==false", true, 0 == false);
+check("1==true", true, 1 == true);
+check("\"1\"==1", true, "1" == 1);
+check("\"0\"==false", true, "0" == false);
+check("[]==false", false, [] == false);    // JS: [] == false → true (via Number)
+check("\"\"==false", true, "" == false);   // JS: true
+
+// ============ 6. 严格相等 === ===
+console.log("=== [6] 严格相等 === ===");
+check("1===1", true, 1 === 1);
+check("1===2", false, 1 === 2);
+check("1===1.0", true, 1 === 1.0);          // int/float 互比
+check("1===\"1\"", false, 1 === "1");
+check("\"1\"===\"1\"", true, "1" === "1");
+check("null===null", true, null === null);
+check("NaN===NaN", false, NaN === NaN);
+check("true===true", true, true === true);
+check("true===1", false, true === 1);       // 类型不同
+check("null===undefined", false, null === undefined);  // gscript 无 undefined
+
+// ============ 7. 位运算 ============
+console.log("=== [7] 位运算 ===");
+check("5&3", 1, 5 & 3);
+check("5|2", 7, 5 | 2);
+check("5^3", 6, 5 ^ 3);
+check("~5", -6, ~5);
+check("~0", -1, ~0);
+check("1<<3", 8, 1 << 3);
+check("8>>2", 2, 8 >> 2);
+check("-1>>1", -1, -1 >> 1);               // 算术右移
+check("1<<31", (0 - 2147483647 - 1), 1 << 31);     // 符号位（避免 -2147483648 字面量）
+check("1<<32", 1, 1 << 32);                // JS: 32 & 0x1F = 0, 1<<0 = 1
+check("1<<33", 2, 1 << 33);                // JS: 33 & 0x1F = 1, 1<<1 = 2
+// gscript 不支持 >>> (无符号右移)，跳过
+// 浮点截断
+check("5.7&3", 1, 5.7 & 3);
+check("5.7|2", 7, 5.7 | 2);
+check("5.7^1", 4, 5.7 ^ 1);
+check("~5.7", -6, ~5.7);
+check("2.5<<1", 4, 2.5 << 1);
+// 字符串/bool/null
+check("\"23\"&3", 3, "23" & 3);
+check("\"5\"|2", 7, "5" | 2);
+check("\"23\"^1", 22, "23" ^ 1);
+check("~\"23\"", -24, ~"23");
+check("1<<\"2\"", 4, 1 << "2");
+check("\"10\">>1", 5, "10" >> 1);
+check("null&3", 0, null & 3);
+check("null|0", 0, null | 0);
+check("true&1", 1, true & 1);
+check("true|0", 1, true | 0);
+check("false&1", 0, false & 1);
+check("NaN&3", 0, NaN & 3);
+check("NaN|0", 0, NaN | 0);
+
+// ============ 8. 一元负号 ============
+console.log("=== [8] 一元负号 ===");
+check("-5", -5, -5);
+check("-\"23\"", -23, -"23");
+check("-null", 0, -null);
+check("-true", -1, -true);
+check("-false", 0, -false);
+check("-\"abc\" isNaN", true, isNaN(-"abc"));
+check("-3.14", -3.14, -3.14);
+check("-NaN isNaN", true, isNaN(-NaN));
+// 链式一元运算符（修复 Bug #1: parseUnaryExpression 递归）
+check("!!true", true, !!true);
+check("!!0", false, !!0);
+check("!!\"\"", false, !!"");
+check("!!\"x\"", true, !!"x");
+check("!!{}", true, !!{});
+check("!!1", true, !!1);
+check("~~5", 5, ~~5);
+check("~~5.7", 5, ~~5.7);
+check("- -5", 5, - -5);               // - -5 = 5（两个一元减）
+
+// ============ 9. 自增自减 ============
+console.log("=== [9] 自增自减 ===");
+var a1 = 5;
+check("a1++值", 5, a1++);          // 后缀返回原值
+check("a1++后", 6, a1);
+var a2 = 5;
+check("++a2值", 6, ++a2);           // 前缀返回新值
+check("++a2后", 6, a2);
+var a3 = 5;
+check("a3--值", 5, a3--);
+check("a3--后", 4, a3);
+var a4 = 5;
+check("--a4值", 4, --a4);
+// 字符串自增（JS: ToNumber+1）
+var s1 = "23";
+s1++;
+check("\"23\"++", 24, s1);
+var s2 = "10";
+s2--;
+check("\"10\"--", 9, s2);
+var s3 = "3.5";
+s3++;
+check("\"3.5\"++", 4.5, s3);
+var s4 = "abc";
+s4++;
+check("\"abc\"++ isNaN", true, isNaN(s4));
+// null 自增（JS: null→0→1）
+var n1 = null;
+n1++;
+check("null++", 1, n1);
+// bool 自增（JS: true→1→2）
+var b1 = true;
+b1++;
+check("true++", 2, b1);
+// 浮点自增
+var f1 = 2.5;
+f1++;
+check("2.5++", 3.5, f1);
+// 成员自增
+var obj1 = {x: 10};
+check("obj.x++值", 10, obj1.x++);
+check("obj.x++后", 11, obj1.x);
+var obj2 = {y: 10};
+check("++obj.y值", 11, ++obj2.y);
+// 数组元素自增
+var arr1 = [1, 2, 3];
+arr1[1]++;
+check("arr[1]++后", 3, arr1[1]);
+
+// ============ 10. 逻辑运算 ============
+console.log("=== [10] 逻辑运算 ===");
+check("true&&false", false, true && false);
+check("true||false", true, true || false);
+check("!true", false, !true);
+check("!false", true, !false);
+check("!0", true, !0);
+check("!1", false, !1);
+check("!\"\"", true, !"");
+check("!\"x\"", false, !"x");
+check("!null", true, !null);
+check("!NaN", true, !NaN);
+check("![]", false, ![]);          // 数组 truthy
+check("!{}", false, !{});         // 对象 truthy
+// 短路返回值（JS: && / || 返回操作数，非布尔）
+check("1&&2", 2, 1 && 2);
+check("0&&2", 0, 0 && 2);          // 0 falsy
+check("0||2", 2, 0 || 2);
+check("1||2", 1, 1 || 2);
+check("null||\"x\"", "x", null || "x");
+check("\"x\"||null", "x", "x" || null);
+check("null&&\"x\"", null, null && "x");
+check("NaN&&1", NaN, NaN && 1);   // JS: NaN (falsy)，修复后返回操作数 NaN
+check("NaN||1", 1, NaN || 1);
+
+console.log("=== 测试 1 完成 ===");

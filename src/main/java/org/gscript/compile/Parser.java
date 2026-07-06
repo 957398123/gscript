@@ -52,7 +52,7 @@ public class Parser {
     /**
      * 一元操作符
      */
-    private static final int[] UNARY = {GSTokenType.PLUS, GSTokenType.MINUS, GSTokenType.NOT, GSTokenType.BIT_NOT};
+    private static final int[] UNARY = {GSTokenType.PLUS, GSTokenType.MINUS, GSTokenType.NOT, GSTokenType.BIT_NOT, GSTokenType.TYPEOF};
 
     /**
      * 自增和自减
@@ -1017,8 +1017,8 @@ public class Parser {
         // 如果是一元操作符
         if (isUnaryOperator(peek())) {
             operator = new Operator(advance());
-            // 解析后缀表达式
-            Node operand = parsePostfixExpression();
+            // 递归解析一元表达式，支持链式一元运算符如 !!x、~~x、--x（前置）
+            Node operand = parseUnaryExpression();
             return new UnaryExpression(operator, operand);
         } else if (isPosfixOperator(peek())) {  // 如果匹配到了前缀++/--
             operator = new Operator(advance());

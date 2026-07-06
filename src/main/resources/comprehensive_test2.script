@@ -1,0 +1,407 @@
+// gscript 综合测试 - 第 2 部分：字符串/数组/对象方法、函数、控制流、异常、作用域
+// 目的：探测内置方法与语言构造的隐藏 bug
+
+function check(name, expected, actual) {
+    var expStr = "" + expected;
+    var actStr = "" + actual;
+    var mark = (expStr == actStr) ? "OK" : "FAIL";
+    console.log("[" + mark + "] " + name + ": expected=" + expStr + ", actual=" + actStr);
+}
+
+// ============ 11. 字符串方法 ============
+console.log("=== [11] 字符串方法 ===");
+check("\"hello\".length", 5, "hello".length);
+check("\"\".length", 0, "".length);
+check("\"hello\".charAt(0)", "h", "hello".charAt(0));
+check("\"hello\".charAt(4)", "o", "hello".charAt(4));
+check("\"hello\".charAt(10)", "", "hello".charAt(10));      // 越界空串
+check("\"hello\".charAt(-1)", "", "hello".charAt(-1));      // 负索引空串
+check("\"hello\".charAt()", "", "hello".charAt());           // 无参空串
+check("\"hello\".charCodeAt(0)", 104, "hello".charCodeAt(0));  // 'h'=104
+check("\"hello\".charCodeAt(4)", 111, "hello".charCodeAt(4));   // 'o'=111
+check("\"hello\".charCodeAt(10)", NaN, "hello".charCodeAt(10)); // 越界 NaN
+check("\"hello\".charCodeAt(-1)", NaN, "hello".charCodeAt(-1));
+check("\"hello\".charCodeAt()", NaN, "hello".charCodeAt());   // 无参
+check("\"\".charCodeAt(0)", NaN, "".charCodeAt(0));
+check("\"hello\".indexOf(\"l\")", 2, "hello".indexOf("l"));
+check("\"hello\".indexOf(\"xyz\")", -1, "hello".indexOf("xyz"));
+check("\"hello\".indexOf(\"\")", 0, "hello".indexOf(""));     // JS: 0
+check("\"hello\".indexOf(\"l\",3)", 3, "hello".indexOf("l", 3));
+check("\"hello\".lastIndexOf(\"l\")", 3, "hello".lastIndexOf("l"));
+check("\"hello\".lastIndexOf(\"xyz\")", -1, "hello".lastIndexOf("xyz"));
+check("\"hello\".substring(1,3)", "el", "hello".substring(1, 3));
+check("\"hello\".substring(2)", "llo", "hello".substring(2));
+check("\"hello\".substring()", "hello", "hello".substring());
+check("\"hello\".substring(3,1)", "el", "hello".substring(3, 1));  // 交换
+check("\"hello\".substring(-1,3)", "hel", "hello".substring(-1, 3)); // 负数→0
+check("\"hello\".substring(0,10)", "hello", "hello".substring(0, 10));
+check("\"hello\".slice(1,3)", "el", "hello".slice(1, 3));
+check("\"hello\".slice(-2)", "lo", "hello".slice(-2));       // 负索引
+check("\"hello\".slice(-2,-1)", "l", "hello".slice(-2, -1));
+check("\"hello\".slice(2)", "llo", "hello".slice(2));
+check("\"hello\".slice(3,1)", "", "hello".slice(3, 1));        // start>end
+check("\"hello\".slice(10)", "", "hello".slice(10));          // 越界
+check("\"hello\".substr(1,3)", "ell", "hello".substr(1, 3));
+check("\"hello\".substr(-2)", "lo", "hello".substr(-2));
+check("\"hello\".substr(2)", "llo", "hello".substr(2));
+check("\"hello\".substr(1,0)", "", "hello".substr(1, 0));
+check("\"a,b,c\".split(\",\").length", 3, "a,b,c".split(",").length);
+check("\"a,b,c\".split(\",\")[1]", "b", "a,b,c".split(",")[1]);
+check("\"abc\".split(\"\").length", 3, "abc".split("").length);
+check("\"abc\".split(\"\")[0]", "a", "abc".split("")[0]);
+check("\"hello\".split(\"xyz\").length", 1, "hello".split("xyz").length);
+check("\"\".split(\",\").length", 1, "".split(",").length);    // JS: [""]
+check("\"hello\".replace(\"l\",\"L\")", "heLlo", "hello".replace("l", "L"));
+check("\"hello\".replace(\"xyz\",\"L\")", "hello", "hello".replace("xyz", "L"));
+check("\"hello\".replace(\"\",\"X\")", "Xhello", "hello".replace("", "X"));  // 空串插在开头
+check("\"  hi  \".trim()", "hi", "  hi  ".trim());
+check("\"hello\".toUpperCase()", "HELLO", "hello".toUpperCase());
+check("\"Hello\".toLowerCase()", "hello", "Hello".toLowerCase());
+check("\"hello\".startsWith(\"he\")", true, "hello".startsWith("he"));
+check("\"hello\".startsWith(\"lo\")", false, "hello".startsWith("lo"));
+check("\"hello\".startsWith(\"lo\",3)", true, "hello".startsWith("lo", 3));
+check("\"hello\".endsWith(\"lo\")", true, "hello".endsWith("lo"));
+check("\"hello\".endsWith(\"hel\",3)", true, "hello".endsWith("hel", 3));
+check("\"hello\".includes(\"ell\")", true, "hello".includes("ell"));
+check("\"hello\".includes(\"xyz\")", false, "hello".includes("xyz"));
+check("\"hello\".includes(\"\")", true, "hello".includes(""));    // 空串总是包含
+check("\"abc\".repeat(3)", "abcabcabc", "abc".repeat(3));
+check("\"abc\".repeat(0)", "", "abc".repeat(0));
+check("\"\".repeat(5)", "", "".repeat(5));
+check("\"ab\".concat(\"cd\",\"ef\")", "abcdef", "ab".concat("cd", "ef"));
+check("\"ab\".concat()", "ab", "ab".concat());  // 无参返回自身
+// 链式调用
+check("链式 charAt+toUpperCase", "H", "hello".toUpperCase().charAt(0));
+check("链式 slice+indexOf", 2, "hello world".slice(0, 5).indexOf("l"));
+
+// ============ 12. 数组方法 ============
+console.log("=== [12] 数组方法 ===");
+var arr = [1, 2, 3];
+check("[1,2,3].length", 3, arr.length);
+arr.push(4);
+check("push后长度", 4, arr.length);
+check("push返回值", 4, [1,2,3].push(4));
+check("push多个", 5, [1].push(2, 3, 4, 5));
+var p1 = [1, 2, 3];
+var popped = p1.pop();
+check("pop值", 3, popped);
+check("pop后长度", 2, p1.length);
+check("空数组pop", null, [].pop());
+var s1 = [1, 2, 3];
+var shifted = s1.shift();
+check("shift值", 1, shifted);
+check("shift后长度", 2, s1.length);
+check("shift后[0]", 2, s1[0]);
+check("空数组shift", null, [].shift());
+var u1 = [2, 3];
+var newLen = u1.unshift(1);
+check("unshift返回长度", 3, newLen);
+check("unshift后[0]", 1, u1[0]);
+check("unshift多个", 3, [3].unshift(1, 2));   // [3] + 2 = [1,2,3], length=3
+check("[1,2,3].indexOf(2)", 1, [1, 2, 3].indexOf(2));
+check("[1,2,3].indexOf(9)", -1, [1, 2, 3].indexOf(9));
+check("[1,2,3].indexOf(1,1)", -1, [1, 2, 3].indexOf(1, 1));
+check("[1,2,3].indexOf(2,-1)", -1, [1, 2, 3].indexOf(2, -1));  // from=-1+3=2, arr[2]=3≠2
+check("[1,2,3].indexOf(2,-2)", 1, [1, 2, 3].indexOf(2, -2));  // from=-2+3=1, arr[1]=2
+check("[1,2,3,2,1].indexOf(2,2)", 3, [1, 2, 3, 2, 1].indexOf(2, 2));
+check("[\"a\",\"b\"].indexOf(\"a\")", 0, ["a", "b"].indexOf("a"));
+check("[1,true].indexOf(true)", 1, [1, true].indexOf(true));
+check("[null].indexOf(null)", 0, [null].indexOf(null));
+check("[1,2,3].join(\",\")", "1,2,3", [1, 2, 3].join(","));
+check("[1,2,3].join()", "1,2,3", [1, 2, 3].join());
+check("[1,2,3].join(\"\")", "123", [1, 2, 3].join(""));
+check("[1,null,3].join(\",\")", "1,,3", [1, null, 3].join(","));
+check("[].join(\",\")", "", [].join(","));
+check("[\"a\",\"b\"].join(\"-\")", "a-b", ["a", "b"].join("-"));
+check("[1,2,3,4].slice(1,3).length", 2, [1, 2, 3, 4].slice(1, 3).length);
+check("[1,2,3,4].slice(1,3)[0]", 2, [1, 2, 3, 4].slice(1, 3)[0]);
+check("[1,2,3,4].slice(-2)[0]", 3, [1, 2, 3, 4].slice(-2)[0]);
+check("[1,2,3,4].slice(-2)[1]", 4, [1, 2, 3, 4].slice(-2)[1]);
+check("[1,2,3].slice().length", 3, [1, 2, 3].slice().length);
+check("[1,2,3,4,5].slice(2).length", 3, [1, 2, 3, 4, 5].slice(2).length);
+// splice
+var sp1 = [1, 2, 3, 4, 5];
+var removed = sp1.splice(1, 2);
+check("splice删除返回长度", 2, removed.length);
+check("splice删除返回[0]", 2, removed[0]);
+check("splice删除后长度", 3, sp1.length);
+check("splice删除后[1]", 4, sp1[1]);
+var sp2 = [1, 2, 3, 4, 5];
+sp2.splice(1, 0, 9, 9);
+check("splice插入后长度", 7, sp2.length);
+check("splice插入后[1]", 9, sp2[1]);
+var sp3 = [1, 2, 3, 4, 5];
+sp3.splice(2);
+check("splice删到末尾", 2, sp3.length);
+var sp4 = [1, 2, 3];
+sp4.splice(-1, 1);
+check("splice负索引后长度", 2, sp4.length);
+var sp5 = [1, 2, 3];
+sp5.splice();
+check("splice空参", 3, sp5.length);
+// length 可写
+var l1 = [1, 2, 3, 4, 5];
+l1.length = 3;
+check("length截断", 3, l1.length);
+check("length截断后[2]", 3, l1[2]);
+var l2 = [1, 2, 3];
+l2.length = 5;
+check("length扩容", 5, l2.length);
+check("length扩容后[3]", null, l2[3]);
+var l3 = [1, 2, 3];
+l3.length = 0;
+check("length清空", 0, l3.length);
+// forEach/map/filter
+var sum = 0;
+[1, 2, 3, 4, 5].forEach(function(x) { sum = sum + x; });
+check("forEach求和", 15, sum);
+var doubled = [1, 2, 3].map(function(x) { return x * 2; });
+check("map[0]", 2, doubled[0]);
+check("map[2]", 6, doubled[2]);
+var evens = [1, 2, 3, 4, 5, 6].filter(function(x) { return x % 2 == 0; });
+check("filter长度", 3, evens.length);
+check("filter[0]", 2, evens[0]);
+// 链式 map+filter
+var chain = [1, 2, 3, 4, 5].map(function(x) { return x * x; }).filter(function(x) { return x > 4; });
+check("map+filter链长度", 3, chain.length);
+check("map+filter链[0]", 9, chain[0]);
+// 回调签名 (element, index, array)
+var idxs = [];
+[10, 20, 30].forEach(function(elem, idx, array) { idxs.push(idx); });
+check("forEach idx[0]", 0, idxs[0]);
+check("forEach idx[2]", 2, idxs[2]);
+
+// ============ 13. 对象 ============
+console.log("=== [13] 对象 ===");
+var o1 = {a: 1, b: 2, c: 3};
+check("o1.a", 1, o1.a);
+check("o1[\"b\"]", 2, o1["b"]);
+check("o1.z(不存在)", null, o1.z);
+o1.d = 4;
+check("o1.d新增", 4, o1.d);
+var keys = o1.keys();
+check("keys().length", 4, keys.length);
+check("keys包含a", true, keys.indexOf("a") >= 0);
+check("keys包含d", true, keys.indexOf("d") >= 0);
+// 自有属性优先
+var o2 = {keys: 99};
+check("自有keys优先", 99, o2.keys);
+// 调用非函数应抛错（包裹 try/catch）
+var callNonFunc = (function() { try { o2.keys(); return "no-throw"; } catch(e) { return "throw:" + e; } })();
+check("调用非函数抛错", "throw:TypeError: function not exist.", callNonFunc);   // gscript 错误信息
+var o3 = {a: {b: {c: 42}}};
+check("嵌套对象", 42, o3.a.b.c);
+o3.a.b.c = 99;
+check("嵌套修改", 99, o3.a.b.c);
+var o4 = {};
+check("空对象toString", "[object Object]", "" + o4);
+check("空对象truthy", true, Boolean({}));
+check("!!空对象truthy", true, !!{});   // 修复后：链式一元 !!x 可用
+check("!!0 falsy", false, !!0);
+check("!!\"\" falsy", false, !!"");
+check("!!非空字符串", true, !!"hello");
+// 动态属性名
+var key = "dyn";
+var o5 = {};
+o5[key] = "val";
+check("动态属性名", "val", o5["dyn"]);
+check("动态属性名访问", "val", o5.dyn);
+
+// ============ 14. 函数 - 闭包/this/参数/递归 ============
+console.log("=== [14] 函数 ===");
+function fib(n) {
+    if (n <= 1) { return n; }
+    return fib(n - 1) + fib(n - 2);
+}
+check("fib(10)", 55, fib(10));
+check("fib(20)", 6765, fib(20));
+function sumTo(n) {
+    if (n <= 0) { return 0; }
+    return n + sumTo(n - 1);
+}
+check("sumTo(100)", 5050, sumTo(100));
+// 闭包计数器
+function makeCounter() {
+    var count = 0;
+    return function() {
+        count = count + 1;
+        return count;
+    };
+}
+var c1 = makeCounter();
+check("闭包c1-1", 1, c1());
+check("闭包c1-2", 2, c1());
+check("闭包c1-3", 3, c1());
+var c2 = makeCounter();
+check("闭包c2独立", 1, c2());
+// this 绑定
+var obj = {name: "Tom", getName: function() { return this.name; }};
+check("this.name", "Tom", obj.getName());
+var obj2 = {
+    val: 10,
+    add: function(n) { return this.val + n; },
+    chain: function() { return this.add(5); }
+};
+check("this方法链", 15, obj2.chain());
+// 无 return 的函数
+function noReturn() { var x = 1 + 2; }
+check("无return函数", null, noReturn());
+// return 无表达式
+function returnNothing() { return; }
+check("return无表达式", null, returnNothing());
+// 函数作为参数
+function apply(fn, x) { return fn(x); }
+function double(x) { return x * 2; }
+check("函数作参数", 10, apply(double, 5));
+// 函数表达式
+var fn = function(x) { return x + 1; };
+check("函数表达式", 6, fn(5));
+// 立即执行函数
+check("IIFE", 42, (function() { return 42; })());
+// 少参数函数
+function threeArgs(a, b, c) { return a + b + c; }
+check("少参(2个)求和", 3, threeArgs(1, 2));      // c=null→0, 1+2+0=3
+check("少参(1个)求和", 1, threeArgs(1));          // b,c=null→0, 1+0+0=1
+function getThird(a, b, c) { return c; }
+check("少参c是null", null, getThird(1, 2));        // 缺失参数应为 null
+// 多参数函数
+check("多参", 6, threeArgs(1, 2, 3, 4, 5));
+// 嵌套函数定义
+function outer() {
+    function inner() { return 42; }
+    return inner();
+}
+check("嵌套函数定义", 42, outer());
+// 函数返回函数
+function adder(x) {
+    return function(y) { return x + y; };
+}
+var add5 = adder(5);
+check("柯里化", 8, add5(3));
+// 递归求和闭包
+function makeFib() {
+    function f(n) {
+        if (n < 2) return n;
+        return f(n - 1) + f(n - 2);
+    }
+    return f;
+}
+var myFib = makeFib();
+check("闭包递归", 55, myFib(10));
+
+// ============ 15. 控制流 ============
+console.log("=== [15] 控制流 ===");
+// for 循环
+var s = 0;
+for (var i = 1; i <= 5; i = i + 1) { s = s + i; }
+check("for求和1..5", 15, s);
+// for + break
+var s2 = 0;
+for (var i = 1; i <= 100; i = i + 1) {
+    if (i > 5) { break; }
+    s2 = s2 + i;
+}
+check("for+break", 15, s2);
+// for + continue
+var s3 = 0;
+for (var i = 1; i <= 10; i = i + 1) {
+    if (i % 2 == 0) { continue; }
+    s3 = s3 + i;
+}
+check("for+continue", 25, s3);
+// for 空初始化
+var j = 0;
+for (; j < 3; j = j + 1) {}
+check("for空init", 3, j);
+// for 空条件
+var cnt = 0;
+for (var i = 0; ; i = i + 1) {
+    if (i >= 5) { break; }
+    cnt = cnt + 1;
+}
+check("for空条件", 5, cnt);
+// for 空更新
+var k = 0;
+for (var i = 0; i < 3;) {
+    k = k + 1;
+    i = i + 1;
+}
+check("for空更新", 3, k);
+// for 全空
+var done = false;
+var iters = 0;
+for (;;) {
+    if (iters >= 3) { break; }
+    iters = iters + 1;
+}
+check("for全空", 3, iters);
+// while
+var w = 0;
+var n = 5;
+while (n > 0) { w = w + n; n = n - 1; }
+check("while递减求和", 15, w);
+// while(false) 不执行
+var wf = 0;
+while (false) { wf = wf + 1; }
+check("while(false)", 0, wf);
+// do-while 至少一次
+var dw = 0;
+var m = 0;
+do { dw = dw + m; m = m + 1; } while (m < 5);
+check("do-while求和", 10, dw);
+// do-while(false) 执行一次
+var dwf = 0;
+do { dwf = dwf + 1; } while (false);
+check("do-while(false)一次", 1, dwf);
+// 嵌套循环 + break
+var ns = 0;
+for (var i = 0; i < 3; i = i + 1) {
+    for (var j = 0; j < 3; j = j + 1) {
+        if (j == 1) { break; }
+        ns = ns + 1;
+    }
+}
+check("嵌套break", 3, ns);
+// 嵌套循环 + continue
+var ncs = 0;
+for (var i = 0; i < 3; i = i + 1) {
+    for (var j = 0; j < 3; j = j + 1) {
+        if (j == 1) { continue; }
+        ncs = ncs + 1;
+    }
+}
+check("嵌套continue", 6, ncs);
+// switch fall-through
+function sw(x) {
+    var r = "";
+    switch (x) {
+        case 1: r = r + "A";
+        case 2: r = r + "B"; break;
+        case 3: r = r + "C";
+        default: r = r + "D";
+    }
+    return r;
+}
+check("switch(1)穿透", "AB", sw(1));
+check("switch(2)", "B", sw(2));
+check("switch(3)穿透", "CD", sw(3));
+check("switch(9)default", "D", sw(9));
+// 空 switch
+function emptySw(x) {
+    switch (x) {}
+    return "ok";
+}
+check("空switch", "ok", emptySw(1));
+// switch 无 default
+function noDefault(x) {
+    var r = "none";
+    switch (x) {
+        case 1: r = "one"; break;
+        case 2: r = "two"; break;
+    }
+    return r;
+}
+check("switch无default(1)", "one", noDefault(1));
+check("switch无default(9)", "none", noDefault(9));
+
+console.log("=== 测试 2 完成 ===");

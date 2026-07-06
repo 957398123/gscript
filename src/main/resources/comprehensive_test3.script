@@ -1,0 +1,521 @@
+// gscript 综合测试 - 第 3 部分：异常处理 / 作用域 / 闭包 / 递归 / 定时器 / 数值边界
+// 目的：深入探测 try/catch/finally 嵌套、闭包捕获、递归作用域、worker 模型等隐藏 bug
+
+function check(name, expected, actual) {
+    var expStr = "" + expected;
+    var actStr = "" + actual;
+    var mark = (expStr == actStr) ? "OK" : "FAIL";
+    console.log("[" + mark + "] " + name + ": expected=" + expStr + ", actual=" + actStr);
+}
+
+// ============ 21. try/catch/finally 嵌套 ============
+console.log("=== [21] try/catch/finally 嵌套 ===");
+
+// 21.1 外层 try + 内层 finally throw + 外层 catch
+var log211 = "";
+function nestFinThrow() {
+    try {
+        try {
+            log211 = log211 + "A";
+            throw "x";
+        } finally {
+            log211 = log211 + "B";
+            throw "y";   // 内层 finally 抛新异常，应被外层 catch 捕获
+        }
+    } catch (e) {
+        log211 = log211 + "C" + e;
+        return log211;
+    }
+}
+check("21.1 finally抛异常覆盖原异常", "ABCy", nestFinThrow());
+
+// 21.2 catch 内 return，finally 再 throw
+var log212 = "";
+function catchRetFinThrow() {
+    try {
+        try {
+            throw "x";
+        } catch (e) {
+            log212 = log212 + "C";
+            return "catch-ret";
+        } finally {
+            log212 = log212 + "F";
+            throw "finally-err";   // 应覆盖 return
+        }
+    } catch (e2) {
+        log212 = log212 + "O" + e2;
+        return "outer:" + e2;
+    }
+}
+check("21.2 catch return + finally throw", "outer:finally-err", catchRetFinThrow());
+check("21.2 副作用序列", "CFOfinally-err", log212);
+
+// 21.3 嵌套 try 在 catch 块内抛异常
+var log213 = "";
+function throwInCatch() {
+    try {
+        try {
+            throw "a";
+        } catch (e) {
+            log213 = log213 + "C1";
+            throw "b";   // catch 内抛新异常
+        } finally {
+            log213 = log213 + "F1";
+        }
+    } catch (e2) {
+        log213 = log213 + "C2" + e2;
+    }
+}
+throwInCatch();
+check("21.3 catch内throw+finally执行顺序", "C1F1C2b", log213);
+
+// 21.4 try 块内 return + finally 修改返回值（JS 语义：finally 不能改原 return 值，除非 finally 也 return）
+function tryRetFinMod() {
+    var v = 1;
+    try {
+        v = 2;
+        return v;
+    } finally {
+        v = 3;   // 不影响已返回的 2
+    }
+}
+check("21.4 try return + finally改局部", 2, tryRetFinMod());
+
+// 21.5 catch 块无异常时 finally 仍执行
+var log215 = "";
+function noThrowFin() {
+    try {
+        log215 = log215 + "T";
+    } catch (e) {
+        log215 = log211 + "C";
+    } finally {
+        log215 = log215 + "F";
+    }
+}
+noThrowFin();
+check("21.5 无异常时finally执行", "TF", log215);
+
+// 21.6 finally 内 return 覆盖 try 的 return
+function finReturnOverride() {
+    try {
+        return 1;
+    } finally {
+        return 2;   // JS：finally 的 return 覆盖 try 的 return
+    }
+}
+check("21.6 finally return覆盖try return", 2, finReturnOverride());
+
+// 21.7 跨函数 try-catch：被调函数 throw，主调函数 catch
+function calleeThrow() {
+    throw "callee";
+}
+function callerCatch() {
+    try {
+        calleeThrow();
+        return "no-throw";
+    } catch (e) {
+        return "caught:" + e;
+    }
+}
+check("21.7 跨函数catch", "caught:callee", callerCatch());
+
+// 21.8 嵌套调用 + 异常穿透多层
+function deepA() { throw "deep"; }
+function deepB() { deepA(); }
+function deepC() { deepB(); }
+function deepD() {
+    try {
+        deepC();
+        return "ok";
+    } catch (e) {
+        return "got:" + e;
+    }
+}
+check("21.8 多层穿透异常", "got:deep", deepD());
+
+// 21.9 数字类型作为 throw 值
+function throwNum() {
+    try {
+        throw 42;
+    } catch (e) {
+        return e + 1;
+    }
+}
+check("21.9 throw数值", 43, throwNum());
+
+// 21.10 throw 对象
+function throwObj() {
+    try {
+        throw {code: 500, msg: "err"};
+    } catch (e) {
+        return e.code + ":" + e.msg;
+    }
+}
+check("21.10 throw对象", "500:err", throwObj());
+
+// ============ 22. 闭包与作用域 ============
+console.log("=== [22] 闭包与作用域 ===");
+
+// 22.1 闭包捕获循环变量（经典陷阱）
+function closureLoop() {
+    var fns = [];
+    var i = 0;
+    while (i < 3) {
+        fns.push(function() { return i; });
+        i = i + 1;
+    }
+    return fns[0]() + "," + fns[1]() + "," + fns[2]();
+}
+check("22.1 闭包捕获循环变量", "3,3,3", closureLoop());   // JS var: 全是 3
+
+// 22.2 闭包修改捕获变量
+function closureModify() {
+    var counter = 0;
+    var inc = function() { counter = counter + 1; return counter; };
+    inc();
+    inc();
+    return inc();
+}
+check("22.2 闭包修改捕获变量", 3, closureModify());
+
+// 22.3 多个闭包共享同一变量
+function multiClosure() {
+    var v = 0;
+    var set = function(x) { v = x; };
+    var get = function() { return v; };
+    set(10);
+    var g1 = get();
+    set(20);
+    var g2 = get();
+    return g1 + "," + g2;
+}
+check("22.3 多闭包共享变量", "10,20", multiClosure());
+
+// 22.4 闭包返回闭包（柯里化）
+function adder(x) {
+    return function(y) {
+        return x + y;
+    };
+}
+var add5 = adder(5);
+check("22.4 柯里化-1", 8, add5(3));
+check("22.4 柯里化-2", 15, add5(10));
+var add10 = adder(10);
+check("22.4 柯里化-3", 13, add10(3));
+
+// 22.5 函数声明提升 —— 修复后：函数体内声明提升生效
+function hoistedCall() {
+    return callBeforeDef();   // JS：函数声明可提升，此处应可用
+    function callBeforeDef() { return "hoisted"; }
+}
+// 用 try/catch 包裹以防意外错误
+var hoistResult = (function() {
+    try { return hoistedCall(); }
+    catch(e) { return "ERROR:" + e; }
+})();
+check("22.5 函数声明提升", "hoisted", hoistResult);   // 修复后：返回 "hoisted"
+
+// 22.6 var 变量提升（未初始化访问）—— gscript 无 typeof，用默认值测试
+function varHoist() {
+    var before = x;      // JS：undefined；gscript：null（无 typeof）
+    var x = 1;
+    return before + "," + x;
+}
+var varHoistResult = (function() {
+    try { return varHoist(); }
+    catch(e) { return "ERROR:" + e; }
+})();
+// JS: "undefined,1"；gscript: 行为待测（可能 null 或报错）
+check("22.6 var提升 typeof", "undefined,1", varHoistResult);   // 预期失败：记录差异
+
+// 22.7 嵌套函数访问外层局部
+function nestedAccess() {
+    var outer = "O";
+    function inner() {
+        var inner_v = "I";
+        return outer + inner_v;
+    }
+    return inner();
+}
+check("22.7 嵌套函数访问外层", "OI", nestedAccess());
+
+// 22.8 内层 var 遮蔽外层
+function shadowVar() {
+    var x = 1;
+    function inner() {
+        var x = 2;
+        return x;
+    }
+    return inner() + "," + x;
+}
+check("22.8 内层var遮蔽", "2,1", shadowVar());
+
+// 22.9 IIFE 立即执行函数
+var iifeResult = (function() { return 42; })();
+check("22.9 IIFE", 42, iifeResult);
+
+// 22.10 IIFE 带参数
+var iifeArg = (function(a, b) { return a + b; })(3, 4);
+check("22.10 IIFE带参", 7, iifeArg);
+
+// ============ 23. 递归与栈 ============
+console.log("=== [23] 递归与栈 ===");
+
+// 23.1 阶乘
+function fact(n) {
+    if (n <= 1) return 1;
+    return n * fact(n - 1);
+}
+check("23.1 阶乘5", 120, fact(5));
+check("23.1 阶乘10", 3628800, fact(10));
+
+// 23.2 斐波那契（递归，多次调用同一函数）
+function fib(n) {
+    if (n < 2) return n;
+    return fib(n - 1) + fib(n - 2);
+}
+check("23.2 fib(10)", 55, fib(10));
+check("23.2 fib(15)", 610, fib(15));
+
+// 23.3 递归 + 闭包计数
+function recCounter() {
+    var count = 0;
+    function rec(n) {
+        count = count + 1;
+        if (n <= 0) return 0;
+        return n + rec(n - 1);
+    }
+    var sum = rec(5);
+    return sum + ":" + count;
+}
+check("23.3 递归+闭包计数", "15:6", recCounter());
+
+// 23.4 相互递归
+function isEven(n) {
+    if (n == 0) return true;
+    return isOdd(n - 1);
+}
+function isOdd(n) {
+    if (n == 0) return false;
+    return isEven(n - 1);
+}
+check("23.4 isEven(10)", true, isEven(10));
+check("23.4 isOdd(7)", true, isOdd(7));
+
+// 23.5 深递归（栈压力）
+function deepSum(n, acc) {
+    if (n == 0) return acc;
+    return deepSum(n - 1, acc + 1);
+}
+check("23.5 深递归100", 100, deepSum(100, 0));
+
+// ============ 24. 数值边界与精度 ============
+console.log("=== [24] 数值边界与精度 ===");
+
+// 24.1 int 范围
+check("24.1 INT_MAX", 2147483647, 2147483647);
+var INT_MIN_VAL = 0 - 2147483647 - 1;   // 不能直接写 -2147483648 字面量
+check("24.1 INT_MIN", INT_MIN_VAL, 0 - 2147483647 - 1);
+check("24.1 INT_MAX+1溢出", INT_MIN_VAL, 2147483647 + 1);
+
+// 24.2 float 精度
+check("24.2 0.1+0.2", 0.30000001192092896, 0.1 + 0.2);   // float32 精度
+check("24.2 1/3", 0.33333334, 1.0 / 3.0);
+check("24.2 大float", 1000000000000000.0, 1000000000000000.0);   // gscript 不支持科学计数法 1e15
+
+// 24.3 取整行为
+check("24.3 int/float相加", 3.5, 1 + 2.5);
+check("24.3 float+int相加", 3.5, 2.5 + 1);
+check("24.3 int/int除法", 2.5, 5 / 2);   // gscript: 浮点除法
+check("24.3 float*int", 6.0, 2.0 * 3);
+
+// 24.4 位运算 int32 边界
+check("24.4 1<<31", INT_MIN_VAL, 1 << 31);
+check("24.4 1<<30", 1073741824, 1 << 30);
+check("24.4 ~0", -1, ~0);
+check("24.4 ~(-1)", 0, ~(-1));
+
+// 24.5 进制字面量
+check("24.5 0xFF", 255, 0xFF);
+check("24.5 0x10", 16, 0x10);
+check("24.5 0xff+1", 256, 0xff + 1);
+
+// 24.6 NaN 不等于自身
+check("24.6 NaN==NaN", false, NaN == NaN);
+check("24.6 NaN===NaN", false, NaN === NaN);
+check("24.6 NaN!=NaN", true, NaN != NaN);
+
+// 24.7 parseInt 边界
+check("24.7 parseInt(\"123abc\")", 123, parseInt("123abc"));
+check("24.7 parseInt(\"3.14\")", 3, parseInt("3.14"));
+check("24.7 parseInt(\"0xFF\")", 255, parseInt("0xFF"));
+check("24.7 parseInt(\"ff\",16)", 255, parseInt("ff", 16));
+check("24.7 parseInt(\"\",10)", true, isNaN(parseInt("", 10)));
+check("24.7 parseInt(null)", true, isNaN(parseInt(null)));
+check("24.7 parseInt(true)", true, isNaN(parseInt(true)));
+check("24.7 parseInt(3.99)", 3, parseInt(3.99));
+
+// 24.8 parseFloat 边界
+check("24.8 parseFloat(\"3.14abc\")", 3.14, parseFloat("3.14abc"));
+check("24.8 parseFloat(\".5\")", 0.5, parseFloat(".5"));
+check("24.8 parseFloat(\"  -1.2e3xyz\")", -1200.0, parseFloat("  -1.2e3xyz"));
+check("24.8 parseFloat(\"\")", true, isNaN(parseFloat("")));
+check("24.8 parseFloat(\"abc\")", true, isNaN(parseFloat("abc")));
+
+// 24.9 Number() 严格转换
+check("24.9 Number(\"123\")", 123, Number("123"));
+check("24.9 Number(\"3.14\")", 3.14, Number("3.14"));
+check("24.9 Number(\"\")", 0, Number(""));
+check("24.9 Number(\"123abc\")", true, isNaN(Number("123abc")));
+check("24.9 Number(true)", 1, Number(true));
+check("24.9 Number(false)", 0, Number(false));
+check("24.9 Number(null)", 0, Number(null));
+check("24.9 Number([])", 0, Number([]));
+check("24.9 Number([5])", 5, Number([5]));
+check("24.9 Number([1,2])", true, isNaN(Number([1, 2])));
+
+// 24.10 String() 转换
+check("24.10 String(null)", "null", String(null));
+check("24.10 String(true)", "true", String(true));
+check("24.10 String(false)", "false", String(false));
+check("24.10 String(123)", "123", String(123));
+check("24.10 String(3.14)", "3.14", String(3.14));
+check("24.10 String([1,2,3])", "1,2,3", String([1, 2, 3]));
+check("24.10 String({})", "[object Object]", String({}));
+check("24.10 String(NaN)", "NaN", String(NaN));
+
+// ============ 25. 对象与数组高级 ============
+console.log("=== [25] 对象与数组高级 ===");
+
+// 25.1 数组 length 截断
+var arr251 = [1, 2, 3, 4, 5];
+arr251.length = 3;
+check("25.1 length截断", 3, arr251.length);
+check("25.1 截断后内容", "1,2,3", arr251.join(","));
+
+// 25.2 length 扩展产生 hole
+var arr252 = [1, 2];
+arr252.length = 4;
+check("25.2 length扩展", 4, arr252.length);
+check("25.2 扩展后join", "1,2,,", arr252.join(","));   // JS：[1,2,empty,empty] → "1,2,,"
+
+// 25.3 数组 indexOf 严格相等
+check("25.3 indexOf严格", 1, [1, 2, 3].indexOf(2));
+check("25.3 indexOf未找到", -1, [1, 2, 3].indexOf(9));
+check("25.3 indexOf字符串", 1, ["a", "b"].indexOf("b"));
+check("25.3 indexOf带from", 3, [1, 2, 1, 2].indexOf(2, 2));
+
+// 25.4 forEach 累加
+var sum254 = 0;
+[10, 20, 30].forEach(function(x) { sum254 = sum254 + x; });
+check("25.4 forEach累加", 60, sum254);
+
+// 25.5 map 转换
+var doubled = [1, 2, 3].map(function(x) { return x * 2; });
+check("25.5 map", "2,4,6", doubled.join(","));
+
+// 25.6 filter 筛选
+var evens = [1, 2, 3, 4, 5, 6].filter(function(x) { return x % 2 == 0; });
+check("25.6 filter", "2,4,6", evens.join(","));
+
+// 25.7 splice 删除并返回
+var arr257 = [1, 2, 3, 4, 5];
+var removed = arr257.splice(1, 2);
+check("25.7 splice删除返回", "2,3", removed.join(","));
+check("25.7 splice删除后原数组", "1,4,5", arr257.join(","));
+
+// 25.8 splice 插入
+var arr258 = [1, 2, 3];
+arr258.splice(1, 0, "a", "b");
+check("25.8 splice插入", "1,a,b,2,3", arr258.join(","));
+
+// 25.9 slice 不修改原数组
+var arr259 = [1, 2, 3, 4];
+var sliced = arr259.slice(1, 3);
+check("25.9 slice结果", "2,3", sliced.join(","));
+check("25.9 slice不改原数组", "1,2,3,4", arr259.join(","));
+
+// 25.10 对象自有属性覆盖内置方法
+var obj2510 = {keys: 99, length: 7};
+check("25.10 自有属性keys", 99, obj2510.keys);
+check("25.10 自有属性length", 7, obj2510.length);
+
+// 25.11 对象 keys() 方法
+var obj2511 = {a: 1, b: 2, c: 3};
+var ks = obj2511.keys();
+check("25.11 keys数量", 3, ks.length);
+
+// 25.12 嵌套对象
+var nested = {a: {b: {c: 42}}};
+check("25.12 嵌套访问", 42, nested.a.b.c);
+nested.a.b.c = 100;
+check("25.12 嵌套修改", 100, nested.a.b.c);
+
+// 25.13 动态属性名
+var key = "dynamic";
+var dyn = {};
+dyn[key] = "value";
+check("25.13 动态属性名", "value", dyn["dynamic"]);
+
+// ============ 26. 类型识别与相等 ============
+console.log("=== [26] 类型识别与相等 ===");
+
+// 26.1 typeof 运算符 —— 修复后：新增 typeof 运算符（JS 语义）
+var typeNum = 42;
+var typeStr = "hello";
+var typeBool = true;
+var typeObj = {};
+var typeArr = [1, 2];
+var typeFunc = function() {};
+var typeNull = null;
+check("26.1 typeof number", "number", typeof typeNum);
+check("26.1 typeof string", "string", typeof typeStr);
+check("26.1 typeof boolean", "boolean", typeof typeBool);
+check("26.1 typeof object", "object", typeof typeObj);
+check("26.1 typeof array", "object", typeof typeArr);
+check("26.1 typeof function", "function", typeof typeFunc);
+check("26.1 typeof null", "object", typeof typeNull);     // JS 怪癖：typeof null === "object"
+check("26.1 typeof NaN", "number", typeof NaN);
+check("26.1 typeof 字面量", "number", typeof 123);
+check("26.1 typeof 字符串字面量", "string", typeof "abc");
+
+// 26.2 宽松相等陷阱
+check("26.2 null==0", false, null == 0);
+check("26.2 \"\"==0", true, "" == 0);
+check("26.2 \"0\"==0", true, "0" == 0);
+check("26.2 \"0\"===0", false, "0" === 0);
+check("26.2 false==0", true, false == 0);
+check("26.2 false===\"\"", false, false === "");
+check("26.2 true==1", true, true == 1);
+check("26.2 true==2", false, true == 2);   // JS: true→1，1==2 false
+check("26.2 NaN==NaN", false, NaN == NaN);
+
+// 26.3 对象相等（引用相等）
+var o1 = {a:1};
+var o2 = {a:1};
+var o3 = o1;
+check("26.3 同对象相等", true, o1 == o1);
+check("26.3 不同对象不等", false, o1 == o2);
+check("26.3 引用相等", true, o1 == o3);
+check("26.3 同对象严格相等", true, o1 === o1);
+
+// 26.4 数组相等（引用）
+var a1 = [1,2];
+var a2 = [1,2];
+var a3 = a1;
+check("26.4 不同数组不等", false, a1 == a2);
+check("26.4 数组引用相等", true, a1 == a3);
+
+// 26.5 字符串与布尔
+check("26.5 \"1\"==true", true, "1" == true);
+check("26.5 \"2\"==true", false, "2" == true);
+check("26.5 \"0\"==false", true, "0" == false);
+check("26.5 \"\"==false", true, "" == false);
+check("26.5 \"abc\"==false", false, "abc" == false);
+
+// 26.6 严格不等
+check("26.6 1!==\"1\"", true, 1 !== "1");
+check("26.6 1!==2", true, 1 !== 2);
+check("26.6 1!==1", false, 1 !== 1);
+
+console.log("=== comprehensive_test3 END ===");

@@ -57,7 +57,7 @@ public class GSString extends GSObject {
         }
     };
 
-    /** indexOf(str): 返回子串首次出现的索引，未找到返回 -1 */
+    /** indexOf(str[, fromIndex]): 返回子串首次出现的索引，未找到返回 -1 */
     private static final GSNativeFunction INDEX_OF = new GSNativeFunction("indexOf") {
         public GSValue call(ArrayList args) {
             String str = ((GSString) args.get(0)).value;
@@ -65,7 +65,14 @@ public class GSString extends GSObject {
                 return new GSInt(-1);
             }
             String needle = ((GSValue) args.get(1)).toStringValue();
-            return new GSInt(str.indexOf(needle));
+            int fromIndex = 0;
+            if (args.size() >= 3) {
+                fromIndex = ((GSValue) args.get(2)).toIntValue();
+                if (fromIndex < 0) {
+                    fromIndex = 0;  // JS: 负 fromIndex 视为 0
+                }
+            }
+            return new GSInt(str.indexOf(needle, fromIndex));
         }
     };
 

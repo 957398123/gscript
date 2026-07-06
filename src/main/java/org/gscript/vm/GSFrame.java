@@ -118,6 +118,10 @@ public class GSFrame {
             function.freeToSpecScope("block");
             if (ip >= monitor.tryStart && ip <= monitor.tryEnd) {  // 如果是try块出了异常，try块肯定没有执行完毕
                 if (monitor.catchStart != -1) {  // 如果有catch
+                    // 异常已被 catch 接管，清除内层 finally 残留的待重抛异常。
+                    // 否则嵌套场景（内层 catch throw + 内层 finally + 外层 catch + 外层 finally）
+                    // 中，外层 finally_check 会读到内层残留的 throwException 而二次重抛已处理的异常。
+                    throwException = null;
                     setIp(monitor.catchStart);
                     return e.origin;
                 } else if (monitor.finallyStart != -1) {  // try块异常只有finally

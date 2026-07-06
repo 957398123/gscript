@@ -80,9 +80,10 @@ public class GSTokenType {
     public static final int FLOAT = 70;
     public static final int STRING = 71;
     public static final int EOF = 72;
+    public static final int TYPEOF = 73;
 
     /** 常量总数（含 0 号占位）。 */
-    private static final int COUNT = 73;
+    private static final int COUNT = 74;
 
     /** 各类型对应的字符串值（索引 = 常量值，0 号占位为 null）。 */
     private static final String[] VALUES = new String[COUNT];
@@ -159,6 +160,7 @@ public class GSTokenType {
         VALUES[FLOAT] = "";
         VALUES[STRING] = "";
         VALUES[EOF] = "eof";
+        VALUES[TYPEOF] = "typeof";
     }
 
     /** 各类型对应的常量名（调试用，索引 = 常量值）。 */
@@ -236,6 +238,7 @@ public class GSTokenType {
         NAMES[FLOAT] = "FLOAT";
         NAMES[STRING] = "STRING";
         NAMES[EOF] = "EOF";
+        NAMES[TYPEOF] = "TYPEOF";
     }
 
     /** 获取类型对应的字符串值（替代原枚举实例方法 getValue()）。 */

@@ -1,9 +1,7 @@
-if(a){
-    throw new Error("gg");
-}
+var a = "23";
 
-if(a){
-    println("a");
+if(a > 0){
+    console.log("aa");
 }else{
-    println("b");
+    console.log("bb");
 }

@@ -569,6 +569,55 @@ Boolean(0);                  // false
 
 > **parseInt vs Number 最易混淆**：`parseInt` 容错提取前导，`Number` 严格整体合法。数值类型参数有短路优化（`parseInt(int)` 直接返回，避免 ToString 往返），但 `bool`/`null` 不短路（`parseInt(true)` = `NaN`，因 `ToString("true")` 非数字）。
 
+### 隐式类型转换（JS 语义对齐）
+
+算术 / 比较 / 位运算 / 自增自减在混合类型运算时，统一经 [GSValue.toNumber](file:///e:/JProjects/gscript/src/main/java/org/gscript/vm/value/GSValue.java#L70)（JS ToNumber 抽象操作）入口转换，行为对齐 JavaScript。`TypeLib.Number(x)` 内部也委托同一入口，保证 `Number(x)` 与隐式转换语义一致。
+
+**ToNumber 转换规则**：
+
+| 输入类型 | 结果 |
+|---------|------|
+| `bool` | `0` / `1`（int） |
+| `int` / `float` | 自身 |
+| `null` | `0`（int） |
+| `NaN` | 自身 |
+| `string` | trim 后整体严格解析：整数→int，浮点→float，否则→NaN（`"23"`→23，`"3.14"`→3.14，`"abc"`→NaN，`""`→0） |
+| `object` / `array` / `function` | `NaN` |
+
+**运算符语义要点**：
+
+| 类别 | 运算符 | 语义 |
+|------|--------|------|
+| 关系比较 | `<` `>` `<=` `>=` | 两边都是字符串 → 字典序比较；否则两边 toNumber 后数值比较，任一 NaN → false |
+| 宽松相等 | `==` `!=` | null 仅等于 null；任一 NaN → false；number vs string → string 转 number 后比较；两边字符串 → 值比较 |
+| 严格相等 | `===` `!==` | 类型不同直接 false（int/float 同属数值可互比）；NaN 不等任何值 |
+| 算术 | `-` `*` `/` `%` | 两边 toNumber 后计算；`/` 总是浮点除法（`7/2`=3.5）；除零 → NaN |
+| 加法 | `+` | 任一为字符串/对象/数组/函数 → 字符串拼接；否则（bool/int/float/null/NaN）→ toNumber 后数值加 |
+| 一元负号 | `-x` | toNumber 后取负，NaN → NaN |
+| 位运算 | `&` `\|` `^` `~` `<<` `>>` | 两边 toInt32（toNumber 后取整，NaN → 0）后运算 |
+| 自增自减 | `++` `--` | toNumber 后 ±1，结果类型跟随 toNumber（int→GSInt，float→GSFloat） |
+
+```javascript
+var a = "23";
+a > 0;            // true（"23" → 23，23 > 0）—— 修复前为 false
+a == 23;          // true（string vs number → 转数值比较）
+a === 23;         // false（严格相等，类型不同）
+a * 2;            // 46
+"3.0" == 3;       // true（原 bug：字符串比较 "3.0" != "3"）
+"" == 0;          // true（Number("")=0）
+"abc" > 0;        // false（NaN 比较 → false）
+null + 1;         // 1（原 bug："null1"）
+null * 5;         // 0
+true + 1;         // 2
+"5" + 3;          // "53"（字符串拼接，保留 JS 语义）
+"23" & 3;         // 3（toInt32，原 bug：0）
+1 << "2";         // 4（原 bug：NaN）
+var s = "23"; s++; s;   // 24
+-"23";            // -23（原 bug：NaN）
+```
+
+> **行为变更**：本次修复对齐 JS 语义，以下用例结果改变：`"23" > 0` 从 `false` → `true`；`"" == 0` 从 `false` → `true`；`"3.0" == 3` 从 `false` → `true`；`null + 1` 从 `"null1"` → `1`；`"23" & 3` 从 `0` → `3`；`1 << "2"` 从 `NaN` → `4`；`-"23"` 从 `NaN` → `-23`。详见 [implicit_conversion_test.script](file:///e:/JProjects/gscript/src/main/resources/implicit_conversion_test.script)。
+
 ## 字节码
 
 ```code
@@ -1782,4 +1831,5 @@ java -cp target/classes org.gscript.TestScript array_foreach_map_filter.test run
 java -cp target/classes org.gscript.TestScript object_keys.test run          # keys()（属性名/自有属性优先/数组 keys）
 java -cp target/classes org.gscript.TestScript string_methods_test run       # 字符串 17 方法
 java -cp target/classes org.gscript.TestScript type_conversion_test run      # 全局类型转换函数（parseInt/Number/...）
+java -cp target/classes org.gscript.TestScript implicit_conversion_test run  # 隐式类型转换（JS 语义对齐：算术/比较/位运算 ToNumber）
 ```

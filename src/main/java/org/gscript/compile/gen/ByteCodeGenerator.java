@@ -575,60 +575,60 @@ public class ByteCodeGenerator implements Visitor {
     }
 
     /**
-     * 生成逻辑或表达式字节码
+     * 生成逻辑或表达式字节码（JS 短路语义：返回操作数值而非布尔值）
+     * <p>策略：eval left → copy → 若 truthy 跳到 end（保留 left）→ pop → eval right → end
+     * <ul>
+     *   <li>{@code 1 || 2} → 1（left truthy，短路返回 left）</li>
+     *   <li>{@code 0 || 2} → 2（left falsy，pop 后返回 right）</li>
+     * </ul>
      *
      * @param node 逻辑或表达式字节码
      */
     public void visit(LogicalORExpression node) {
         // 先计算左边的值
         node.left.accept(this);
-        // 看左边值是不是true，是的话进行跳转（短路效果）
-        emit("rela_op l_not");
-        int start = size();
-        // 第一个true跳转
+        // 复制栈顶用于真值判断（copy 保留原值）
+        emit("copy");
+        int falseJumpPos = size();
+        // 若 left 为 falsy，跳转到 pop 分支（false_jump 弹栈判断值）
         emit("");
+        int jumpPos = size();
+        // 若 left 为 truthy（未跳转），跳过 right 直接到结尾，栈顶保留 left
+        emit("");
+        // falsy 分支：丢弃 left，计算 right
+        emit("pop");
         node.right.accept(this);
-        int start2 = size();
-        // false跳转
-        emit("");
-        // 表达式计算为true
-        emit("const b true");
-        // 跳转至行尾：jump 在 const b true 之后，需跳过 const b false 到行尾，相对偏移固定为 2
-        emit("jump 2");
-        // 表达式计算为false
-        emit("const b false");
-        // 回填第一个true跳转（必须到const b true）
-        emit(start, "false_jump " + (size() - start - 3));
-        // 回填第二个false跳转（必须到const b false）—— 注意用 start2 计算偏移
-        emit(start2, "false_jump " + (size() - start2 - 1));
+        int end = size();
+        // 回填：false_jump 目标为 pop（固定 +2，跳过 jump 指令）
+        emit(falseJumpPos, "false_jump 2");
+        // 回填：jump 目标为结尾
+        emit(jumpPos, "jump " + (end - jumpPos));
     }
 
     /**
-     * 生成逻辑与表达式字节码
+     * 生成逻辑与表达式字节码（JS 短路语义：返回操作数值而非布尔值）
+     * <p>策略：eval left → copy → 若 falsy 跳到 end（保留 left）→ pop → eval right → end
+     * <ul>
+     *   <li>{@code 1 && 2} → 2（left truthy，pop 后返回 right）</li>
+     *   <li>{@code 0 && 2} → 0（left falsy，短路返回 left）</li>
+     * </ul>
      *
      * @param node 逻辑与表达式字节码
      */
     public void visit(LogicalANDExpression node) {
         // 先计算左边的值
         node.left.accept(this);
-        // 看左边值是不是false，是的话进行跳转（短路效果）
-        int start = size();
-        // 第一个false跳转
+        // 复制栈顶用于真值判断
+        emit("copy");
+        int falseJumpPos = size();
+        // 若 left 为 falsy，跳转到结尾（栈顶保留 left，短路返回）
         emit("");
+        // truthy 分支：丢弃 left，计算 right
+        emit("pop");
         node.right.accept(this);
-        int start2 = size();
-        // 第二个false跳转
-        emit("");
-        // 表达式计算为true
-        emit("const b true");
-        // 跳转至行尾：jump 在 const b true 之后，需跳过 const b false 到行尾，相对偏移固定为 2
-        emit("jump 2");
-        // 表达式计算为false
-        emit("const b false");
-        // 回填第一个false跳转（必须到const b false）
-        emit(start, "false_jump " + (size() - start - 1));
-        // 回填第二个false跳转（必须到const b false）—— 注意用 start2 计算偏移
-        emit(start2, "false_jump " + (size() - start2 - 1));
+        int end = size();
+        // 回填：false_jump 目标为结尾
+        emit(falseJumpPos, "false_jump " + (end - falseJumpPos));
     }
 
     /**
@@ -882,6 +882,10 @@ public class ByteCodeGenerator implements Visitor {
                         emit("rela_op b_not");
                         break;
                     }
+                    case GSTokenType.TYPEOF: {  // typeof
+                        emit("rela_op typeof");
+                        break;
+                    }
                     default: {
                         error("Unsupported operator: '" + operator + "'.");
                     }
@@ -970,7 +974,14 @@ public class ByteCodeGenerator implements Visitor {
         GSToken token = node.token;
         switch (token.type) {
             case GSTokenType.INTEGER_DECIMAL: {
-                emit("const i " + token.value);
+                // 尝试 int 解析；溢出时回退为 float（如 2147483648 = INT_MAX+1）
+                // 这样 -2147483648（INT_MIN）可由 "2147483648" + 一元 neg 正确生成
+                try {
+                    Integer.parseInt(token.value);
+                    emit("const i " + token.value);
+                } catch (NumberFormatException e) {
+                    emit("const f " + token.value);
+                }
                 break;
             }
             case GSTokenType.INTEGER_HEX: {
@@ -979,8 +990,14 @@ public class ByteCodeGenerator implements Visitor {
                 int dotIndex = hexValue.indexOf('x');
                 if (dotIndex < 0) dotIndex = hexValue.indexOf('X');
                 String hexPart = (dotIndex >= 0) ? hexValue.substring(dotIndex + 1) : hexValue;
-                int decimal = Integer.parseInt(hexPart, 16);
-                emit("const i " + decimal);
+                try {
+                    int decimal = Integer.parseInt(hexPart, 16);
+                    emit("const i " + decimal);
+                } catch (NumberFormatException e) {
+                    // 溢出回退为 float
+                    long decimal = Long.parseLong(hexPart, 16);
+                    emit("const f " + (float) decimal);
+                }
                 break;
             }
             case GSTokenType.FLOAT: {
@@ -1331,6 +1348,8 @@ public class ByteCodeGenerator implements Visitor {
                 emit("fstore " + param.name + " " + ++index);
             }
         }
+        // 将函数体内的函数声明提升（JS 语义：函数声明在作用域创建时即注册，可在源码位置之前调用）
+        handleFunctionDeclare(stmts);
         // 解析函数体
         for (int i = 0; i < stmts.size(); i++) {
             Node stmt = (Node) stmts.get(i);
