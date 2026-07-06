@@ -685,7 +685,7 @@ public class GSInterpreter implements TimerScheduler.TaskDispatcher {
                                 GSNativeFunction nativeFunction = (GSNativeFunction) methodRef;
                                 GSValue r;
                                 try {
-                                    r = nativeFunction.eval(callArgs);
+                                    r = nativeFunction.eval(callArgs, this);
                                 } catch (GSException ex) {
                                     // 本地函数抛出异常（如 "x".repeat(-1) 抛 RangeError）：
                                     // 必须 rebase ip 到调用者 invoke 指令位置，否则 handleException
@@ -736,7 +736,7 @@ public class GSInterpreter implements TimerScheduler.TaskDispatcher {
                                 stack.push(object);
                             } else if (methodRef.type == 9) {  // 本地函数（本地函数需要手动放值）
                                 GSNativeFunction nativeFunction = (GSNativeFunction) methodRef;
-                                GSValue r = nativeFunction.eval(callArgs);
+                                GSValue r = nativeFunction.eval(callArgs, this);
                                 // 看构造函数是不是返回了对象
                                 if (r.type >= 4) {
                                     object = (GSObject) r;

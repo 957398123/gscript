@@ -3,6 +3,8 @@ package org.gscript.vm.value;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import org.gscript.vm.GSInterpreter;
+
 public class GSArray extends GSObject {
 
     // ===== 静态共享的原生方法实例 =====
@@ -245,6 +247,98 @@ public class GSArray extends GSObject {
     };
 
     /**
+     * forEach(callback): 对每个元素调用 callback(element, index, array)，返回 null。
+     * <p>对标 JS Array.prototype.forEach。callback 在 worker 线程内同步执行
+     * （OP_INVOKE type==9 一定在 worker，{@code callFunction} 走 {@code callFunctionDirect} 直通）。
+     * callback 抛出的异常会沿调用栈传播，由 OP_INVOKE 的 try-catch rebase ip 后可被外层 catch 捕获。
+     */
+    private static final GSNativeFunction FOR_EACH = new GSNativeFunction("forEach") {
+        public GSValue call(ArrayList args) {
+            return GSNull.NULL;  // 旧入口（无 interpreter）无法回调，安全返回 null
+        }
+        public GSValue call(ArrayList args, GSInterpreter interp) {
+            GSArray arr = (GSArray) args.get(0);
+            if (args.size() < 2 || interp == null) return GSNull.NULL;
+            GSFunction cb = (GSFunction) args.get(1);
+            int len = computeLength(arr.members);
+            ArrayList cbArgs = new ArrayList();
+            for (int i = 0; i < len; i++) {
+                GSValue elem = (GSValue) arr.members.get(Integer.toString(i));
+                cbArgs.clear();
+                cbArgs.add(null);                                  // this 占位（OP_INVOKE 约定）
+                cbArgs.add(elem != null ? elem : GSNull.NULL);     // element
+                cbArgs.add(new GSInt(i));                          // index
+                cbArgs.add(arr);                                   // array
+                interp.callFunction(cb, cbArgs);                   // 返回值忽略
+            }
+            return GSNull.NULL;
+        }
+    };
+
+    /**
+     * map(callback): 对每个元素调用 callback，收集返回值到新数组。
+     * <p>对标 JS Array.prototype.map。返回新数组（长度与原数组一致），不修改原数组。
+     */
+    private static final GSNativeFunction MAP = new GSNativeFunction("map") {
+        public GSValue call(ArrayList args) {
+            return new GSArray();  // 旧入口无法回调，返回空数组
+        }
+        public GSValue call(ArrayList args, GSInterpreter interp) {
+            GSArray arr = (GSArray) args.get(0);
+            if (args.size() < 2 || interp == null) return new GSArray();
+            GSFunction cb = (GSFunction) args.get(1);
+            int len = computeLength(arr.members);
+            GSArray result = new GSArray();
+            ArrayList cbArgs = new ArrayList();
+            for (int i = 0; i < len; i++) {
+                GSValue elem = (GSValue) arr.members.get(Integer.toString(i));
+                cbArgs.clear();
+                cbArgs.add(null);
+                cbArgs.add(elem != null ? elem : GSNull.NULL);
+                cbArgs.add(new GSInt(i));
+                cbArgs.add(arr);
+                GSValue ret = interp.callFunction(cb, cbArgs);
+                result.members.put(Integer.toString(i), ret);
+            }
+            return result;
+        }
+    };
+
+    /**
+     * filter(callback): 收集 callback 返回 truthy 的元素到新数组。
+     * <p>对标 JS Array.prototype.filter。返回新数组（保留原元素，非 callback 返回值），
+     * 不修改原数组。truthy 判断用 {@link GSValue#toBoolean()}（falsy = 0/""/null/NaN）。
+     */
+    private static final GSNativeFunction FILTER = new GSNativeFunction("filter") {
+        public GSValue call(ArrayList args) {
+            return new GSArray();
+        }
+        public GSValue call(ArrayList args, GSInterpreter interp) {
+            GSArray arr = (GSArray) args.get(0);
+            if (args.size() < 2 || interp == null) return new GSArray();
+            GSFunction cb = (GSFunction) args.get(1);
+            int len = computeLength(arr.members);
+            GSArray result = new GSArray();
+            int idx = 0;
+            ArrayList cbArgs = new ArrayList();
+            for (int i = 0; i < len; i++) {
+                GSValue elem = (GSValue) arr.members.get(Integer.toString(i));
+                cbArgs.clear();
+                cbArgs.add(null);
+                cbArgs.add(elem != null ? elem : GSNull.NULL);
+                cbArgs.add(new GSInt(i));
+                cbArgs.add(arr);
+                GSValue ret = interp.callFunction(cb, cbArgs);
+                if (ret != null && ret.toBoolean()) {
+                    result.members.put(Integer.toString(idx), elem != null ? elem : GSNull.NULL);
+                    idx++;
+                }
+            }
+            return result;
+        }
+    };
+
+    /**
      * 计算数组长度（从索引 0 开始的最大连续索引 + 1）。
      * 遇到空洞（key 不存在）即停止，与现有 length 语义一致。
      */
@@ -286,7 +380,7 @@ public class GSArray extends GSObject {
      * 获取数组属性：
      * <ul>
      *   <li>{@code length} 返回元素个数（连续索引数）</li>
-     *   <li>{@code push/pop/shift/unshift/indexOf/join/slice/splice} 返回共享的静态原生方法</li>
+     *   <li>{@code push/pop/shift/unshift/indexOf/join/slice/splice/forEach/map/filter} 返回共享的静态原生方法</li>
      * </ul>
      * 方法以共享的静态 {@link GSNativeFunction} 形式返回（所有数组共用同一组函数对象，
      * 语义等价于 JS 的 Array.prototype.xxx）。由 OP_INVOKE 的 type==9 分支直接调用，
@@ -304,6 +398,9 @@ public class GSArray extends GSObject {
         if ("join".equals(name)) return JOIN;
         if ("slice".equals(name)) return SLICE;
         if ("splice".equals(name)) return SPLICE;
+        if ("forEach".equals(name)) return FOR_EACH;
+        if ("map".equals(name)) return MAP;
+        if ("filter".equals(name)) return FILTER;
         return super.getProperty(name);
     }
 

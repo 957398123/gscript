@@ -1,41 +1,22 @@
 === STDOUT ===
 === 测试 1: waitForDebugger + setTimeout 回调断点 ===
-  [PASS] initialize 成功
-  [PASS] setBreakpoints 成功
-  [PASS] 断点命中（stopped）
-  [PASS] stopped 原因 breakpoint
-  [PASS] stackTrace 有帧
-  [PASS] 栈顶帧行号=13（setTimeout 回调）
-  [PASS] source.sourceReference > 0（attach 源码来自 gclass）
-  [PASS] source 请求返回源码内容
-  [PASS] 源码内容含源码文本
-  [PASS] scopes 返回
-  [PASS] variables 返回
-  [PASS] terminated 事件（所有定时器排空后才发）
-  [PASS] Java 进程正常退出
+  [FAIL] Java 进程正常退出
   [JAVA STDERR] gclass loaded: /gtxt/timer_test.gclass (bytecode=239 instructions)
-[DebugAgent] waitForDebugger ģʽ�������˿� 4711���ȴ� VSCode ����...
-[DebugAgent] VSCode ������
-[����] ���ԻỰ����
-
-=== 测试 2: attachReady + setInterval 运行时附加 ===
-  [PASS] setBreakpoints 成功
-  [PASS] 收到 stopped（attach 暂停）
-  [PASS] continue 后断点命中（setInterval 回调）
-  [PASS] 断点原因 breakpoint
-  [PASS] stackTrace 有回调帧
-  [PASS] 栈顶帧行号=5（setInterval 回调）
-  [PASS] scopes 返回
-  [PASS] 存在 Global 作用域
-  [PASS] variables 含 counter（Global）
-  [PASS] disconnect 成功
-  [PASS] detach 后程序继续运行（未退出）
-  [PASS] Java 进程已清理
-  [JAVA STDERR] gclass loaded: /gtxt/timer_debug.gclass (bytecode=31 instructions)
-[����] ��������ʼ���У�VSCode ����ʱ���ӣ��˿� 4711��
-[DebugAgent] attachReady ģʽ�������˿� 4711���ȴ� VSCode ����...
-[DebugAgent] VSCode �Ѹ���
-
-=== 结果: 25 passed, 0 failed ===
+Exception in thread "main" java.net.BindException: Address already in use: NET_Bind
+	at java.base/java.net.DualStackPlainSocketImpl.bind0(Native Method)
+	at java.base/java.net.DualStackPlainSocketImpl.socketBind(DualStackPlainSocketImpl.java:106)
+	at java.base/java.net.AbstractPlainSocketImpl.bind(AbstractPlainSocketImpl.java:437)
+	at java.base/java.net.PlainSocketImpl.bind(PlainSocketImpl.java:174)
+	at java.base/java.net.ServerS
 
 === STDERR ===
+Traceback (most recent call last):
+  File "E:\JProjects\gscript\tests\test_timer_debug.py", line 321, in <module>
+    test_debugagent_wait()
+  File "E:\JProjects\gscript\tests\test_timer_debug.py", line 166, in test_debugagent_wait
+    resp = client.send_request("initialize", {
+  File "E:\JProjects\gscript\tests\test_timer_debug.py", line 119, in send_request
+    resp = self._response_q.get(timeout=15)
+  File "D:\Programs\Python\Python38\lib\queue.py", line 178, in get
+    raise Empty
+_queue.Empty

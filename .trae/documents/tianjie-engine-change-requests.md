@@ -13,7 +13,7 @@
 | 1 | `GSArray.splice(start, deleteCount, ...items)` | 纯新增原生方法 | **必需** | [GSArray.java](file:///e:/JProjects/gscript/src/main/java/org/gscript/vm/value/GSArray.java) | 无需 |
 | 2 | `GSArray.length` 可写 | 重写 setProperty | **必需** | GSArray.java | 无需 |
 | 3 | `GSObject.keys()` | 纯新增原生方法 | 可选建议 | [GSObject.java](file:///e:/JProjects/gscript/src/main/java/org/gscript/vm/value/GSObject.java) | 无需 |
-| 4 | `GSArray.forEach/map/filter` | 需回调 gscript 函数 | 可选建议 | GSArray.java | **需新增 thread-local interpreter 访问机制**（见 §4） |
+| 4 | `GSArray.forEach/map/filter` | 需回调 gscript 函数 | **已实现（方案 F）** | GSArray.java + GSNativeFunction.java + GSInterpreter.java | 方案 F：eval/call 重载+默认委托，无需 thread-local（见 §4） |
 
 > **关键差异**：1/2/3 是纯数据操作，`GSNativeFunction.call(args)` 内即可完成；4 需在原生函数内回调用户传入的 gscript 函数，受当前引擎"原生函数无 interpreter 引用"约束，需开发者决策实现方式。
 
@@ -310,11 +310,36 @@ check("keys-自有属性优先", o2.keys, 99);
 
 ---
 
-## 4. GSArray.forEach/map/filter — 可选建议（需决策）
+## 4. GSArray.forEach/map/filter — 已实现（方案 F：重载+默认委托）
 
 ### 需求
 
 天劫脚本用 `for` 循环遍历数组可行但冗长，`arr.forEach(cb)` / `arr.map(cb)` / `arr.filter(cb)` 可提升可读性。
+
+### 实现状态：已采用方案 F（重载+默认委托）
+
+经分析，方案 A 的 thread-local 是工程反模式（隐式全局状态，依赖 worker 线程独占假设）。最终采用**方案 F**：修改 `GSNativeFunction` 的 `eval`/`call` 签名，通过重载+默认委托传递 interpreter，显式依赖且零签名污染。
+
+**改动点**：
+
+1. **GSNativeFunction.java**（[文件](file:///e:/JProjects/gscript/src/main/java/org/gscript/vm/value/GSNativeFunction.java)）：
+   - `eval(args)` 保留旧入口，委托 `eval(args, null)`
+   - 新增 `eval(args, interp)` —— OP_INVOKE/OP_CONSTRUCTOR type==9 调用入口
+   - 新增 `call(args, interp)` 默认委托 `call(args)`，纯数据操作的原生方法（push/pop/charAt/... 共 37 个）**零改动**
+   - 保留 `call(args)` 抽象方法不变
+
+2. **GSInterpreter.java**（2 处调用点）：
+   - [行 688](file:///E:/JProjects/gscript/src/main/java/org/gscript/vm/GSInterpreter.java#L688) OP_INVOKE type==9：`eval(callArgs)` → `eval(callArgs, this)`
+   - [行 739](file:///E:/JProjects/gscript/src/main/java/org/gscript/vm/GSInterpreter.java#L739) OP_CONSTRUCTOR type==9：同上
+
+3. **GSArray.java**：新增 `FOR_EACH`/`MAP`/`FILTER` 三个静态共享 GSNativeFunction，override `call(args, interp)`，用 `interp.callFunction(cb, cbArgs)` 回调。回调签名 `(element, index, array)`，`cbArgs = [null(this占位), element, index, array]`。
+
+**关键约束**：
+- OP_INVOKE type==9 一定在 worker 线程执行，`callFunction` 走 `callFunctionDirect` 直通路径，无死锁风险
+- callback 抛出的异常沿调用栈传播，由 OP_INVOKE type==9 的 try-catch rebase ip，外层 catch 可捕获
+- 旧入口 `eval(args)`（interp=null）保留给调试器等不持有 interpreter 的调用方，forEach/map/filter 在 interp=null 时安全返回 null/空数组
+
+**方案对比**（方案 A/B 为历史记录，未采用）：
 
 ### ⚠️ 实现约束（关键）
 
@@ -407,16 +432,16 @@ function filter(arr, cb) {
 - **优点**：零引擎改动，立即可用，gscript 闭包已验证支持
 - **缺点**：无方法语法；天劫脚本需用 `forEach(arr, cb)` 而非 `arr.forEach(cb)`
 
-### 建议
+### 建议（历史记录）
 
 鉴于：
 - 1/2/3（splice/length/keys）已覆盖天劫优化的**全部硬需求**
 - forEach/map/filter 在天劫计划中标注为"可选，仅提升可读性"，for 循环绕过方案可行
 - 方案 A 引入引擎基础设施改动，收益与风险不对等
 
-**推荐**：本轮引擎改动只做 1/2/3 三项；forEach/map/filter 走方案 B（天劫侧脚本实现）。若后续有更多原生方法需回调 gscript（如 `sort`/`find`/`reduce`），再统一引入 thread-local 机制（方案 A）一次性解决。
+**原推荐**：本轮引擎改动只做 1/2/3 三项；forEach/map/filter 走方案 B（天劫侧脚本实现）。若后续有更多原生方法需回调 gscript（如 `sort`/`find`/`reduce`），再统一引入 thread-local 机制（方案 A）一次性解决。
 
-**请开发者决策**：4 采用方案 A（引入 thread-local + 原生实现）、方案 B（天劫脚本层实现，引擎不动）、还是本轮完全不做 4。
+**最终决策**：采用方案 F（重载+默认委托），详见上方"实现状态"小节。方案 F 比方案 A 更优（显式依赖、无隐式全局状态、与线程模型解耦），比方案 C（全改签名）更轻（37 个纯数据操作的原生方法零改动）。forEach/map/filter 已原生实现，天劫侧无需新增 array_util.script。
 
 ---
 
@@ -443,7 +468,7 @@ function filter(arr, cb) {
 | `array_splice.test.script` | splice 删除/插入/替换/负索引/deleteCount缺省/清空 | 见 §1 |
 | `array_length_set.test.script` | length 截断/扩容/清空/同长 | 见 §2 |
 | `object_keys.test.script` | keys() 返回属性名/自有属性优先 | 见 §3 |
-| `array_foreach_map_filter.test.script` | （仅当 4 选方案 A 时）回调签名与返回值 | 见 §4 方案 A |
+| `array_foreach_map_filter.test.script` | forEach/map/filter 回调签名/返回值/空数组/falsy/链式/异常传播/闭包 | 见 §4 方案 F |
 
 测试通过后重新发布 `E:/JProjects/gscript/target/gscript-1.0-SNAPSHOT.jar`，天劫项目更新依赖后即可进入脚本优化阶段 2 实施。
 

@@ -1,0 +1,455 @@
+
+==== DapServer 启动 Mon Jul 06 13:03:14 CST 2026 ====
+user.dir=E:\JProjects\gscript
+日志文件: E:\JProjects\gscript\dap_debug.log
+[1783314194651] <<< RECV {"seq": 1, "type": "request", "command": "initialize", "arguments": {"clientID": "test", "adapterID": "gscript", "linesStartAt1": true, "columnsStartAt1": true}}
+[1783314194653] >>> SEND {"seq":1,"type":"response","request_seq":1,"success":true,"command":"initialize","body":{"supportsConfigurationDoneRequest":true,"supportsEvaluateForHovers":false,"supportsStepBack":false,"supportsConditionalBreakpoints":false,"supportsHitConditionalBreakpoints":false,"supportsExceptionInfoRequest":false,"supportsSetVariable":false,"supportsTerminateRequest":true,"supportsLoadedSourcesRequest":false,"exceptionBreakpointFilters":[{"filter":"caught","label":"Caught Exceptions","default":false},{"filter":"uncaught","label":"Uncaught Exceptions","default":false}],"linesStartAt1":true,"columnsStartAt1":true}}
+[1783314194654] >>> SEND {"seq":2,"type":"event","event":"initialized"}
+[1783314194654] <<< RECV {"seq": 2, "type": "request", "command": "launch", "arguments": {"program": "E:\\JProjects\\gscript\\src\\main\\resources\\debug_test.script", "stopOnEntry": false}}
+[1783314194655] [FLOW] launch: scriptPaths=[E:\JProjects\gscript\src\main\resources\debug_test.script] args={"program":"E:\\JProjects\\gscript\\src\\main\\resources\\debug_test.script","stopOnEntry":false}
+[1783314194656] >>> SEND {"seq":3,"type":"response","request_seq":2,"success":true,"command":"launch","body":{}}
+[1783314194656] <<< RECV {"seq": 3, "type": "request", "command": "setBreakpoints", "arguments": {"source": {"path": "E:\\JProjects\\gscript\\src\\main\\resources\\debug_test.script"}, "breakpoints": [{"line": 52}]}}
+[1783314194657] >>> SEND {"seq":4,"type":"response","request_seq":3,"success":true,"command":"setBreakpoints","body":{"breakpoints":[{"line":52,"verified":true}]}}
+[1783314194657] <<< RECV {"seq": 4, "type": "request", "command": "configurationDone", "arguments": {}}
+[1783314194657] [FLOW] configurationDone: 开始编译 scriptPaths=[E:\JProjects\gscript\src\main\resources\debug_test.script]
+[1783314194683] [FLOW] 编译完成: E:\JProjects\gscript\src\main\resources\debug_test.script，bytecode 长度=264
+[1783314194683] [FLOW] 编译成功，共 1 个文件，总 bytecode 长度=264，启动解释器线程
+[1783314194698] >>> SEND {"seq":5,"type":"response","request_seq":4,"success":true,"command":"configurationDone","body":{}}
+[1783314194698] [FLOW] 解释器线程开始 eval 文件[0]: E:\JProjects\gscript\src\main\resources\debug_test.script，bytecode 长度=264
+[1783314194704] >>> SEND {"seq":6,"type":"event","event":"output","body":{"category":"stdout","output":"=== gscript 调试器测试 ==="}}
+[1783314194704] >>> SEND {"seq":7,"type":"event","event":"output","body":{"category":"stdout","output":"\r\n"}}
+[1783314194704] [FLOW] onSuspended: reason=breakpoint depth=1 line=52 frame.func=null
+[1783314194704] >>> SEND {"seq":8,"type":"event","event":"stopped","body":{"reason":"breakpoint","threadId":1,"allThreadsStopped":true}}
+[1783314194705] <<< RECV {"seq": 5, "type": "request", "command": "threads", "arguments": {}}
+[1783314194705] >>> SEND {"seq":9,"type":"response","request_seq":5,"success":true,"command":"threads","body":{"threads":[{"id":1,"name":"main"}]}}
+[1783314194705] <<< RECV {"seq": 6, "type": "request", "command": "stackTrace", "arguments": {"threadId": 1}}
+[1783314194705] >>> SEND {"seq":10,"type":"response","request_seq":6,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":0,"name":"<anonymous>","source":{"name":"debug_test.script","path":"E:\\JProjects\\gscript\\src\\main\\resources\\debug_test.script"},"line":52,"column":1,"endLine":52,"endColumn":1}],"totalFrames":1}}
+[1783314194707] <<< RECV {"seq": 7, "type": "request", "command": "scopes", "arguments": {"frameId": 0}}
+[1783314194707] >>> SEND {"seq":11,"type":"response","request_seq":7,"success":true,"command":"scopes","body":{"scopes":[{"name":"Local","variablesReference":1,"expensive":false},{"name":"Global","variablesReference":2,"expensive":false}]}}
+[1783314194707] <<< RECV {"seq": 8, "type": "request", "command": "variables", "arguments": {"variablesReference": 1}}
+[1783314194708] >>> SEND {"seq":12,"type":"response","request_seq":8,"success":true,"command":"variables","body":{"variables":[{"name":"parseFloat","value":"ƒ parseFloat() { [native code] }","type":"function","variablesReference":3},{"name":"console","value":"[object Object]","type":"object","variablesReference":4},{"name":"fibonacci","value":"[object Object]","type":"function","variablesReference":5},{"name":"sumRange","value":"[object Object]","type":"function","variablesReference":6},{"name":"buildPerson","value":"[object Object]","type":"function","variablesReference":7},{"name":"tryCatchDemo","value":"[object Object]","type":"function","variablesReference":8},{"name":"globalCount","value":"0","type":"number","variablesReference":0},{"name":"String","value":"ƒ String() { [native code] }","type":"function","variablesReference":9},{"name":"isNaN","value":"ƒ isNaN() { [native code] }","type":"function","variablesReference":10},{"name":"clearInterval","value":"ƒ clearInterval() { [native code] }","type":"function","variablesReference":11},{"name":"parseInt","value":"ƒ parseInt() { [native code] }","type":"function","variablesReference":12},{"name":"setTimeout","value":"ƒ setTimeout() { [native code] }","type":"function","variablesReference":13},{"name":"Number","value":"ƒ Number() { [native code] }","type":"function","variablesReference":14},{"name":"setInterval","value":"ƒ setInterval() { [native code] }","type":"function","variablesReference":15},{"name":"clearTimeout","value":"ƒ clearTimeout() { [native code] }","type":"function","variablesReference":16},{"name":"Boolean","value":"ƒ Boolean() { [native code] }","type":"function","variablesReference":17}]}}
+[1783314194709] <<< RECV {"seq": 9, "type": "request", "command": "continue", "arguments": {"threadId": 1}}
+[1783314194709] >>> SEND {"seq":13,"type":"response","request_seq":9,"success":true,"command":"continue","body":{"allThreadsContinued":true}}
+[1783314194715] >>> SEND {"seq":14,"type":"event","event":"output","body":{"category":"stdout","output":"fibonacci(10) = 55"}}
+[1783314194715] >>> SEND {"seq":15,"type":"event","event":"output","body":{"category":"stdout","output":"\r\n"}}
+[1783314194718] >>> SEND {"seq":16,"type":"event","event":"output","body":{"category":"stdout","output":"Hello, I am Alice"}}
+[1783314194719] >>> SEND {"seq":17,"type":"event","event":"output","body":{"category":"stdout","output":"\r\n"}}
+[1783314194719] >>> SEND {"seq":18,"type":"event","event":"output","body":{"category":"stdout","output":"first hobby: reading"}}
+[1783314194719] >>> SEND {"seq":19,"type":"event","event":"output","body":{"category":"stdout","output":"\r\n"}}
+[1783314194721] >>> SEND {"seq":20,"type":"event","event":"output","body":{"category":"stdout","output":"sum(1..100) = 5050"}}
+[1783314194721] >>> SEND {"seq":21,"type":"event","event":"output","body":{"category":"stdout","output":"\r\n"}}
+[1783314194721] >>> SEND {"seq":22,"type":"event","event":"output","body":{"category":"stdout","output":"caught: custom error"}}
+[1783314194721] >>> SEND {"seq":23,"type":"event","event":"output","body":{"category":"stdout","output":"\r\n"}}
+[1783314194721] >>> SEND {"seq":24,"type":"event","event":"output","body":{"category":"stdout","output":"globalCount = 1"}}
+[1783314194721] >>> SEND {"seq":25,"type":"event","event":"output","body":{"category":"stdout","output":"\r\n"}}
+[1783314194721] >>> SEND {"seq":26,"type":"event","event":"output","body":{"category":"stdout","output":"=== 测试完成 ==="}}
+[1783314194723] >>> SEND {"seq":27,"type":"event","event":"output","body":{"category":"stdout","output":"\r\n"}}
+[1783314194723] [FLOW] 解释器文件[0] eval 正常结束: E:\JProjects\gscript\src\main\resources\debug_test.script
+[1783314194723] [FLOW] 所有文件 eval 正常结束
+[1783314194723] [FLOW] 发送 terminated 事件
+[1783314194723] >>> SEND {"seq":28,"type":"event","event":"terminated","body":{}}
+[FLOW] DapServer 主循环退出，关闭日志
+
+==== DapServer 启动 Mon Jul 06 13:03:15 CST 2026 ====
+user.dir=E:\JProjects\gscript
+日志文件: E:\JProjects\gscript\dap_debug.log
+[1783314195087] <<< RECV {"seq": 1, "type": "request", "command": "initialize", "arguments": {"clientID": "test", "adapterID": "gscript", "linesStartAt1": true, "columnsStartAt1": true}}
+[1783314195089] >>> SEND {"seq":1,"type":"response","request_seq":1,"success":true,"command":"initialize","body":{"supportsConfigurationDoneRequest":true,"supportsEvaluateForHovers":false,"supportsStepBack":false,"supportsConditionalBreakpoints":false,"supportsHitConditionalBreakpoints":false,"supportsExceptionInfoRequest":false,"supportsSetVariable":false,"supportsTerminateRequest":true,"supportsLoadedSourcesRequest":false,"exceptionBreakpointFilters":[{"filter":"caught","label":"Caught Exceptions","default":false},{"filter":"uncaught","label":"Uncaught Exceptions","default":false}],"linesStartAt1":true,"columnsStartAt1":true}}
+[1783314195090] >>> SEND {"seq":2,"type":"event","event":"initialized"}
+[1783314195090] <<< RECV {"seq": 2, "type": "request", "command": "launch", "arguments": {"program": "E:\\JProjects\\gscript\\src\\main\\resources\\while_breakpoint.script", "stopOnEntry": false}}
+[1783314195092] [FLOW] launch: scriptPaths=[E:\JProjects\gscript\src\main\resources\while_breakpoint.script] args={"program":"E:\\JProjects\\gscript\\src\\main\\resources\\while_breakpoint.script","stopOnEntry":false}
+[1783314195093] >>> SEND {"seq":3,"type":"response","request_seq":2,"success":true,"command":"launch","body":{}}
+[1783314195093] <<< RECV {"seq": 3, "type": "request", "command": "setBreakpoints", "arguments": {"source": {"path": "E:\\JProjects\\gscript\\src\\main\\resources\\while_breakpoint.script"}, "breakpoints": [{"line": 2}]}}
+[1783314195093] >>> SEND {"seq":4,"type":"response","request_seq":3,"success":true,"command":"setBreakpoints","body":{"breakpoints":[{"line":2,"verified":true}]}}
+[1783314195094] <<< RECV {"seq": 4, "type": "request", "command": "configurationDone"}
+[1783314195094] [FLOW] configurationDone: 开始编译 scriptPaths=[E:\JProjects\gscript\src\main\resources\while_breakpoint.script]
+[1783314195111] [FLOW] 编译完成: E:\JProjects\gscript\src\main\resources\while_breakpoint.script，bytecode 长度=25
+[1783314195111] [FLOW] 编译成功，共 1 个文件，总 bytecode 长度=25，启动解释器线程
+[1783314195125] >>> SEND {"seq":5,"type":"response","request_seq":4,"success":true,"command":"configurationDone","body":{}}
+[1783314195126] [FLOW] 解释器线程开始 eval 文件[0]: E:\JProjects\gscript\src\main\resources\while_breakpoint.script，bytecode 长度=25
+[1783314195127] [FLOW] onSuspended: reason=breakpoint depth=1 line=2 frame.func=null
+[1783314195127] >>> SEND {"seq":6,"type":"event","event":"stopped","body":{"reason":"breakpoint","threadId":1,"allThreadsStopped":true}}
+[1783314195127] <<< RECV {"seq": 5, "type": "request", "command": "stackTrace", "arguments": {"threadId": 1}}
+[1783314195128] >>> SEND {"seq":7,"type":"response","request_seq":5,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":0,"name":"<anonymous>","source":{"name":"while_breakpoint.script","path":"E:\\JProjects\\gscript\\src\\main\\resources\\while_breakpoint.script"},"line":2,"column":1,"endLine":2,"endColumn":1}],"totalFrames":1}}
+[1783314195128] <<< RECV {"seq": 6, "type": "request", "command": "continue", "arguments": {"threadId": 1}}
+[1783314195129] >>> SEND {"seq":8,"type":"response","request_seq":6,"success":true,"command":"continue","body":{"allThreadsContinued":true}}
+[1783314195129] [FLOW] onSuspended: reason=breakpoint depth=1 line=2 frame.func=null
+[1783314195129] >>> SEND {"seq":9,"type":"event","event":"stopped","body":{"reason":"breakpoint","threadId":1,"allThreadsStopped":true}}
+[1783314195129] <<< RECV {"seq": 7, "type": "request", "command": "stackTrace", "arguments": {"threadId": 1}}
+[1783314195129] >>> SEND {"seq":10,"type":"response","request_seq":7,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":0,"name":"<anonymous>","source":{"name":"while_breakpoint.script","path":"E:\\JProjects\\gscript\\src\\main\\resources\\while_breakpoint.script"},"line":2,"column":1,"endLine":2,"endColumn":1}],"totalFrames":1}}
+[1783314195130] <<< RECV {"seq": 8, "type": "request", "command": "continue", "arguments": {"threadId": 1}}
+[1783314195130] >>> SEND {"seq":11,"type":"response","request_seq":8,"success":true,"command":"continue","body":{"allThreadsContinued":true}}
+[1783314195130] [FLOW] onSuspended: reason=breakpoint depth=1 line=2 frame.func=null
+[1783314195130] >>> SEND {"seq":12,"type":"event","event":"stopped","body":{"reason":"breakpoint","threadId":1,"allThreadsStopped":true}}
+[1783314195130] <<< RECV {"seq": 9, "type": "request", "command": "stackTrace", "arguments": {"threadId": 1}}
+[1783314195130] >>> SEND {"seq":13,"type":"response","request_seq":9,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":0,"name":"<anonymous>","source":{"name":"while_breakpoint.script","path":"E:\\JProjects\\gscript\\src\\main\\resources\\while_breakpoint.script"},"line":2,"column":1,"endLine":2,"endColumn":1}],"totalFrames":1}}
+[1783314195131] <<< RECV {"seq": 10, "type": "request", "command": "continue", "arguments": {"threadId": 1}}
+[1783314195131] >>> SEND {"seq":14,"type":"response","request_seq":10,"success":true,"command":"continue","body":{"allThreadsContinued":true}}
+[1783314195131] [FLOW] onSuspended: reason=breakpoint depth=1 line=2 frame.func=null
+[1783314195131] >>> SEND {"seq":15,"type":"event","event":"stopped","body":{"reason":"breakpoint","threadId":1,"allThreadsStopped":true}}
+[1783314195131] <<< RECV {"seq": 11, "type": "request", "command": "stackTrace", "arguments": {"threadId": 1}}
+[1783314195131] >>> SEND {"seq":16,"type":"response","request_seq":11,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":0,"name":"<anonymous>","source":{"name":"while_breakpoint.script","path":"E:\\JProjects\\gscript\\src\\main\\resources\\while_breakpoint.script"},"line":2,"column":1,"endLine":2,"endColumn":1}],"totalFrames":1}}
+[1783314195131] <<< RECV {"seq": 12, "type": "request", "command": "continue", "arguments": {"threadId": 1}}
+[1783314195131] >>> SEND {"seq":17,"type":"response","request_seq":12,"success":true,"command":"continue","body":{"allThreadsContinued":true}}
+[1783314195137] >>> SEND {"seq":18,"type":"event","event":"output","body":{"category":"stdout","output":"3"}}
+[1783314195137] >>> SEND {"seq":19,"type":"event","event":"output","body":{"category":"stdout","output":"\r\n"}}
+[1783314195137] [FLOW] 解释器文件[0] eval 正常结束: E:\JProjects\gscript\src\main\resources\while_breakpoint.script
+[1783314195137] [FLOW] 所有文件 eval 正常结束
+[1783314195137] [FLOW] 发送 terminated 事件
+[1783314195138] >>> SEND {"seq":20,"type":"event","event":"terminated","body":{}}
+[FLOW] DapServer 主循环退出，关闭日志
+
+==== DapServer 启动 Mon Jul 06 13:03:15 CST 2026 ====
+user.dir=E:\JProjects\gscript
+日志文件: E:\JProjects\gscript\dap_debug.log
+[1783314195469] <<< RECV {"seq": 1, "type": "request", "command": "initialize", "arguments": {"clientID": "test", "adapterID": "gscript", "linesStartAt1": true, "columnsStartAt1": true}}
+[1783314195471] >>> SEND {"seq":1,"type":"response","request_seq":1,"success":true,"command":"initialize","body":{"supportsConfigurationDoneRequest":true,"supportsEvaluateForHovers":false,"supportsStepBack":false,"supportsConditionalBreakpoints":false,"supportsHitConditionalBreakpoints":false,"supportsExceptionInfoRequest":false,"supportsSetVariable":false,"supportsTerminateRequest":true,"supportsLoadedSourcesRequest":false,"exceptionBreakpointFilters":[{"filter":"caught","label":"Caught Exceptions","default":false},{"filter":"uncaught","label":"Uncaught Exceptions","default":false}],"linesStartAt1":true,"columnsStartAt1":true}}
+[1783314195471] >>> SEND {"seq":2,"type":"event","event":"initialized"}
+[1783314195471] <<< RECV {"seq": 2, "type": "request", "command": "launch", "arguments": {"files": ["E:\\JProjects\\gscript\\src\\main\\resources\\multi_a.script", "E:\\JProjects\\gscript\\src\\main\\resources\\multi_b.script"], "stopOnEntry": false}}
+[1783314195473] [FLOW] launch: scriptPaths=[E:\JProjects\gscript\src\main\resources\multi_a.script, E:\JProjects\gscript\src\main\resources\multi_b.script] args={"files":["E:\\JProjects\\gscript\\src\\main\\resources\\multi_a.script","E:\\JProjects\\gscript\\src\\main\\resources\\multi_b.script"],"stopOnEntry":false}
+[1783314195474] >>> SEND {"seq":3,"type":"response","request_seq":2,"success":true,"command":"launch","body":{}}
+[1783314195474] <<< RECV {"seq": 3, "type": "request", "command": "setBreakpoints", "arguments": {"source": {"path": "E:\\JProjects\\gscript\\src\\main\\resources\\multi_a.script"}, "breakpoints": [{"line": 5}, {"line": 9}]}}
+[1783314195474] >>> SEND {"seq":4,"type":"response","request_seq":3,"success":true,"command":"setBreakpoints","body":{"breakpoints":[{"line":5,"verified":true},{"line":9,"verified":true}]}}
+[1783314195475] <<< RECV {"seq": 4, "type": "request", "command": "setBreakpoints", "arguments": {"source": {"path": "E:\\JProjects\\gscript\\src\\main\\resources\\multi_b.script"}, "breakpoints": [{"line": 5}, {"line": 9}]}}
+[1783314195475] >>> SEND {"seq":5,"type":"response","request_seq":4,"success":true,"command":"setBreakpoints","body":{"breakpoints":[{"line":5,"verified":true},{"line":9,"verified":true}]}}
+[1783314195475] <<< RECV {"seq": 5, "type": "request", "command": "configurationDone"}
+[1783314195475] [FLOW] configurationDone: 开始编译 scriptPaths=[E:\JProjects\gscript\src\main\resources\multi_a.script, E:\JProjects\gscript\src\main\resources\multi_b.script]
+[1783314195494] [FLOW] 编译完成: E:\JProjects\gscript\src\main\resources\multi_a.script，bytecode 长度=29
+[1783314195495] [FLOW] 编译完成: E:\JProjects\gscript\src\main\resources\multi_b.script，bytecode 长度=30
+[1783314195495] [FLOW] 编译成功，共 2 个文件，总 bytecode 长度=59，启动解释器线程
+[1783314195509] >>> SEND {"seq":6,"type":"response","request_seq":5,"success":true,"command":"configurationDone","body":{}}
+[1783314195510] [FLOW] 解释器线程开始 eval 文件[0]: E:\JProjects\gscript\src\main\resources\multi_a.script，bytecode 长度=29
+[1783314195515] [FLOW] onSuspended: reason=breakpoint depth=2 line=5 frame.func=greet
+[1783314195515] >>> SEND {"seq":7,"type":"event","event":"stopped","body":{"reason":"breakpoint","threadId":1,"allThreadsStopped":true}}
+[1783314195515] <<< RECV {"seq": 6, "type": "request", "command": "stackTrace", "arguments": {"threadId": 1}}
+[1783314195515] >>> SEND {"seq":8,"type":"response","request_seq":6,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":0,"name":"greet","source":{"name":"multi_a.script","path":"E:\\JProjects\\gscript\\src\\main\\resources\\multi_a.script"},"line":5,"column":1,"endLine":5,"endColumn":1},{"id":1,"name":"<anonymous>","source":{"name":"multi_a.script","path":"E:\\JProjects\\gscript\\src\\main\\resources\\multi_a.script"},"line":12,"column":1,"endLine":12,"endColumn":1}],"totalFrames":2}}
+[1783314195516] <<< RECV {"seq": 7, "type": "request", "command": "continue", "arguments": {"threadId": 1}}
+[1783314195516] >>> SEND {"seq":9,"type":"response","request_seq":7,"success":true,"command":"continue","body":{"allThreadsContinued":true}}
+[1783314195516] >>> SEND {"seq":10,"type":"event","event":"output","body":{"category":"stdout","output":"A says: fromA"}}
+[1783314195516] >>> SEND {"seq":11,"type":"event","event":"output","body":{"category":"stdout","output":"\r\n"}}
+[1783314195516] [FLOW] 解释器文件[0] eval 正常结束: E:\JProjects\gscript\src\main\resources\multi_a.script
+[1783314195516] [FLOW] 解释器线程开始 eval 文件[1]: E:\JProjects\gscript\src\main\resources\multi_b.script，bytecode 长度=30
+[1783314195516] [FLOW] onSuspended: reason=breakpoint depth=2 line=5 frame.func=greet
+[1783314195516] >>> SEND {"seq":12,"type":"event","event":"stopped","body":{"reason":"breakpoint","threadId":1,"allThreadsStopped":true}}
+[1783314195518] <<< RECV {"seq": 8, "type": "request", "command": "stackTrace", "arguments": {"threadId": 1}}
+[1783314195518] >>> SEND {"seq":13,"type":"response","request_seq":8,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":0,"name":"greet","source":{"name":"multi_b.script","path":"E:\\JProjects\\gscript\\src\\main\\resources\\multi_b.script"},"line":5,"column":1,"endLine":5,"endColumn":1},{"id":1,"name":"<anonymous>","source":{"name":"multi_b.script","path":"E:\\JProjects\\gscript\\src\\main\\resources\\multi_b.script"},"line":8,"column":1,"endLine":8,"endColumn":1}],"totalFrames":2}}
+[1783314195518] <<< RECV {"seq": 9, "type": "request", "command": "continue", "arguments": {"threadId": 1}}
+[1783314195518] >>> SEND {"seq":14,"type":"response","request_seq":9,"success":true,"command":"continue","body":{"allThreadsContinued":true}}
+[1783314195518] >>> SEND {"seq":15,"type":"event","event":"output","body":{"category":"stdout","output":"B says: fromB"}}
+[1783314195519] >>> SEND {"seq":16,"type":"event","event":"output","body":{"category":"stdout","output":"\r\n"}}
+[1783314195519] [FLOW] onSuspended: reason=breakpoint depth=1 line=9 frame.func=null
+[1783314195519] >>> SEND {"seq":17,"type":"event","event":"stopped","body":{"reason":"breakpoint","threadId":1,"allThreadsStopped":true}}
+[1783314195519] <<< RECV {"seq": 10, "type": "request", "command": "stackTrace", "arguments": {"threadId": 1}}
+[1783314195519] >>> SEND {"seq":18,"type":"response","request_seq":10,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":0,"name":"<anonymous>","source":{"name":"multi_b.script","path":"E:\\JProjects\\gscript\\src\\main\\resources\\multi_b.script"},"line":9,"column":1,"endLine":9,"endColumn":1}],"totalFrames":1}}
+[1783314195519] <<< RECV {"seq": 11, "type": "request", "command": "continue", "arguments": {"threadId": 1}}
+[1783314195520] >>> SEND {"seq":19,"type":"response","request_seq":11,"success":true,"command":"continue","body":{"allThreadsContinued":true}}
+[1783314195520] [FLOW] onSuspended: reason=breakpoint depth=2 line=9 frame.func=shared
+[1783314195520] >>> SEND {"seq":20,"type":"event","event":"stopped","body":{"reason":"breakpoint","threadId":1,"allThreadsStopped":true}}
+[1783314195520] <<< RECV {"seq": 12, "type": "request", "command": "stackTrace", "arguments": {"threadId": 1}}
+[1783314195520] >>> SEND {"seq":21,"type":"response","request_seq":12,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":0,"name":"shared","source":{"name":"multi_a.script","path":"E:\\JProjects\\gscript\\src\\main\\resources\\multi_a.script"},"line":9,"column":1,"endLine":9,"endColumn":1},{"id":1,"name":"<anonymous>","source":{"name":"multi_b.script","path":"E:\\JProjects\\gscript\\src\\main\\resources\\multi_b.script"},"line":9,"column":1,"endLine":9,"endColumn":1}],"totalFrames":2}}
+[1783314195521] <<< RECV {"seq": 13, "type": "request", "command": "continue", "arguments": {"threadId": 1}}
+[1783314195521] >>> SEND {"seq":22,"type":"response","request_seq":13,"success":true,"command":"continue","body":{"allThreadsContinued":true}}
+[1783314195522] >>> SEND {"seq":23,"type":"event","event":"output","body":{"category":"stdout","output":"shared from A"}}
+[1783314195522] >>> SEND {"seq":24,"type":"event","event":"output","body":{"category":"stdout","output":"\r\n"}}
+[1783314195522] [FLOW] 解释器文件[1] eval 正常结束: E:\JProjects\gscript\src\main\resources\multi_b.script
+[1783314195522] [FLOW] 所有文件 eval 正常结束
+[1783314195522] [FLOW] 发送 terminated 事件
+[1783314195522] >>> SEND {"seq":25,"type":"event","event":"terminated","body":{}}
+[FLOW] DapServer 主循环退出，关闭日志
+
+==== DapServer 启动 Mon Jul 06 13:03:15 CST 2026 ====
+user.dir=E:\JProjects\gscript
+日志文件: E:\JProjects\gscript\dap_debug.log
+[1783314195888] <<< RECV {"seq": 1, "type": "request", "command": "initialize", "arguments": {"clientID": "test", "adapterID": "gscript", "linesStartAt1": true}}
+[1783314195893] >>> SEND {"seq":1,"type":"response","request_seq":1,"success":true,"command":"initialize","body":{"supportsConfigurationDoneRequest":true,"supportsEvaluateForHovers":false,"supportsStepBack":false,"supportsConditionalBreakpoints":false,"supportsHitConditionalBreakpoints":false,"supportsExceptionInfoRequest":false,"supportsSetVariable":false,"supportsTerminateRequest":true,"supportsLoadedSourcesRequest":false,"exceptionBreakpointFilters":[{"filter":"caught","label":"Caught Exceptions","default":false},{"filter":"uncaught","label":"Uncaught Exceptions","default":false}],"linesStartAt1":true,"columnsStartAt1":true}}
+[1783314195893] >>> SEND {"seq":2,"type":"event","event":"initialized"}
+[1783314195893] <<< RECV {"seq": 2, "type": "request", "command": "launch", "arguments": {"files": ["E:\\JProjects\\gscript\\src\\main\\resources\\multi_a.script", "E:\\JProjects\\gscript\\src\\main\\resources\\multi_b.script"], "stopOnEntry": false}}
+[1783314195894] [FLOW] launch: scriptPaths=[E:\JProjects\gscript\src\main\resources\multi_a.script, E:\JProjects\gscript\src\main\resources\multi_b.script] args={"files":["E:\\JProjects\\gscript\\src\\main\\resources\\multi_a.script","E:\\JProjects\\gscript\\src\\main\\resources\\multi_b.script"],"stopOnEntry":false}
+[1783314195896] >>> SEND {"seq":3,"type":"response","request_seq":2,"success":true,"command":"launch","body":{}}
+[1783314195896] <<< RECV {"seq": 3, "type": "request", "command": "setBreakpoints", "arguments": {"source": {"path": "E:\\JProjects\\gscript\\src\\main\\resources\\multi_b.script"}, "breakpoints": [{"line": 9}]}}
+[1783314195896] >>> SEND {"seq":4,"type":"response","request_seq":3,"success":true,"command":"setBreakpoints","body":{"breakpoints":[{"line":9,"verified":true}]}}
+[1783314195897] <<< RECV {"seq": 4, "type": "request", "command": "setBreakpoints", "arguments": {"source": {"path": "E:\\JProjects\\gscript\\src\\main\\resources\\multi_a.script"}, "breakpoints": []}}
+[1783314195897] >>> SEND {"seq":5,"type":"response","request_seq":4,"success":true,"command":"setBreakpoints","body":{"breakpoints":[]}}
+[1783314195897] <<< RECV {"seq": 5, "type": "request", "command": "configurationDone"}
+[1783314195898] [FLOW] configurationDone: 开始编译 scriptPaths=[E:\JProjects\gscript\src\main\resources\multi_a.script, E:\JProjects\gscript\src\main\resources\multi_b.script]
+[1783314195918] [FLOW] 编译完成: E:\JProjects\gscript\src\main\resources\multi_a.script，bytecode 长度=29
+[1783314195919] [FLOW] 编译完成: E:\JProjects\gscript\src\main\resources\multi_b.script，bytecode 长度=30
+[1783314195919] [FLOW] 编译成功，共 2 个文件，总 bytecode 长度=59，启动解释器线程
+[1783314195936] >>> SEND {"seq":6,"type":"response","request_seq":5,"success":true,"command":"configurationDone","body":{}}
+[1783314195937] [FLOW] 解释器线程开始 eval 文件[0]: E:\JProjects\gscript\src\main\resources\multi_a.script，bytecode 长度=29
+[1783314195947] >>> SEND {"seq":7,"type":"event","event":"output","body":{"category":"stdout","output":"A says: fromA"}}
+[1783314195947] >>> SEND {"seq":8,"type":"event","event":"output","body":{"category":"stdout","output":"\r\n"}}
+[1783314195947] [FLOW] 解释器文件[0] eval 正常结束: E:\JProjects\gscript\src\main\resources\multi_a.script
+[1783314195947] [FLOW] 解释器线程开始 eval 文件[1]: E:\JProjects\gscript\src\main\resources\multi_b.script，bytecode 长度=30
+[1783314195948] >>> SEND {"seq":9,"type":"event","event":"output","body":{"category":"stdout","output":"B says: fromB"}}
+[1783314195948] >>> SEND {"seq":10,"type":"event","event":"output","body":{"category":"stdout","output":"\r\n"}}
+[1783314195948] [FLOW] onSuspended: reason=breakpoint depth=1 line=9 frame.func=null
+[1783314195948] >>> SEND {"seq":11,"type":"event","event":"stopped","body":{"reason":"breakpoint","threadId":1,"allThreadsStopped":true}}
+[1783314195948] <<< RECV {"seq": 6, "type": "request", "command": "stackTrace", "arguments": {"threadId": 1}}
+[1783314195949] >>> SEND {"seq":12,"type":"response","request_seq":6,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":0,"name":"<anonymous>","source":{"name":"multi_b.script","path":"E:\\JProjects\\gscript\\src\\main\\resources\\multi_b.script"},"line":9,"column":1,"endLine":9,"endColumn":1}],"totalFrames":1}}
+[1783314195949] <<< RECV {"seq": 7, "type": "request", "command": "stepIn", "arguments": {"threadId": 1}}
+[1783314195949] >>> SEND {"seq":13,"type":"response","request_seq":7,"success":true,"command":"stepIn","body":{}}
+[1783314195950] [FLOW] onSuspended: reason=step depth=2 line=8 frame.func=shared
+[1783314195950] >>> SEND {"seq":14,"type":"event","event":"stopped","body":{"reason":"step","threadId":1,"allThreadsStopped":true}}
+[1783314195950] <<< RECV {"seq": 8, "type": "request", "command": "stackTrace", "arguments": {"threadId": 1}}
+[1783314195950] >>> SEND {"seq":15,"type":"response","request_seq":8,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":0,"name":"shared","source":{"name":"multi_a.script","path":"E:\\JProjects\\gscript\\src\\main\\resources\\multi_a.script"},"line":8,"column":1,"endLine":8,"endColumn":1},{"id":1,"name":"<anonymous>","source":{"name":"multi_b.script","path":"E:\\JProjects\\gscript\\src\\main\\resources\\multi_b.script"},"line":9,"column":1,"endLine":9,"endColumn":1}],"totalFrames":2}}
+[1783314195951] <<< RECV {"seq": 9, "type": "request", "command": "continue", "arguments": {"threadId": 1}}
+[1783314195951] >>> SEND {"seq":16,"type":"response","request_seq":9,"success":true,"command":"continue","body":{"allThreadsContinued":true}}
+[1783314195951] >>> SEND {"seq":17,"type":"event","event":"output","body":{"category":"stdout","output":"shared from A"}}
+[1783314195951] >>> SEND {"seq":18,"type":"event","event":"output","body":{"category":"stdout","output":"\r\n"}}
+[1783314195951] [FLOW] 解释器文件[1] eval 正常结束: E:\JProjects\gscript\src\main\resources\multi_b.script
+[1783314195951] [FLOW] 所有文件 eval 正常结束
+[1783314195951] [FLOW] 发送 terminated 事件
+[1783314195951] >>> SEND {"seq":19,"type":"event","event":"terminated","body":{}}
+[FLOW] DapServer 主循环退出，关闭日志
+
+==== DapServer 启动 Mon Jul 06 13:03:16 CST 2026 ====
+user.dir=E:\JProjects\gscript
+日志文件: E:\JProjects\gscript\dap_debug.log
+[1783314196333] <<< RECV {"seq": 1, "type": "request", "command": "initialize", "arguments": {"clientID": "test", "adapterID": "gscript", "linesStartAt1": true, "columnsStartAt1": true}}
+[1783314196336] >>> SEND {"seq":1,"type":"response","request_seq":1,"success":true,"command":"initialize","body":{"supportsConfigurationDoneRequest":true,"supportsEvaluateForHovers":false,"supportsStepBack":false,"supportsConditionalBreakpoints":false,"supportsHitConditionalBreakpoints":false,"supportsExceptionInfoRequest":false,"supportsSetVariable":false,"supportsTerminateRequest":true,"supportsLoadedSourcesRequest":false,"exceptionBreakpointFilters":[{"filter":"caught","label":"Caught Exceptions","default":false},{"filter":"uncaught","label":"Uncaught Exceptions","default":false}],"linesStartAt1":true,"columnsStartAt1":true}}
+[1783314196336] >>> SEND {"seq":2,"type":"event","event":"initialized"}
+[1783314196336] <<< RECV {"seq": 2, "type": "request", "command": "launch", "arguments": {"program": "E:\\JProjects\\gscript\\src\\main\\resources\\test2.script", "stopOnEntry": false}}
+[1783314196336] [FLOW] launch: scriptPaths=[E:\JProjects\gscript\src\main\resources\test2.script] args={"program":"E:\\JProjects\\gscript\\src\\main\\resources\\test2.script","stopOnEntry":false}
+[1783314196338] >>> SEND {"seq":3,"type":"response","request_seq":2,"success":true,"command":"launch","body":{}}
+[1783314196338] <<< RECV {"seq": 3, "type": "request", "command": "setBreakpoints", "arguments": {"source": {"path": "E:\\JProjects\\gscript\\src\\main\\resources\\test2.script"}, "breakpoints": [{"line": 5}]}}
+[1783314196338] >>> SEND {"seq":4,"type":"response","request_seq":3,"success":true,"command":"setBreakpoints","body":{"breakpoints":[{"line":5,"verified":true}]}}
+[1783314196339] <<< RECV {"seq": 4, "type": "request", "command": "configurationDone"}
+[1783314196339] [FLOW] configurationDone: 开始编译 scriptPaths=[E:\JProjects\gscript\src\main\resources\test2.script]
+[1783314196360] [FLOW] 编译完成: E:\JProjects\gscript\src\main\resources\test2.script，bytecode 长度=91
+[1783314196360] [FLOW] 编译成功，共 1 个文件，总 bytecode 长度=91，启动解释器线程
+[1783314196374] >>> SEND {"seq":5,"type":"response","request_seq":4,"success":true,"command":"configurationDone","body":{}}
+[1783314196374] [FLOW] 解释器线程开始 eval 文件[0]: E:\JProjects\gscript\src\main\resources\test2.script，bytecode 长度=91
+[1783314196380] >>> SEND {"seq":6,"type":"event","event":"output","body":{"category":"stdout","output":"11"}}
+[1783314196381] >>> SEND {"seq":7,"type":"event","event":"output","body":{"category":"stdout","output":"\r\n"}}
+[1783314196381] [FLOW] onSuspended: reason=breakpoint depth=1 line=5 frame.func=null
+[1783314196381] >>> SEND {"seq":8,"type":"event","event":"stopped","body":{"reason":"breakpoint","threadId":1,"allThreadsStopped":true}}
+[1783314196381] <<< RECV {"seq": 5, "type": "request", "command": "stackTrace", "arguments": {"threadId": 1}}
+[1783314196381] >>> SEND {"seq":9,"type":"response","request_seq":5,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":0,"name":"<anonymous>","source":{"name":"test2.script","path":"E:\\JProjects\\gscript\\src\\main\\resources\\test2.script"},"line":5,"column":1,"endLine":5,"endColumn":1}],"totalFrames":1}}
+[1783314196381] <<< RECV {"seq": 6, "type": "request", "command": "stepIn", "arguments": {"threadId": 1}}
+[1783314196381] >>> SEND {"seq":10,"type":"response","request_seq":6,"success":true,"command":"stepIn","body":{}}
+[1783314196383] [FLOW] onSuspended: reason=step depth=1 line=7 frame.func=null
+[1783314196383] >>> SEND {"seq":11,"type":"event","event":"stopped","body":{"reason":"step","threadId":1,"allThreadsStopped":true}}
+[1783314196383] <<< RECV {"seq": 7, "type": "request", "command": "stackTrace", "arguments": {"threadId": 1}}
+[1783314196383] >>> SEND {"seq":12,"type":"response","request_seq":7,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":0,"name":"<anonymous>","source":{"name":"test2.script","path":"E:\\JProjects\\gscript\\src\\main\\resources\\test2.script"},"line":7,"column":1,"endLine":7,"endColumn":1}],"totalFrames":1}}
+[1783314196384] <<< RECV {"seq": 8, "type": "request", "command": "stepIn", "arguments": {"threadId": 1}}
+[1783314196384] >>> SEND {"seq":13,"type":"response","request_seq":8,"success":true,"command":"stepIn","body":{}}
+[1783314196384] [FLOW] onSuspended: reason=step depth=1 line=8 frame.func=null
+[1783314196384] >>> SEND {"seq":14,"type":"event","event":"stopped","body":{"reason":"step","threadId":1,"allThreadsStopped":true}}
+[1783314196384] <<< RECV {"seq": 9, "type": "request", "command": "stackTrace", "arguments": {"threadId": 1}}
+[1783314196384] >>> SEND {"seq":15,"type":"response","request_seq":9,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":0,"name":"<anonymous>","source":{"name":"test2.script","path":"E:\\JProjects\\gscript\\src\\main\\resources\\test2.script"},"line":8,"column":1,"endLine":8,"endColumn":1}],"totalFrames":1}}
+[1783314196384] <<< RECV {"seq": 10, "type": "request", "command": "continue", "arguments": {"threadId": 1}}
+[1783314196384] >>> SEND {"seq":16,"type":"response","request_seq":10,"success":true,"command":"continue","body":{"allThreadsContinued":true}}
+[1783314196384] >>> SEND {"seq":17,"type":"event","event":"output","body":{"category":"stdout","output":"出异常了!"}}
+[1783314196385] >>> SEND {"seq":18,"type":"event","event":"output","body":{"category":"stdout","output":"\r\n"}}
+[1783314196385] >>> SEND {"seq":19,"type":"event","event":"output","body":{"category":"stdout","output":"catch1!"}}
+[1783314196385] >>> SEND {"seq":20,"type":"event","event":"output","body":{"category":"stdout","output":"\r\n"}}
+[1783314196385] >>> SEND {"seq":21,"type":"event","event":"output","body":{"category":"stdout","output":"catch2我是finally抛出异常"}}
+[1783314196385] >>> SEND {"seq":22,"type":"event","event":"output","body":{"category":"stdout","output":"\r\n"}}
+[1783314196385] >>> SEND {"seq":23,"type":"event","event":"output","body":{"category":"stdout","output":"finally2"}}
+[1783314196385] >>> SEND {"seq":24,"type":"event","event":"output","body":{"category":"stdout","output":"\r\n"}}
+[1783314196385] [FLOW] 解释器文件[0] eval 正常结束: E:\JProjects\gscript\src\main\resources\test2.script
+[1783314196385] [FLOW] 所有文件 eval 正常结束
+[1783314196385] [FLOW] 发送 terminated 事件
+[1783314196385] >>> SEND {"seq":25,"type":"event","event":"terminated","body":{}}
+[FLOW] DapServer 主循环退出，关闭日志
+
+==== DapServer 启动 Mon Jul 06 13:03:16 CST 2026 ====
+user.dir=E:\JProjects\gscript
+日志文件: E:\JProjects\gscript\dap_debug.log
+[1783314196736] <<< RECV {"seq": 1, "type": "request", "command": "initialize", "arguments": {"clientID": "test", "adapterID": "gscript", "linesStartAt1": true}}
+[1783314196739] >>> SEND {"seq":1,"type":"response","request_seq":1,"success":true,"command":"initialize","body":{"supportsConfigurationDoneRequest":true,"supportsEvaluateForHovers":false,"supportsStepBack":false,"supportsConditionalBreakpoints":false,"supportsHitConditionalBreakpoints":false,"supportsExceptionInfoRequest":false,"supportsSetVariable":false,"supportsTerminateRequest":true,"supportsLoadedSourcesRequest":false,"exceptionBreakpointFilters":[{"filter":"caught","label":"Caught Exceptions","default":false},{"filter":"uncaught","label":"Uncaught Exceptions","default":false}],"linesStartAt1":true,"columnsStartAt1":true}}
+[1783314196739] >>> SEND {"seq":2,"type":"event","event":"initialized"}
+[1783314196740] <<< RECV {"seq": 2, "type": "request", "command": "launch", "arguments": {"files": ["e:/JProjects/gscript/src/main/resources/multi_a.script"], "stopOnEntry": false}}
+[1783314196741] [FLOW] launch: scriptPaths=[E:\JProjects\gscript\src\main\resources\multi_a.script] args={"files":["e:/JProjects/gscript/src/main/resources/multi_a.script"],"stopOnEntry":false}
+[1783314196741] >>> SEND {"seq":3,"type":"response","request_seq":2,"success":true,"command":"launch","body":{}}
+[1783314196742] <<< RECV {"seq": 3, "type": "request", "command": "setBreakpoints", "arguments": {"source": {"path": "E:\\JProjects\\gscript\\src\\main\\resources\\multi_a.script"}, "breakpoints": [{"line": 5}]}}
+[1783314196743] >>> SEND {"seq":4,"type":"response","request_seq":3,"success":true,"command":"setBreakpoints","body":{"breakpoints":[{"line":5,"verified":true}]}}
+[1783314196743] <<< RECV {"seq": 4, "type": "request", "command": "configurationDone"}
+[1783314196743] [FLOW] configurationDone: 开始编译 scriptPaths=[E:\JProjects\gscript\src\main\resources\multi_a.script]
+[1783314196765] [FLOW] 编译完成: E:\JProjects\gscript\src\main\resources\multi_a.script，bytecode 长度=29
+[1783314196765] [FLOW] 编译成功，共 1 个文件，总 bytecode 长度=29，启动解释器线程
+[1783314196787] >>> SEND {"seq":5,"type":"response","request_seq":4,"success":true,"command":"configurationDone","body":{}}
+[1783314196787] [FLOW] 解释器线程开始 eval 文件[0]: E:\JProjects\gscript\src\main\resources\multi_a.script，bytecode 长度=29
+[1783314196797] [FLOW] onSuspended: reason=breakpoint depth=2 line=5 frame.func=greet
+[1783314196797] >>> SEND {"seq":6,"type":"event","event":"stopped","body":{"reason":"breakpoint","threadId":1,"allThreadsStopped":true}}
+[1783314196799] <<< RECV {"seq": 5, "type": "request", "command": "stackTrace", "arguments": {"threadId": 1}}
+[1783314196799] >>> SEND {"seq":7,"type":"response","request_seq":5,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":0,"name":"greet","source":{"name":"multi_a.script","path":"E:\\JProjects\\gscript\\src\\main\\resources\\multi_a.script"},"line":5,"column":1,"endLine":5,"endColumn":1},{"id":1,"name":"<anonymous>","source":{"name":"multi_a.script","path":"E:\\JProjects\\gscript\\src\\main\\resources\\multi_a.script"},"line":12,"column":1,"endLine":12,"endColumn":1}],"totalFrames":2}}
+[1783314196800] <<< RECV {"seq": 6, "type": "request", "command": "continue", "arguments": {"threadId": 1}}
+[1783314196800] >>> SEND {"seq":8,"type":"response","request_seq":6,"success":true,"command":"continue","body":{"allThreadsContinued":true}}
+[1783314196801] >>> SEND {"seq":9,"type":"event","event":"output","body":{"category":"stdout","output":"A says: fromA"}}
+[1783314196801] >>> SEND {"seq":10,"type":"event","event":"output","body":{"category":"stdout","output":"\r\n"}}
+[1783314196801] [FLOW] 解释器文件[0] eval 正常结束: E:\JProjects\gscript\src\main\resources\multi_a.script
+[1783314196801] [FLOW] 所有文件 eval 正常结束
+[1783314196801] [FLOW] 发送 terminated 事件
+[1783314196801] >>> SEND {"seq":11,"type":"event","event":"terminated","body":{}}
+[FLOW] DapServer 主循环退出，关闭日志
+
+==== DapServer 启动 Mon Jul 06 13:05:08 CST 2026 ====
+user.dir=E:\JProjects\gscript
+日志文件: E:\JProjects\gscript\dap_debug.log
+[1783314308083] <<< RECV {"seq": 1, "type": "request", "command": "initialize", "arguments": {"clientID": "test", "adapterID": "gscript", "linesStartAt1": true, "columnsStartAt1": true, "pathFormat": "path"}}
+[1783314308085] >>> SEND {"seq":1,"type":"response","request_seq":1,"success":true,"command":"initialize","body":{"supportsConfigurationDoneRequest":true,"supportsEvaluateForHovers":false,"supportsStepBack":false,"supportsConditionalBreakpoints":false,"supportsHitConditionalBreakpoints":false,"supportsExceptionInfoRequest":false,"supportsSetVariable":false,"supportsTerminateRequest":true,"supportsLoadedSourcesRequest":false,"exceptionBreakpointFilters":[{"filter":"caught","label":"Caught Exceptions","default":false},{"filter":"uncaught","label":"Uncaught Exceptions","default":false}],"linesStartAt1":true,"columnsStartAt1":true}}
+[1783314308085] >>> SEND {"seq":2,"type":"event","event":"initialized"}
+[1783314308085] <<< RECV {"seq": 2, "type": "request", "command": "attach", "arguments": {"localRoot": "E:\\JProjects\\gscript\\tests\\..\\src\\main\\resources", "remoteRoot": "", "stopOnEntry": false}}
+[1783314308086] [FLOW] attach(agent): localRoot=E:\JProjects\gscript\src\main\resources remoteRoot=
+[1783314308086] >>> SEND {"seq":3,"type":"response","request_seq":2,"success":true,"command":"attach","body":{}}
+[1783314308087] <<< RECV {"seq": 3, "type": "request", "command": "configurationDone"}
+[1783314308087] [FLOW] configurationDone(attach): 委托 DebugAgent
+[1783314308087] >>> SEND {"seq":4,"type":"response","request_seq":3,"success":true,"command":"configurationDone","body":{}}
+[1783314308772] [FLOW] onSuspended: reason=entry depth=1 line=1 frame.func=null
+[1783314308772] >>> SEND {"seq":5,"type":"event","event":"stopped","body":{"reason":"entry","threadId":1,"allThreadsStopped":true}}
+[1783314308795] <<< RECV {"seq": 4, "type": "request", "command": "stackTrace", "arguments": {"threadId": 1}}
+[1783314308795] >>> SEND {"seq":6,"type":"response","request_seq":4,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":0,"name":"<anonymous>","source":{"name":"eval-1.script","sourceReference":1,"path":"eval-1.script"},"line":1,"column":1,"endLine":1,"endColumn":1}],"totalFrames":1}}
+[1783314308796] <<< RECV {"seq": 5, "type": "request", "command": "source", "arguments": {"sourceReference": 1, "source": {"name": "eval-1.script", "sourceReference": 1, "path": "eval-1.script"}}}
+[1783314308796] >>> SEND {"seq":7,"type":"response","request_seq":5,"success":true,"command":"source","body":{"content":"console.log(\"second eval\");","mimeType":"text/x-gscript"}}
+[1783314308796] <<< RECV {"seq": 6, "type": "request", "command": "scopes", "arguments": {"frameId": 0}}
+[1783314308796] >>> SEND {"seq":8,"type":"response","request_seq":6,"success":true,"command":"scopes","body":{"scopes":[{"name":"Local","variablesReference":1,"expensive":false},{"name":"Global","variablesReference":2,"expensive":false}]}}
+[1783314308797] <<< RECV {"seq": 7, "type": "request", "command": "continue", "arguments": {"threadId": 1}}
+[1783314308797] >>> SEND {"seq":9,"type":"response","request_seq":7,"success":true,"command":"continue","body":{"allThreadsContinued":true}}
+[1783314309799] [FLOW] onSuspended: reason=entry depth=1 line=1 frame.func=null
+[1783314309799] >>> SEND {"seq":10,"type":"event","event":"stopped","body":{"reason":"entry","threadId":1,"allThreadsStopped":true}}
+[1783314309829] <<< RECV {"seq": 8, "type": "request", "command": "continue", "arguments": {"threadId": 1}}
+[1783314309830] >>> SEND {"seq":11,"type":"response","request_seq":8,"success":true,"command":"continue","body":{"allThreadsContinued":true}}
+[1783314309830] [FLOW] 解释器线程结束，发送 terminated 事件
+[1783314309830] >>> SEND {"seq":12,"type":"event","event":"terminated","body":{}}
+
+==== DapServer 启动 Mon Jul 06 13:05:15 CST 2026 ====
+user.dir=E:\JProjects\gscript
+日志文件: E:\JProjects\gscript\dap_debug.log
+[1783314315567] <<< RECV {"seq": 1, "type": "request", "command": "initialize", "arguments": {"clientID": "test", "adapterID": "gscript", "linesStartAt1": true, "columnsStartAt1": true, "pathFormat": "path"}}
+[1783314315569] >>> SEND {"seq":1,"type":"response","request_seq":1,"success":true,"command":"initialize","body":{"supportsConfigurationDoneRequest":true,"supportsEvaluateForHovers":false,"supportsStepBack":false,"supportsConditionalBreakpoints":false,"supportsHitConditionalBreakpoints":false,"supportsExceptionInfoRequest":false,"supportsSetVariable":false,"supportsTerminateRequest":true,"supportsLoadedSourcesRequest":false,"exceptionBreakpointFilters":[{"filter":"caught","label":"Caught Exceptions","default":false},{"filter":"uncaught","label":"Uncaught Exceptions","default":false}],"linesStartAt1":true,"columnsStartAt1":true}}
+[1783314315570] >>> SEND {"seq":2,"type":"event","event":"initialized"}
+[1783314315570] <<< RECV {"seq": 2, "type": "request", "command": "attach", "arguments": {"localRoot": "E:\\JProjects\\gscript\\tests\\..\\src\\main\\resources", "remoteRoot": "", "stopOnEntry": false}}
+[1783314315571] [FLOW] attach(agent): localRoot=E:\JProjects\gscript\src\main\resources remoteRoot=
+[1783314315571] >>> SEND {"seq":3,"type":"response","request_seq":2,"success":true,"command":"attach","body":{}}
+[1783314315571] <<< RECV {"seq": 3, "type": "request", "command": "configurationDone"}
+[1783314315571] [FLOW] configurationDone(attach): 委托 DebugAgent
+[1783314315571] >>> SEND {"seq":4,"type":"response","request_seq":3,"success":true,"command":"configurationDone","body":{}}
+[1783314316245] [FLOW] onSuspended: reason=entry depth=1 line=1 frame.func=null
+[1783314316245] >>> SEND {"seq":5,"type":"event","event":"stopped","body":{"reason":"entry","threadId":1,"allThreadsStopped":true}}
+[1783314316273] <<< RECV {"seq": 4, "type": "request", "command": "stackTrace", "arguments": {"threadId": 1}}
+[1783314316273] >>> SEND {"seq":6,"type":"response","request_seq":4,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":0,"name":"<anonymous>","source":{"name":"eval-1.script","sourceReference":1,"path":"eval-1.script"},"line":1,"column":1,"endLine":1,"endColumn":1}],"totalFrames":1}}
+[1783314316274] <<< RECV {"seq": 5, "type": "request", "command": "source", "arguments": {"sourceReference": 1, "source": {"name": "eval-1.script", "sourceReference": 1, "path": "eval-1.script"}}}
+[1783314316274] >>> SEND {"seq":7,"type":"response","request_seq":5,"success":true,"command":"source","body":{"content":"console.log(\"second eval\");","mimeType":"text/x-gscript"}}
+[1783314316274] <<< RECV {"seq": 6, "type": "request", "command": "continue", "arguments": {"threadId": 1}}
+[1783314316274] >>> SEND {"seq":8,"type":"response","request_seq":6,"success":true,"command":"continue","body":{"allThreadsContinued":true}}
+[1783314317277] [FLOW] onSuspended: reason=entry depth=1 line=1 frame.func=null
+[1783314317277] >>> SEND {"seq":9,"type":"event","event":"stopped","body":{"reason":"entry","threadId":1,"allThreadsStopped":true}}
+[1783314317308] <<< RECV {"seq": 7, "type": "request", "command": "stackTrace", "arguments": {"threadId": 1}}
+[1783314317308] >>> SEND {"seq":10,"type":"response","request_seq":7,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":0,"name":"<anonymous>","source":{"name":"eval-2.script","sourceReference":2,"path":"eval-2.script"},"line":1,"column":1,"endLine":1,"endColumn":1}],"totalFrames":1}}
+[1783314317308] <<< RECV {"seq": 8, "type": "request", "command": "source", "arguments": {"sourceReference": 2, "source": {"name": "eval-2.script", "sourceReference": 2, "path": "eval-2.script"}}}
+[1783314317308] >>> SEND {"seq":11,"type":"response","request_seq":8,"success":true,"command":"source","body":{"content":"return (1 + 2);","mimeType":"text/x-gscript"}}
+[1783314317309] <<< RECV {"seq": 9, "type": "request", "command": "continue", "arguments": {"threadId": 1}}
+[1783314317309] >>> SEND {"seq":12,"type":"response","request_seq":9,"success":true,"command":"continue","body":{"allThreadsContinued":true}}
+[1783314317309] [FLOW] 解释器线程结束，发送 terminated 事件
+[1783314317309] >>> SEND {"seq":13,"type":"event","event":"terminated","body":{}}
+
+==== DapServer 启动 Mon Jul 06 13:05:27 CST 2026 ====
+user.dir=E:\JProjects\gscript
+日志文件: E:\JProjects\gscript\dap_debug.log
+[1783314327983] <<< RECV {"seq": 1, "type": "request", "command": "initialize", "arguments": {"clientID": "test", "adapterID": "gscript", "linesStartAt1": true, "columnsStartAt1": true, "pathFormat": "path"}}
+[1783314327984] >>> SEND {"seq":1,"type":"response","request_seq":1,"success":true,"command":"initialize","body":{"supportsConfigurationDoneRequest":true,"supportsEvaluateForHovers":false,"supportsStepBack":false,"supportsConditionalBreakpoints":false,"supportsHitConditionalBreakpoints":false,"supportsExceptionInfoRequest":false,"supportsSetVariable":false,"supportsTerminateRequest":true,"supportsLoadedSourcesRequest":false,"exceptionBreakpointFilters":[{"filter":"caught","label":"Caught Exceptions","default":false},{"filter":"uncaught","label":"Uncaught Exceptions","default":false}],"linesStartAt1":true,"columnsStartAt1":true}}
+[1783314327985] >>> SEND {"seq":2,"type":"event","event":"initialized"}
+[1783314327985] <<< RECV {"seq": 2, "type": "request", "command": "attach", "arguments": {"localRoot": "E:\\JProjects\\gscript\\tests\\..\\src\\main\\resources", "remoteRoot": "", "stopOnEntry": false}}
+[1783314327986] [FLOW] attach(agent): localRoot=E:\JProjects\gscript\src\main\resources remoteRoot=
+[1783314327986] >>> SEND {"seq":3,"type":"response","request_seq":2,"success":true,"command":"attach","body":{}}
+[1783314327986] <<< RECV {"seq": 3, "type": "request", "command": "configurationDone"}
+[1783314327986] [FLOW] configurationDone(attach): 委托 DebugAgent
+[1783314327986] >>> SEND {"seq":4,"type":"response","request_seq":3,"success":true,"command":"configurationDone","body":{}}
+[1783314328658] [FLOW] onSuspended: reason=entry depth=1 line=1 frame.func=null
+[1783314328658] >>> SEND {"seq":5,"type":"event","event":"stopped","body":{"reason":"entry","threadId":1,"allThreadsStopped":true}}
+[1783314328671] <<< RECV {"seq": 4, "type": "request", "command": "stackTrace", "arguments": {"threadId": 1}}
+[1783314328671] >>> SEND {"seq":6,"type":"response","request_seq":4,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":0,"name":"<anonymous>","source":{"name":"eval-1.script","sourceReference":1,"path":"eval-1.script"},"line":1,"column":1,"endLine":1,"endColumn":1}],"totalFrames":1}}
+[1783314328671] <<< RECV {"seq": 5, "type": "request", "command": "continue", "arguments": {"threadId": 1}}
+[1783314328671] >>> SEND {"seq":7,"type":"response","request_seq":5,"success":true,"command":"continue","body":{"allThreadsContinued":true}}
+[1783314329685] [FLOW] onSuspended: reason=entry depth=1 line=1 frame.func=null
+[1783314329685] >>> SEND {"seq":8,"type":"event","event":"stopped","body":{"reason":"entry","threadId":1,"allThreadsStopped":true}}
+[1783314329715] <<< RECV {"seq": 6, "type": "request", "command": "stackTrace", "arguments": {"threadId": 1}}
+[1783314329715] >>> SEND {"seq":9,"type":"response","request_seq":6,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":0,"name":"<anonymous>","source":{"name":"eval-2.script","sourceReference":2,"path":"eval-2.script"},"line":1,"column":1,"endLine":1,"endColumn":1}],"totalFrames":1}}
+[1783314329716] <<< RECV {"seq": 7, "type": "request", "command": "source", "arguments": {"sourceReference": 2, "source": {"name": "eval-2.script", "sourceReference": 2, "path": "eval-2.script"}}}
+[1783314329716] >>> SEND {"seq":10,"type":"response","request_seq":7,"success":true,"command":"source","body":{"content":"return (1 + 2);","mimeType":"text/x-gscript"}}
+[1783314329716] <<< RECV {"seq": 8, "type": "request", "command": "continue", "arguments": {"threadId": 1}}
+[1783314329717] >>> SEND {"seq":11,"type":"response","request_seq":8,"success":true,"command":"continue","body":{"allThreadsContinued":true}}
+[1783314329717] [FLOW] 解释器线程结束，发送 terminated 事件
+[1783314329717] >>> SEND {"seq":12,"type":"event","event":"terminated","body":{}}
+
+==== DapServer 启动 Mon Jul 06 13:05:42 CST 2026 ====
+user.dir=E:\JProjects\gscript
+日志文件: E:\JProjects\gscript\dap_debug.log
+[1783314342741] <<< RECV {"seq": 1, "type": "request", "command": "initialize", "arguments": {"clientID": "test", "adapterID": "gscript", "linesStartAt1": true, "columnsStartAt1": true, "pathFormat": "path"}}
+[1783314342743] >>> SEND {"seq":1,"type":"response","request_seq":1,"success":true,"command":"initialize","body":{"supportsConfigurationDoneRequest":true,"supportsEvaluateForHovers":false,"supportsStepBack":false,"supportsConditionalBreakpoints":false,"supportsHitConditionalBreakpoints":false,"supportsExceptionInfoRequest":false,"supportsSetVariable":false,"supportsTerminateRequest":true,"supportsLoadedSourcesRequest":false,"exceptionBreakpointFilters":[{"filter":"caught","label":"Caught Exceptions","default":false},{"filter":"uncaught","label":"Uncaught Exceptions","default":false}],"linesStartAt1":true,"columnsStartAt1":true}}
+[1783314342743] >>> SEND {"seq":2,"type":"event","event":"initialized"}
+[1783314342744] <<< RECV {"seq": 2, "type": "request", "command": "attach", "arguments": {"localRoot": "E:\\JProjects\\gscript\\tests\\..\\src\\main\\resources", "remoteRoot": "", "stopOnEntry": false}}
+[1783314342745] [FLOW] attach(agent): localRoot=E:\JProjects\gscript\src\main\resources remoteRoot=
+[1783314342745] >>> SEND {"seq":3,"type":"response","request_seq":2,"success":true,"command":"attach","body":{}}
+[1783314342746] <<< RECV {"seq": 3, "type": "request", "command": "configurationDone"}
+[1783314342746] [FLOW] configurationDone(attach): 委托 DebugAgent
+[1783314342746] >>> SEND {"seq":4,"type":"response","request_seq":3,"success":true,"command":"configurationDone","body":{}}
+[1783314342747] [FLOW] onSuspended: reason=entry depth=1 line=11 frame.func=null
+[1783314342747] >>> SEND {"seq":5,"type":"event","event":"stopped","body":{"reason":"entry","threadId":1,"allThreadsStopped":true}}
+[1783314342775] <<< RECV {"seq": 4, "type": "request", "command": "stackTrace", "arguments": {"threadId": 1}}
+[1783314342775] >>> SEND {"seq":6,"type":"response","request_seq":4,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":0,"name":"<anonymous>","source":{"name":"debug_attach_test.script","sourceReference":1,"path":"debug_attach_test.script"},"line":11,"column":1,"endLine":11,"endColumn":1}],"totalFrames":1}}
+[1783314342776] <<< RECV {"seq": 5, "type": "request", "command": "source", "arguments": {"sourceReference": 1, "source": {"name": "debug_attach_test.script", "sourceReference": 1, "path": "debug_attach_test.script"}}}
+[1783314342776] >>> SEND {"seq":7,"type":"response","request_seq":5,"success":true,"command":"source","body":{"content":"// gscript attach 调试测试脚本\r\n// 用法：\r\n//   1. mvn package\r\n//   2. java -cp target/gscript-1.0-SNAPSHOT.jar org.gscript.TestScript debug_attach_test compile\r\n//   3. java -cp target/gscript-1.0-SNAPSHOT.jar org.gscript.TestScript debug_attach_test debugagent\r\n//      或 debugagent-attach\r\n//   4. VSCode attach（端口 4711）\r\n\r\nvar counter = 0;\r\n\r\nfunction calculateFactorial(n) {\r\n    if (n <= 1) {\r\n        return 1;\r\n    }\r\n    return n * calculateFactorial(n - 1);\r\n}\r\n\r\nfunction processItems(items) {\r\n    var total = 0;\r\n    var i = 0;\r\n    while (i < items.length) {\r\n        total = total + items[i];\r\n        i = i + 1;\r\n    }\r\n    return total;\r\n}\r\n\r\nconsole.log(\"=== attach 调试测试开始 ===\");\r\n\r\nvar fact5 = calculateFactorial(5);\r\nconsole.log(\"5! = \" + fact5);\r\n\r\nvar numbers = [10, 20, 30, 40, 50];\r\nvar sum = processItems(numbers);\r\nconsole.log(\"sum = \" + sum);\r\n\r\ncounter = fact5 + sum;\r\nconsole.log(\"counter = \" + counter);\r\n\r\nconsole.log(\"=== attach 调试测试结束 ===\");\r\n","mimeType":"text/x-gscript"}}
+[1783314342777] <<< RECV {"seq": 6, "type": "request", "command": "continue", "arguments": {"threadId": 1}}
+[1783314342777] >>> SEND {"seq":8,"type":"response","request_seq":6,"success":true,"command":"continue","body":{"allThreadsContinued":true}}
+[1783314342786] [FLOW] 解释器线程结束，发送 terminated 事件
+[1783314342786] >>> SEND {"seq":9,"type":"event","event":"terminated","body":{}}
+
+==== DapServer 启动 Mon Jul 06 13:05:43 CST 2026 ====
+user.dir=E:\JProjects\gscript
+日志文件: E:\JProjects\gscript\dap_debug.log
+[1783314343645] <<< RECV {"seq": 1, "type": "request", "command": "initialize", "arguments": {"clientID": "test", "adapterID": "gscript", "linesStartAt1": true, "columnsStartAt1": true, "pathFormat": "path"}}
+[1783314343647] >>> SEND {"seq":1,"type":"response","request_seq":1,"success":true,"command":"initialize","body":{"supportsConfigurationDoneRequest":true,"supportsEvaluateForHovers":false,"supportsStepBack":false,"supportsConditionalBreakpoints":false,"supportsHitConditionalBreakpoints":false,"supportsExceptionInfoRequest":false,"supportsSetVariable":false,"supportsTerminateRequest":true,"supportsLoadedSourcesRequest":false,"exceptionBreakpointFilters":[{"filter":"caught","label":"Caught Exceptions","default":false},{"filter":"uncaught","label":"Uncaught Exceptions","default":false}],"linesStartAt1":true,"columnsStartAt1":true}}
+[1783314343647] >>> SEND {"seq":2,"type":"event","event":"initialized"}
+[1783314343647] <<< RECV {"seq": 2, "type": "request", "command": "attach", "arguments": {"localRoot": "", "remoteRoot": "", "stopOnEntry": false}}
+[1783314343648] [FLOW] attach(agent): localRoot=null remoteRoot=
+[1783314343648] >>> SEND {"seq":3,"type":"response","request_seq":2,"success":true,"command":"attach","body":{}}
+[1783314343648] <<< RECV {"seq": 3, "type": "request", "command": "setExceptionBreakpoints", "arguments": {"filters": ["uncaught"]}}
+[1783314343648] [FLOW] setExceptionBreakpoints: pauseOnException=true
+[1783314343648] >>> SEND {"seq":4,"type":"response","request_seq":3,"success":true,"command":"setExceptionBreakpoints","body":{}}
+[1783314343649] <<< RECV {"seq": 4, "type": "request", "command": "configurationDone"}
+[1783314343649] [FLOW] configurationDone(attach): 委托 DebugAgent
+[1783314343649] >>> SEND {"seq":5,"type":"response","request_seq":4,"success":true,"command":"configurationDone","body":{}}
+[1783314343650] [FLOW] onSuspended: reason=entry depth=1 line=1 frame.func=null
+[1783314343650] >>> SEND {"seq":6,"type":"event","event":"stopped","body":{"reason":"entry","threadId":1,"allThreadsStopped":true}}
+[1783314343683] <<< RECV {"seq": 5, "type": "request", "command": "continue", "arguments": {"threadId": 1}}
+[1783314343683] >>> SEND {"seq":7,"type":"response","request_seq":5,"success":true,"command":"continue","body":{"allThreadsContinued":true}}
+[1783314343686] [FLOW] onSuspended: reason=exception depth=2 line=3 frame.func=badCall
+[1783314343686] >>> SEND {"seq":8,"type":"event","event":"stopped","body":{"reason":"exception","threadId":1,"allThreadsStopped":true}}
+[1783314343714] <<< RECV {"seq": 6, "type": "request", "command": "stackTrace", "arguments": {"threadId": 1}}
+[1783314343717] >>> SEND {"seq":9,"type":"response","request_seq":6,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":0,"name":"badCall","source":{"name":"debug_exception_test.script","sourceReference":1,"path":"debug_exception_test.script"},"line":3,"column":1,"endLine":3,"endColumn":1},{"id":1,"name":"<anonymous>","source":{"name":"debug_exception_test.script","sourceReference":2,"path":"debug_exception_test.script"},"line":6,"column":1,"endLine":6,"endColumn":1}],"totalFrames":2}}
+[1783314343719] <<< RECV {"seq": 7, "type": "request", "command": "continue", "arguments": {"threadId": 1}}
+[1783314343719] >>> SEND {"seq":10,"type":"response","request_seq":7,"success":true,"command":"continue","body":{"allThreadsContinued":true}}
+[1783314343719] [FLOW] 解释器线程结束，发送 terminated 事件
+[1783314343719] >>> SEND {"seq":11,"type":"event","event":"terminated","body":{}}
+
+==== DapServer 启动 Mon Jul 06 13:05:49 CST 2026 ====
+user.dir=E:\JProjects\gscript
+日志文件: E:\JProjects\gscript\dap_debug.log
+[1783314349632] <<< RECV {"seq": 1, "type": "request", "command": "initialize", "arguments": {"clientID": "test", "adapterID": "gscript", "linesStartAt1": true, "columnsStartAt1": true, "pathFormat": "path"}}
+[1783314349634] >>> SEND {"seq":1,"type":"response","request_seq":1,"success":true,"command":"initialize","body":{"supportsConfigurationDoneRequest":true,"supportsEvaluateForHovers":false,"supportsStepBack":false,"supportsConditionalBreakpoints":false,"supportsHitConditionalBreakpoints":false,"supportsExceptionInfoRequest":false,"supportsSetVariable":false,"supportsTerminateRequest":true,"supportsLoadedSourcesRequest":false,"exceptionBreakpointFilters":[{"filter":"caught","label":"Caught Exceptions","default":false},{"filter":"uncaught","label":"Uncaught Exceptions","default":false}],"linesStartAt1":true,"columnsStartAt1":true}}
+[1783314349635] >>> SEND {"seq":2,"type":"event","event":"initialized"}
+[1783314349635] <<< RECV {"seq": 2, "type": "request", "command": "attach", "arguments": {"localRoot": "E:\\JProjects\\gscript\\tests\\..\\src\\main\\resources", "remoteRoot": "", "stopOnEntry": false}}
+[1783314349636] [FLOW] attach(agent): localRoot=E:\JProjects\gscript\src\main\resources remoteRoot=
+[1783314349636] >>> SEND {"seq":3,"type":"response","request_seq":2,"success":true,"command":"attach","body":{}}
+[1783314349636] <<< RECV {"seq": 3, "type": "request", "command": "configurationDone"}
+[1783314349636] [FLOW] configurationDone(attach): 委托 DebugAgent
+[1783314349636] >>> SEND {"seq":4,"type":"response","request_seq":3,"success":true,"command":"configurationDone","body":{}}
+[1783314349638] [FLOW] onSuspended: reason=entry depth=1 line=6 frame.func=null
+[1783314349638] >>> SEND {"seq":5,"type":"event","event":"stopped","body":{"reason":"entry","threadId":1,"allThreadsStopped":true}}
+[1783314349666] <<< RECV {"seq": 4, "type": "request", "command": "stackTrace", "arguments": {"threadId": 1}}
+[1783314349667] >>> SEND {"seq":6,"type":"response","request_seq":4,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":0,"name":"<anonymous>","source":{"name":"callfn_test.script","sourceReference":1,"path":"callfn_test.script"},"line":6,"column":1,"endLine":6,"endColumn":1}],"totalFrames":1}}
+[1783314349667] <<< RECV {"seq": 5, "type": "request", "command": "setBreakpoints", "arguments": {"source": {"path": "callfn_test.script", "sourceReference": 1, "name": "callfn_test.script"}, "breakpoints": [{"line": 7}]}}
+[1783314349667] >>> SEND {"seq":7,"type":"response","request_seq":5,"success":true,"command":"setBreakpoints","body":{"breakpoints":[{"line":7,"verified":true}]}}
+[1783314349668] <<< RECV {"seq": 6, "type": "request", "command": "continue", "arguments": {"threadId": 1}}
+[1783314349668] >>> SEND {"seq":8,"type":"response","request_seq":6,"success":true,"command":"continue","body":{"allThreadsContinued":true}}
+[1783314349673] [FLOW] onSuspended: reason=breakpoint depth=1 line=7 frame.func=addNumbers
+[1783314349673] >>> SEND {"seq":9,"type":"event","event":"stopped","body":{"reason":"breakpoint","threadId":1,"allThreadsStopped":true}}
+[1783314349705] <<< RECV {"seq": 7, "type": "request", "command": "stackTrace", "arguments": {"threadId": 1}}
+[1783314349705] >>> SEND {"seq":10,"type":"response","request_seq":7,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":0,"name":"addNumbers","source":{"name":"callfn_test.script","sourceReference":2,"path":"callfn_test.script"},"line":7,"column":1,"endLine":7,"endColumn":1}],"totalFrames":1}}
+[1783314349705] <<< RECV {"seq": 8, "type": "request", "command": "continue", "arguments": {"threadId": 1}}
+[1783314349705] >>> SEND {"seq":11,"type":"response","request_seq":8,"success":true,"command":"continue","body":{"allThreadsContinued":true}}
+[1783314349705] [FLOW] 解释器线程结束，发送 terminated 事件
+[1783314349705] >>> SEND {"seq":12,"type":"event","event":"terminated","body":{}}

@@ -398,7 +398,7 @@ gscript 内置 10 种数据类型（bool / int / float / str / object / array / 
 
 ### 数组（array）
 
-数组字面量 `[1,2,3]` 或 `new Array()`。`length` **可读可写**（写时按 JS 语义截断或扩容），另支持 8 个方法（对标 JS `Array.prototype`）：
+数组字面量 `[1,2,3]` 或 `new Array()`。`length` **可读可写**（写时按 JS 语义截断或扩容），另支持 11 个方法（对标 JS `Array.prototype`）：
 
 | 方法/属性 | 说明 |
 |-----------|------|
@@ -409,6 +409,11 @@ gscript 内置 10 种数据类型（bool / int / float / str / object / array / 
 | `join([sep])` | 用分隔符连接（默认 `,`），`null` 元素输出空串 |
 | `slice([start[, end]])` | 区间浅拷贝（新数组），支持负索引 |
 | `splice(start[, deleteCount[, ...items]])` | 删除 / 插入 / 替换，返回被删元素数组（JS 语义） |
+| `forEach(cb)` | 遍历，对每个元素调用 `cb(element, index, array)`，返回 `null` |
+| `map(cb)` | 映射，收集 `cb(element, index, array)` 返回值到新数组 |
+| `filter(cb)` | 过滤，保留 `cb` 返回 truthy 的原元素到新数组 |
+
+> **forEach/map/filter 实现机制**：这三个方法需在原生函数内回调 gscript 函数，依赖 `GSNativeFunction.call(args, interp)` 重载（方案 F）。`OP_INVOKE` type==9 调用时通过 `eval(callArgs, this)` 传入当前 interpreter，原生方法内用 `interp.callFunction(cb, cbArgs)` 回调。`cbArgs = [null(this占位), element, index, array]`。callback 在 worker 线程同步执行，抛出的异常沿调用栈传播可被外层 `catch` 捕获。
 
 **`length` 可写语义**（JS 对标）：
 
@@ -432,6 +437,37 @@ a.splice();                  // 0 实参：无操作（返回 []，原数组不�
 ```
 
 > **gscript 无 hole 概念**：JS 数组扩容产生 empty slot（hole），gscript 用 `null` 近似。`computeLength` 从索引 0 开始取最大连续索引 + 1，遇 hole 停止。
+
+**`forEach` / `map` / `filter` 语义**（JS 对标，回调签名 `cb(element, index, array)`）：
+
+```javascript
+var arr = [1, 2, 3, 4, 5];
+
+// forEach：遍历（返回 null）
+var sum = 0;
+arr.forEach(function(x) { sum = sum + x; });    // sum = 15
+
+// map：映射到新数组（不修改原数组）
+var doubled = arr.map(function(x) { return x * 2; });  // [2, 4, 6, 8, 10]
+
+// filter：过滤到新数组（保留原元素，非 cb 返回值）
+var even = arr.filter(function(x) { return x % 2 == 0; });  // [2, 4]
+
+// 链式调用
+arr.map(function(x) { return x * x; }).filter(function(x) { return x > 4; });  // [9, 16, 25]
+
+// 回调签名 (element, index, array)
+arr.forEach(function(elem, idx, array) {
+    console.log(elem + " at " + idx + " of " + array.length);
+});
+
+// 异常传播：cb 抛出的异常可被外层 catch 捕获
+try {
+    arr.forEach(function(x) { if (x == 3) throw "found three"; });
+} catch (e) {
+    console.log(e);  // found three
+}
+```
 
 ### 对象（object）
 
@@ -1742,6 +1778,7 @@ python run_baseline.py
 java -cp target/classes org.gscript.TestScript array_methods_test run        # 数组基础方法 7 个
 java -cp target/classes org.gscript.TestScript array_splice.test run         # splice（删除/插入/替换/负索引/缺省/清空）
 java -cp target/classes org.gscript.TestScript array_length_set.test run     # length 可写（截断/扩容/清空/负值归零）
+java -cp target/classes org.gscript.TestScript array_foreach_map_filter.test run  # forEach/map/filter（回调签名/链式/异常传播/闭包）
 java -cp target/classes org.gscript.TestScript object_keys.test run          # keys()（属性名/自有属性优先/数组 keys）
 java -cp target/classes org.gscript.TestScript string_methods_test run       # 字符串 17 方法
 java -cp target/classes org.gscript.TestScript type_conversion_test run      # 全局类型转换函数（parseInt/Number/...）
