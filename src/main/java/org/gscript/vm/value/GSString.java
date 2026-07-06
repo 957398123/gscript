@@ -22,6 +22,35 @@ public class GSString extends GSObject {
         return value.length() != 0;
     }
 
+    /**
+     * 字符串转 int（JS ToInt32 语义：先 ToNumber 再取整，NaN → 0）。
+     * <p>对标 JS {@code "23" | 0 === 23}、{@code "abc" | 0 === 0}。
+     * 用于位运算、原生方法索引参数（如 charAt("1")）的隐式转换。
+     *
+     * @return 解析后的 int；非数字字符串返回 0
+     */
+    public int toIntValue() {
+        GSValue n = toNumber(this);
+        if (n.type == 10) {
+            return 0;  // NaN → 0（JS ToInt32 语义）
+        }
+        return n.toIntValue();
+    }
+
+    /**
+     * 字符串转 float（JS ToNumber 语义：解析数字，非数字 → NaN）。
+     * <p>对标 JS {@code Number("3.14") === 3.14}、{@code Number("abc") === NaN}。
+     *
+     * @return 解析后的 float；非数字字符串返回 Float.NaN
+     */
+    public float toFloatValue() {
+        GSValue n = toNumber(this);
+        if (n.type == 10) {
+            return Float.NaN;  // 非数字 → NaN
+        }
+        return n.toFloatValue();
+    }
+
     // ===== 静态共享的原生方法实例 =====
     // 所有字符串共用同一组函数对象（语义等价于 JS 的 String.prototype.xxx）。
     // OP_INVOKE 调用时 args[0] 永远是 this（字符串本身），故无需闭包捕获。

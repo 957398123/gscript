@@ -74,6 +74,19 @@ check("\"ab\".concat()", "ab", "ab".concat());  // 无参返回自身
 check("链式 charAt+toUpperCase", "H", "hello".toUpperCase().charAt(0));
 check("链式 slice+indexOf", 2, "hello world".slice(0, 5).indexOf("l"));
 
+// 索引参数隐式转换（修复 GSString.toIntValue 继承 GSObject 返回 0 的 bug）
+// JS 语义：索引参数先 ToNumber 再取整，字符串数字应正确转换
+check("charAt字符串索引", "e", "hello".charAt("1"));       // "1" → 1
+check("charAt浮点索引", "e", "hello".charAt(1.9));          // 1.9 → 1（截断）
+check("charCodeAt字符串索引", 101, "hello".charCodeAt("1")); // 'e' = 101
+check("substring字符串索引", "el", "hello".substring("1", "3"));
+check("slice字符串索引", "el", "hello".slice("1", "3"));
+check("substr字符串索引", "ell", "hello".substr("1", "3"));
+check("indexOf字符串fromIndex", 2, "hello".indexOf("l", "2"));  // fromIndex="2" → 2, "hello"[2]='l'
+check("repeat字符串次数", "aaa", "a".repeat("3"));
+check("非数字索引charAt", "h", "hello".charAt("abc"));      // NaN → 0
+check("布尔索引charAt", "e", "hello".charAt(true));         // true → 1
+
 // ============ 12. 数组方法 ============
 console.log("=== [12] 数组方法 ===");
 var arr = [1, 2, 3];
@@ -119,6 +132,12 @@ check("[1,2,3,4].slice(-2)[0]", 3, [1, 2, 3, 4].slice(-2)[0]);
 check("[1,2,3,4].slice(-2)[1]", 4, [1, 2, 3, 4].slice(-2)[1]);
 check("[1,2,3].slice().length", 3, [1, 2, 3].slice().length);
 check("[1,2,3,4,5].slice(2).length", 3, [1, 2, 3, 4, 5].slice(2).length);
+// 数组索引参数隐式转换（修复 GSArray.toIntValue 继承 GSObject 返回 0 的 bug）
+check("slice字符串索引", 2, [1,2,3,4].slice("1", "3")[0]);     // start="1"→1, end="3"→3
+check("slice字符串索引长度", 2, [1,2,3,4].slice("1", "3").length);
+check("indexOf字符串from", -1, [1,2,3].indexOf(2, "2"));        // fromIndex="2"→2，从位置2开始找2
+check("arr.length字符串赋值", 5, (function() { var a=[1,2]; a.length="5"; return a.length; })());
+check("arr.length字符串截断", 1, (function() { var a=[1,2,3]; a.length="1"; return a.length; })());
 // splice
 var sp1 = [1, 2, 3, 4, 5];
 var removed = sp1.splice(1, 2);

@@ -373,6 +373,32 @@ check("24.9 Number(null)", 0, Number(null));
 check("24.9 Number([])", 0, Number([]));
 check("24.9 Number([5])", 5, Number([5]));
 check("24.9 Number([1,2])", true, isNaN(Number([1, 2])));
+// 类型转换审计修复后：object/function 转 number 应为 NaN（JS ToNumber 语义）
+check("24.9 Number({})", true, isNaN(Number({})));
+check("24.9 Number({a:1})", true, isNaN(Number({a: 1})));
+check("24.9 Number(function)", true, isNaN(Number(function() {})));
+check("24.9 Number(NaN)", true, isNaN(Number(NaN)));
+// 隐式转换：算术运算（-、*、/）触发 toNumber，验证 toFloatValue 正确性
+// 注：+ 运算符对数组/对象走字符串拼接，不能用于测试数值转换
+check("24.9 {}*1为NaN", true, isNaN({} * 1));         // {} → NaN
+check("24.9 []-0", 0, [] - 0);                          // [] → "" → 0
+check("24.9 [5]-0", 5, [5] - 0);                        // [5] → "5" → 5
+check("24.9 [1,2]*1为NaN", true, isNaN([1, 2] * 1));   // [1,2] → "1,2" → NaN
+check("24.9 null-0", 0, null - 0);                      // null → 0
+// 位运算触发 toIntValue（ToInt32）
+// "23" | 0 = 23（修复前 GSString.toIntValue 继承 GSObject 返回 0）
+check("24.9 \"23\"|0", 23, "23" | 0);
+check("24.9 \"3.14\"|0", 3, "3.14" | 0);
+check("24.9 \"abc\"|0", 0, "abc" | 0);    // NaN → 0
+check("24.9 []|0", 0, [] | 0);
+check("24.9 [5]|0", 5, [5] | 0);
+check("24.9 {}|0", 0, {} | 0);            // NaN → 0
+check("24.9 null|0", 0, null | 0);
+// 字符串直接转 number（修复前 GSString.toIntValue/toFloatValue 继承 GSObject 返回 0）
+// \"23\"+0 = \"230\"(字符串拼接), \"230\"-0 = 230
+check("24.9 \"23\"+0-0", 230, "23" + 0 - 0);
+check("24.9 \"23\"*1", 23, "23" * 1);
+check("24.9 \"3.14\"*1", 3.14, "3.14" * 1);
 
 // 24.10 String() 转换
 check("24.10 String(null)", "null", String(null));

@@ -618,6 +618,25 @@ var s = "23"; s++; s;   // 24
 
 > **行为变更**：本次修复对齐 JS 语义，以下用例结果改变：`"23" > 0` 从 `false` → `true`；`"" == 0` 从 `false` → `true`；`"3.0" == 3` 从 `false` → `true`；`null + 1` 从 `"null1"` → `1`；`"23" & 3` 从 `0` → `3`；`1 << "2"` 从 `NaN` → `4`；`-"23"` 从 `NaN` → `-23`。详见 [implicit_conversion_test.script](file:///e:/JProjects/gscript/src/main/resources/implicit_conversion_test.script)。
 
+#### 值类 toIntValue / toFloatValue 重写表
+
+`toIntValue()` 对应 JS ToInt32（位运算、原生方法索引参数用），`toFloatValue()` 对应 JS ToNumber（算术运算用）。二者均由 [GSValue.toNumber](file:///e:/JProjects/gscript/src/main/java/org/gscript/vm/value/GSValue.java#L71) 统一驱动，但每个值类必须各自正确重写，否则会出现 `GSString.toIntValue()` 继承 `GSObject` 默认返回 0 导致 `"23"|0` 错误返回 0 的 bug。
+
+| 类 | type | 父类 | toIntValue() | toFloatValue() | 说明 |
+|----|------|------|--------------|----------------|------|
+| GSBool | 1 | GSValue | 0 / 1 | 0.0 / 1.0 | 直接返回 bool 值 |
+| GSInt | 2 | GSValue | value | (float)value | 直接返回数值 |
+| GSFloat | 3 | GSValue | (int)value | value | 截断取整 |
+| GSObject | 4 | GSValue | 0 | Float.NaN | 默认实现：对象 ToNumber=NaN，ToInt32(NaN)=0 |
+| GSString | 5 | GSObject | toNumber→int | toNumber→float | 解析字符串，NaN→0（int）/ NaN（float） |
+| GSFunction | 6 | GSObject | 继承 0 | 继承 NaN | 函数 ToNumber=NaN |
+| GSArray | 7 | GSObject | toNumber→int | toNumber→float | 先 toString 再按 string 规则解析 |
+| GSNull | 8 | GSObject | 0（显式） | 0（显式） | null ToNumber=0 |
+| GSNativeFunction | 9 | GSObject | 继承 0 | 继承 NaN | 原生函数 ToNumber=NaN |
+| GSNaN | 10 | GSObject | 0（显式） | Float.NaN（显式） | NaN ToNumber=NaN，ToInt32(NaN)=0 |
+
+> **修复历史**：`GSObject.toFloatValue()` 默认实现原为 `return 0`，导致 `GSFunction`/`GSNativeFunction`/`GSNaN` 的 `toFloatValue()` 错误返回 0 而非 NaN；`GSString`/`GSArray` 未重写 `toIntValue()`/`toFloatValue()`，导致 `"23"|0` 错误返回 0、`[5]-0` 错误返回 0。现已统一修复：`GSObject.toFloatValue()` 改为 `Float.NaN`，`GSString`/`GSArray` 显式重写两个方法走 `toNumber` 转换，`GSNaN` 显式重写返回 `Float.NaN`。验证用例见 [comprehensive_test3.script](file:///e:/JProjects/gscript/src/main/resources/comprehensive_test3.script) 第 24.9 节。
+
 ## 字节码
 
 ```code

@@ -377,6 +377,35 @@ public class GSArray extends GSObject {
     }
 
     /**
+     * 数组转 int（JS ToInt32 语义：先 toString 再 ToNumber，NaN → 0）。
+     * <p>对标 JS {@code [] | 0 === 0}、{@code [5] | 0 === 5}、{@code [1,2] | 0 === 0}。
+     * 用于位运算、原生方法索引参数（如 arr.length = "5"）的隐式转换。
+     *
+     * @return 解析后的 int；非数字数组返回 0
+     */
+    public int toIntValue() {
+        GSValue n = toNumber(this);
+        if (n.type == 10) {
+            return 0;  // NaN → 0（JS ToInt32 语义）
+        }
+        return n.toIntValue();
+    }
+
+    /**
+     * 数组转 float（JS ToNumber 语义：先 toString 再解析，非数字 → NaN）。
+     * <p>对标 JS {@code Number([]) === 0}、{@code Number([5]) === 5}、{@code Number([1,2]) === NaN}。
+     *
+     * @return 解析后的 float；非数字数组返回 Float.NaN
+     */
+    public float toFloatValue() {
+        GSValue n = toNumber(this);
+        if (n.type == 10) {
+            return Float.NaN;  // 非数字 → NaN
+        }
+        return n.toFloatValue();
+    }
+
+    /**
      * 获取数组属性：
      * <ul>
      *   <li>{@code length} 返回元素个数（连续索引数）</li>

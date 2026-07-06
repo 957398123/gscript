@@ -40,12 +40,26 @@ public class GSObject extends GSValue {
         return "[object Object]";
     }
 
+    /**
+     * 对象转 int（JS ToInt32 语义：ToNumber({})=NaN → 0）。
+     * <p>int 类型无法表示 NaN，故返回 0 作为 fallback。
+     * 子类（GSString/GSArray）已重写为按 toString 解析。
+     *
+     * @return 0
+     */
     public int toIntValue() {
         return 0;
     }
 
+    /**
+     * 对象转 float（JS ToNumber 语义：Number({})=NaN、Number(function)=NaN）。
+     * <p>GSFunction/GSNativeFunction 继承此默认实现返回 NaN，符合 JS 语义。
+     * 子类 GSNull（→0）、GSString、GSArray、GSNaN 已按各自语义重写。
+     *
+     * @return Float.NaN
+     */
     public float toFloatValue() {
-        return 0;
+        return Float.NaN;
     }
 
     public boolean toBoolean() {
