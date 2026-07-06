@@ -16,6 +16,7 @@ import org.gscript.vm.stdlib.TimerLib;
 import org.gscript.vm.stdlib.TypeLib;
 import org.gscript.vm.value.*;
 import org.gscript.util.AtomicCounter;
+import org.gscript.util.SimpleBlockingQueue;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -27,7 +28,7 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
-public class GSInterpreter {
+public class GSInterpreter implements TimerScheduler.TaskDispatcher {
 
     /**
      * 顶级域
@@ -59,10 +60,36 @@ public class GSInterpreter {
     /**
      * 定时器调度器（构造时默认初始化，定时器是解释器核心机制）。
      *
-     * <p>方案 B：守护线程只计时，到期任务入 readyQueue，由 {@link #runEventLoop()}
-     * 在主线程串行执行回调。shutdown 后置 null。
+     * <p>worker 模型：守护线程只计时，到期任务通过 {@link #dispatch} 投递到 {@link #taskQueue}，
+     * 由 {@link #workerThread} 串行执行回调。shutdown 后置 null。
      */
     private TimerScheduler timerScheduler;
+
+    /**
+     * worker 线程（单线程，常驻守护）：独占解释器执行权。
+     *
+     * <p>消费 {@link #taskQueue}：外部线程提交的 EvalTask（eval/callFunction 包装）
+     * + 定时器到期任务（{@link #dispatch} 投递的 TimerEvalTask）。串行执行，与调试器
+     * （THREAD_ID=1）兼容。构造时启动，{@link #shutdown()} 时终止。
+     */
+    private Thread workerThread;
+
+    /**
+     * 统一任务队列：外部 eval/callFunction 提交 + 定时器到期任务都进此队列。
+     */
+    private final SimpleBlockingQueue taskQueue = new SimpleBlockingQueue();
+
+    /**
+     * worker 是否正在执行任务（volatile 供 {@link #runEventLoop} awaitIdle 观察，
+     * 避免"队列空但 worker 正在跑任务"误判 idle）。
+     */
+    private volatile boolean workerBusy = false;
+
+    /**
+     * worker 停止标志（volatile）。shutdown 或定时器回调抛 DebugAbortException 后置 true。
+     * 后续 eval/callFunction 调用会抛 RuntimeException。
+     */
+    private volatile boolean workerStopped = false;
 
     /**
      * 调试模式标志：true=愿意被调试（eval 入口注册 source + 请求 entry stop）。
@@ -83,9 +110,10 @@ public class GSInterpreter {
     private final AtomicCounter evalPathCounter = new AtomicCounter(0);
 
     public GSInterpreter() {
-        ensureTimerScheduler();      // 构造时就绪 TimerScheduler（核心机制默认初始化）
+        ensureTimerScheduler();      // 构造时就绪 TimerScheduler（核心机制默认初始化，this 作为 TaskDispatcher）
         installTimerGlobals();       // 默认注册 setTimeout/setInterval 等入口函数
         installTypeGlobals();        // 默认注册 parseInt/parseFloat/isNaN/String/Number/Boolean
+        startWorker();               // 启动 worker 线程（独占执行权）
     }
 
     /**
@@ -865,7 +893,30 @@ public class GSInterpreter {
      * @param sourcePath    源文件路径（调试用，区分多文件），可为 null
      * @param sourceContent 完整源码文本（attach 调试模式用，可为 null）
      */
-    public void eval(byte[][] codes, Object[] constantPool, int[] sourceLines, String sourcePath, String sourceContent) {
+    public void eval(final byte[][] codes, final Object[] constantPool, final int[] sourceLines,
+                     final String sourcePath, final String sourceContent) {
+        if (Thread.currentThread() == workerThread) {
+            evalDirect(codes, constantPool, sourceLines, sourcePath, sourceContent);
+            return;
+        }
+        try {
+            submitAndAwait(new RunnableEvalTask(new TaskRunnable() {
+                public void run() throws Throwable {
+                    evalDirect(codes, constantPool, sourceLines, sourcePath, sourceContent);
+                }
+            }));
+        } catch (RuntimeException e) { throw e; }
+        catch (Throwable e) { throw new RuntimeException(e); }
+    }
+
+    /**
+     * 直接执行字节码（worker 线程内调用，无队列包装）。
+     *
+     * <p>调试模式入口预处理 + 构造匿名 GSFunction + eval(frame, null)。
+     * DebugAbortException/GSException 在内部 catch（同原实现），不传播给调用方。
+     */
+    private void evalDirect(byte[][] codes, Object[] constantPool, int[] sourceLines,
+                            String sourcePath, String sourceContent) {
         // 调试模式入口预处理：注册 source + 请求 entry stop（controller 已就位时）
         if (debugMode) {
             prepareDebugEntry(sourcePath, sourceContent);
@@ -964,7 +1015,27 @@ public class GSInterpreter {
      *
      * @param code gscript 源码
      */
-    public void evalScript(String code) {
+    public void evalScript(final String code) {
+        if (Thread.currentThread() == workerThread) {
+            evalScriptDirect(code);
+            return;
+        }
+        try {
+            submitAndAwait(new RunnableEvalTask(new TaskRunnable() {
+                public void run() throws Throwable { evalScriptDirect(code); }
+            }));
+        } catch (RuntimeException e) { throw e; }
+        catch (Throwable e) { throw new RuntimeException(e); }
+    }
+
+    /**
+     * 直接执行脚本（worker 线程内调用，无队列包装）。
+     *
+     * <p>调试模式用 compileScriptContent 生成 sourcePath + sourceLines + sourceContent，
+     * 5-arg eval 内部会调 prepareDebugEntry 注册 source + 请求 entry stop。
+     * 非调试模式 compile 保留 sourceLines 供异常映射（无 sourcePath，显示 &lt;anonymous&gt;）。
+     */
+    private void evalScriptDirect(String code) {
         if (debugMode) {
             // 调试模式：用 compileScriptContent 生成 sourcePath + sourceLines + sourceContent
             // 5-arg eval 内部会调 prepareDebugEntry 注册 source + 请求 entry stop
@@ -980,10 +1051,18 @@ public class GSInterpreter {
     }
 
     /**
-     * 求值一个 gscript 表达式并返回结果。
+     * 求值一个 gscript 表达式并返回结果（双路径：worker 内直接执行，外部线程提交任务）。
+     *
+     * <p>worker 线程内调用（如定时器回调内、eval 内部 OP_INVOKE 等）：直接执行
+     * {@link #evalExpressionDirect}，无队列开销。
+     *
+     * <p>外部线程调用（宿主业务线程）：包装为 CallableEvalTask 提交到 {@link #taskQueue}，
+     * 阻塞 await 等 worker 执行完成，返回结果。
      *
      * <p>实现：将表达式包装为 {@code return (expr);} 执行，OP_RETURN 会把结果留在
-     * {@link #stack} 上，执行后弹出返回。表达式出错（语法/运行时）时返回 {@link GSNull#NULL}。
+     * {@link #stack} 上，执行后弹出返回。表达式出错（语法/运行时）时返回 {@link GSNull#NULL}
+     * （类 JS eval 语义，{@link #evalExpressionDirect} 内 catch 吞掉异常不透传，
+     * 与 {@link #callFunction} 透传异常给宿主的语义不同）。
      *
      * <p>注意：不能复用 {@link #evalScript}（它内部 eval 会吞掉 GSException），
      * 故直接调用 {@link #eval(GSFrame, ArrayList)} 以检测异常。
@@ -991,7 +1070,39 @@ public class GSInterpreter {
      * @param expr gscript 表达式（如 "a + b"、"add(1, 2)"、"{x: 1, y: 2}"）
      * @return 求值结果，出错返回 GSNull.NULL
      */
-    public GSValue evalExpression(String expr) {
+    public GSValue evalExpression(final String expr) {
+        if (Thread.currentThread() == workerThread) {
+            return evalExpressionDirect(expr);
+        }
+        try {
+            CallableEvalTask task = new CallableEvalTask(new TaskCallable() {
+                public GSValue call() throws Throwable { return evalExpressionDirect(expr); }
+            });
+            submitAndAwait(task);
+            return task.awaitResult();
+        } catch (DebugAbortException e) {
+            return GSNull.NULL;  // 防御性：direct 内已 catch，正常不触发
+        } catch (GSException e) {
+            System.out.println(e.formatMessage());  // 防御性：direct 内已 catch，正常不触发
+            return GSNull.NULL;
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Throwable e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * 直接求值表达式（worker 线程内调用，无队列包装）。
+     *
+     * <p>非调试模式：compile 保留 sourceLines 供异常映射（无 sourcePath，显示 &lt;anonymous&gt;）。
+     * 调试模式：用 compileScriptContent 生成 sourcePath + sourceLines + sourceContent，
+     * prepareDebugEntry 注册 source + 请求 entry stop。
+     *
+     * <p>异常策略：GSException/DebugAbortException 在内部 catch 后返回 GSNull.NULL
+     * （类 JS eval「求值失败返回 null」语义），不向上抛。
+     */
+    private GSValue evalExpressionDirect(String expr) {
         stack.clear();  // 清空栈上残留值，确保返回值是本次表达式的结果
         if (!debugMode) {
             // 非调试模式：compile 保留 sourceLines 供异常映射
@@ -1236,37 +1347,68 @@ public class GSInterpreter {
         addVariableToGlobal(name, GSValue.fromJavaObject(value));
     }
 
-    // ===== 定时器与事件循环（方案 B：单线程 + 守护定时器线程）=====
+    // ===== 定时器与事件循环（worker 模型：单 worker 线程 + 守护定时器线程）=====
 
     /**
-     * 调用 gscript 函数（native 回调 gscript 的唯一入口）。
+     * 调用 gscript 函数（双路径：worker 内直接执行，外部线程提交任务）。
      *
-     * <p>供 {@link TimerLib} 在主线程执行定时器回调使用：new GSFrame → eval。
-     * eval 内部走 {@code callStack.push/pop} + 每条指令 {@code suspendCheck}，
-     * 故回调里的断点/单步/变量查看与普通调用完全一致。
+     * <p>worker 线程内调用（定时器回调、native 回调 gscript、eval 内部 OP_INVOKE 等）：
+     * 直接执行 {@link #callFunctionDirect}，无队列开销。
      *
-     * <p>异常处理：传播 {@link GSException} 和 {@link DebugAbortException} 给调用方
-     * （{@link #runEventLoop()} 决定如何处理）。回调无 return 时栈不增长，返回 GSNull.NULL。
+     * <p>外部线程调用（宿主业务线程）：包装为 CallableEvalTask 提交到 {@link #taskQueue}，
+     * 阻塞 await 等 worker 执行完成，返回结果。GSException/DebugAbortException 透传给调用方。
      *
-     * @param fn   目标函数（已在 setTimeout/setInterval 时捕获）
+     * <p>异常处理：worker 内执行时 GSException/DebugAbortException 经 EvalTask.error 透传；
+     * eval 内部走 callStack.push/pop + suspendCheck，回调里的断点/单步/变量查看与普通调用完全一致。
+     *
+     * @param fn   目标函数
      * @param args 参数列表（OP_INVOKE 约定：args[0]=this，args[1..]=实际参数）
      * @return 函数返回值（无 return 返回 GSNull.NULL）
      */
-    public GSValue callFunction(GSFunction fn, ArrayList args) {
+    public GSValue callFunction(final GSFunction fn, final ArrayList args) {
+        if (Thread.currentThread() == workerThread) {
+            return callFunctionDirect(fn, args);
+        }
+        try {
+            CallableEvalTask task = new CallableEvalTask(new TaskCallable() {
+                public GSValue call() throws Throwable { return callFunctionDirect(fn, args); }
+            });
+            submitAndAwait(task);
+            return task.awaitResult();
+        } catch (DebugAbortException e) {
+            throw e;  // 调试终止：透传给调用方
+        } catch (GSException e) {
+            throw e;  // gscript 异常：透传
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Throwable e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * 直接执行 gscript 函数（worker 线程内调用，无队列包装）。
+     *
+     * <p>new GSFrame → eval(frame, args)。eval 内部 callStack.push/pop + suspendCheck，
+     * 断点/单步在回调里天然工作。回调无 return 时栈不增长，返回 GSNull.NULL。
+     */
+    private GSValue callFunctionDirect(GSFunction fn, ArrayList args) {
         GSFrame frame = new GSFrame(fn);
         int stackMark = stack.size();
         eval(frame, args);
         return stack.size() > stackMark ? (GSValue) stack.pop() : GSNull.NULL;
     }
 
-    /** 调度一次性定时器（setTimeout），返回 timer id。 */
+    /** 调度一次性定时器（setTimeout），返回 timer id。worker 停止后返回 -1。 */
     public int scheduleTimeout(GSFunction cb, long delay, ArrayList args) {
+        if (workerStopped || timerScheduler == null) return -1;
         ensureTimerScheduler();
         return timerScheduler.schedule(cb, delay, args);
     }
 
-    /** 调度周期性定时器（setInterval），返回 timer id。 */
+    /** 调度周期性定时器（setInterval），返回 timer id。worker 停止后返回 -1。 */
     public int scheduleInterval(GSFunction cb, long period, ArrayList args) {
+        if (workerStopped || timerScheduler == null) return -1;
         ensureTimerScheduler();
         return timerScheduler.scheduleAtFixedRate(cb, period, args);
     }
@@ -1280,59 +1422,298 @@ public class GSInterpreter {
 
     private void ensureTimerScheduler() {
         if (timerScheduler == null) {
-            timerScheduler = new TimerScheduler();
+            timerScheduler = new TimerScheduler(this);  // this 作为 TaskDispatcher
         }
     }
 
     /**
-     * 事件循环：在主脚本 eval 返回后，pump 定时器任务队列直到排空。
+     * TaskDispatcher 实现：TimerScheduler 到期任务投递到 worker 的 taskQueue。
      *
-     * <p>循环退出条件：{@link TimerScheduler#hasPending()} 为 false
-     * （timerQueue + readyQueue 都空，即所有 setTimeout 已执行、所有 setInterval 已 cancel）。
-     * 纯 setInterval 脚本永不退出——attach 模式 disconnect 仅分离调试器（程序继续运行，
-     * 如同 node --inspect），需宿主 kill 进程或调用 terminate 请求终止；
-     * terminate 触发的 {@link DebugAbortException} 会传播出本循环。
+     * <p>TimerScheduler 守护线程在 synchronized(lock) 内调用本方法（保留原 readyQueue.offer
+     * 的窗口期修复语义）。本方法把 TimerTask 包装成 TimerEvalTask offer 到 taskQueue，
+     * worker 主循环取出后执行 callFunctionDirect。
+     */
+    public void dispatch(TimerScheduler.TimerTask task) {
+        taskQueue.offer(new TimerEvalTask(task));
+    }
+
+    /**
+     * 启动 worker 线程（构造器调用）。
      *
-     * <p>异常策略（类 JS）：
+     * <p>worker 是守护线程，JVM 退出时自动终止。常驻，独占解释器执行权。
+     * 启动后立即 taskQueue.take 阻塞（构造后队列必空），等待外部提交或定时器到期。
+     */
+    private void startWorker() {
+        workerThread = new Thread(new Runnable() {
+            public void run() {
+                runWorkerLoop();
+            }
+        }, "gscript-worker");
+        workerThread.setDaemon(true);
+        workerThread.start();
+    }
+
+    /**
+     * worker 主循环：消费 taskQueue，串行执行 EvalTask。
+     *
+     * <p>等待策略：
      * <ul>
-     *   <li>{@link DebugAbortException}（terminate 请求 / launch 模式 disconnect）：传播出循环，终止事件循环</li>
-     *   <li>{@link GSException}（gscript 未捕获异常）：打印 stderr，继续下一个任务</li>
-     *   <li>其他 Throwable：打印栈，继续下一个任务</li>
+     *   <li>无定时器（nextDelayMs==-1）：taskQueue.take 无限阻塞等外部任务</li>
+     *   <li>有定时器（nextDelayMs&gt;=0）：taskQueue.poll(delay) 等 delay 毫秒，
+     *       超时表示定时器到点（TimerScheduler 已 dispatch TimerEvalTask 到 taskQueue），
+     *       下一轮立即取到</li>
+     * </ul>
+     *
+     * <p>异常策略：
+     * <ul>
+     *   <li>任务内异常：EvalTask.execute catch 存 error，外部 await 重抛；worker 循环不退出</li>
+     *   <li>定时器任务的 DebugAbortException：worker 停止 + scheduler.shutdown + drain（对齐原 runEventLoop）</li>
+     *   <li>InterruptedException：workerStopped 则退出，否则 continue</li>
      * </ul>
      */
-    public void runEventLoop() {
-        // timerScheduler 构造时默认初始化（不再为 null），无定时器任务时直接返回
-        if (timerScheduler == null || !timerScheduler.hasPending()) {
-            return;
-        }
-        try {
-            while (timerScheduler.hasPending()) {
-                long timeout = timerScheduler.nextDelayMs();
-                if (timeout < 0) {
-                    break;  // 队列空（不应发生，hasPending 已检查）
+    private void runWorkerLoop() {
+        while (!workerStopped) {
+            long delay = (timerScheduler != null) ? timerScheduler.nextDelayMs() : -1L;
+            EvalTask task = null;
+            try {
+                if (delay < 0) {
+                    task = (EvalTask) taskQueue.take();
+                } else {
+                    task = (EvalTask) taskQueue.poll(delay);
                 }
-                TimerScheduler.TimerTask task;
-                try {
-                    task = timerScheduler.pollReady(timeout);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
+            } catch (InterruptedException e) {
+                if (workerStopped) break;
+                continue;  // spurious wake
+            }
+            if (task == null) {
+                // poll 超时：定时器到点，TimerScheduler 应已 dispatch 到 taskQueue，下一轮立即取到
+                continue;
+            }
+            workerBusy = true;
+            try {
+                task.execute();
+            } finally {
+                workerBusy = false;
+            }
+            // 定时器任务的 DebugAbortException：停止 worker（对齐原 runEventLoop 行为）
+            if (task instanceof TimerEvalTask) {
+                Throwable err = task.getError();
+                if (err instanceof DebugAbortException) {
+                    workerStopped = true;
+                    if (timerScheduler != null) timerScheduler.shutdown();
+                    drainTaskQueue();
                     break;
                 }
-                if (task == null) {
-                    continue;  // 超时，重新检查 hasPending
-                }
-                try {
-                    callFunction(task.callback, task.args);
-                } catch (DebugAbortException e) {
-                    throw e;  // 调试会话终止，传播
-                } catch (GSException e) {
-                    System.err.println(e.formatMessage());
-                } catch (Throwable e) {
-                    e.printStackTrace();
+            }
+        }
+    }
+
+    /**
+     * 停止时排空 taskQueue：剩余 EvalTask 全部 signalError "worker stopped"，
+     * 避免外部线程永久阻塞在 await。
+     */
+    private void drainTaskQueue() {
+        RuntimeException stoppedErr = new RuntimeException("gscript-worker stopped");
+        while (true) {
+            EvalTask t = (EvalTask) taskQueue.poll();
+            if (t == null) break;
+            t.signalError(stoppedErr);
+        }
+    }
+
+    /**
+     * 外部线程入口：提交任务到 taskQueue，阻塞等结果。
+     * worker 停止后抛 RuntimeException。
+     */
+    private void submitAndAwait(EvalTask task) throws Throwable {
+        if (workerStopped) {
+            throw new RuntimeException("gscript-worker stopped");
+        }
+        taskQueue.offer(task);
+        task.await();
+    }
+
+    /**
+     * 事件循环新语义（awaitIdle）：外部线程等待 worker 排空 taskQueue + 无 pending 定时器。
+     *
+     * <p>等待条件：!workerBusy && taskQueue.isEmpty() && !timerScheduler.hasPending()
+     * <p>worker 自己调用直接返回（死锁保护——脚本内部不能 pump 自己）。
+     *
+     * <p>10ms 轮询（避免 worker 内部状态锁竞争），精度对 CLI/调试场景足够。
+     *
+     * <p>退出场景：
+     * <ul>
+     *   <li>纯 setTimeout 脚本：所有回调执行完后 taskQueue 空 + hasPending=false → 返回</li>
+     *   <li>纯 setInterval 脚本：hasPending 永远 true → 永不返回（需 DAP terminate 触发
+     *       DebugAbortException → worker 停止 → workerStopped=true → 本方法返回）</li>
+     *   <li>workerStopped（shutdown/terminate）：直接返回</li>
+     * </ul>
+     *
+     * <p>调用点零改动：TestScript.gen / debugAttach / DebugAgent launch / DapServer launch
+     * 的 runEventLoop 调用语义从"主线程 pump readyQueue"升级为"阻塞等 worker 排空"。
+     * 定时器回调由 worker 后台执行，主线程不直接 pump；本方法仅用于宿主需同步等待
+     * 回调完成的场景（如 CLI 工具、launch 模式发 terminated 前）。
+     */
+    public void runEventLoop() {
+        if (Thread.currentThread() == workerThread) {
+            return;  // 死锁保护：worker 内部不应调用
+        }
+        while (!workerStopped) {
+            if (!workerBusy
+                    && taskQueue.isEmpty()
+                    && (timerScheduler == null || !timerScheduler.hasPending())) {
+                return;
+            }
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+        }
+        // workerStopped：直接返回（调试终止或 shutdown）
+    }
+
+    /**
+     * 显式关闭解释器：停止 worker 线程 + 关闭 TimerScheduler + 排空 taskQueue。
+     *
+     * <p>shutdown 后调用 eval/callFunction 会抛 RuntimeException。
+     * 幂等。非阻塞（worker 是守护线程，JVM 退出时自动结束）。
+     *
+     * <p>典型用法：长运行宿主释放解释器资源时调用。TestScript 等 CLI 场景无需调用
+     * （main 退出 JVM 终止，worker 守护线程自动结束）。
+     */
+    public void shutdown() {
+        workerStopped = true;
+        if (timerScheduler != null) {
+            timerScheduler.shutdown();
+        }
+        if (workerThread != null) {
+            workerThread.interrupt();
+        }
+        drainTaskQueue();
+    }
+
+    // ===== EvalTask 任务体系（worker 线程消费的任务对象）=====
+
+    /** 1.4 兼容的函数式接口：无返回值任务（替代 lambda Runnable）。 */
+    private static interface TaskRunnable {
+        void run() throws Throwable;
+    }
+
+    /** 1.4 兼容的函数式接口：返回 GSValue 的任务（替代 lambda Callable）。 */
+    private static interface TaskCallable {
+        GSValue call() throws Throwable;
+    }
+
+    /**
+     * 解释器执行任务抽象基类（非静态内部类，访问 workerStopped）。
+     *
+     * <p>外部线程 submit 后阻塞 {@link #await()}，worker 线程 {@link #execute()} 后通知。
+     * 子类：{@link RunnableEvalTask}（void）/ {@link CallableEvalTask}（GSValue）/
+     * {@link TimerEvalTask}（定时器回调）。
+     */
+    private abstract class EvalTask {
+        private final Object lock = new Object();
+        private boolean done = false;
+        private Throwable error = null;
+
+        /** 子类实现：在 worker 线程执行（可抛任意 Throwable）。 */
+        abstract void run() throws Throwable;
+
+        /**
+         * worker 调用：执行任务，任何异常存入 error，不向外传播。
+         * 完成后（done=true）notifyAll 唤醒外部 await。
+         */
+        final void execute() {
+            try {
+                run();
+            } catch (Throwable e) {
+                synchronized (lock) { error = e; }
+            } finally {
+                synchronized (lock) {
+                    done = true;
+                    lock.notifyAll();
                 }
             }
-        } finally {
-            timerScheduler.shutdown();
+        }
+
+        /**
+         * 外部线程调用：阻塞等待完成。若执行抛异常则重抛。
+         * worker 停止时抛 RuntimeException（避免永久阻塞）。
+         */
+        final void await() throws Throwable {
+            synchronized (lock) {
+                while (!done) {
+                    if (workerStopped) {
+                        throw new RuntimeException("gscript-worker stopped");
+                    }
+                    try {
+                        lock.wait();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        throw new RuntimeException("await interrupted", e);
+                    }
+                }
+                if (error != null) throw error;
+            }
+        }
+
+        /** worker 排空 taskQueue 时调用：标记任务为失败（避免外部永久阻塞）。 */
+        final void signalError(Throwable err) {
+            synchronized (lock) {
+                if (!done) {
+                    error = err;
+                    done = true;
+                    lock.notifyAll();
+                }
+            }
+        }
+
+        /** worker 检查任务执行结果（用于 DebugAbortException 检测）。 */
+        final Throwable getError() {
+            synchronized (lock) { return error; }
+        }
+    }
+
+    /** void 任务的 EvalTask（包装 eval 全家桶）。 */
+    private class RunnableEvalTask extends EvalTask {
+        private final TaskRunnable runnable;
+        RunnableEvalTask(TaskRunnable r) { this.runnable = r; }
+        void run() throws Throwable { runnable.run(); }
+    }
+
+    /** 返回 GSValue 的任务的 EvalTask（包装 callFunction/evalExpression）。 */
+    private class CallableEvalTask extends EvalTask {
+        private final TaskCallable callable;
+        private GSValue result = GSNull.NULL;
+        CallableEvalTask(TaskCallable c) { this.callable = c; }
+        void run() throws Throwable { result = callable.call(); }
+        GSValue awaitResult() throws Throwable {
+            await();
+            return result;
+        }
+    }
+
+    /**
+     * 定时器到期回调任务。
+     *
+     * <p>TimerScheduler.dispatch 把 TimerTask 包装成本类对象 offer 到 taskQueue，
+     * worker 取出后 run() 调 callFunctionDirect 执行回调。
+     * DebugAbortException 透传到 execute 存 error，worker 主循环检测后停止。
+     * GSException（未捕获异常）打印 stderr 后吞掉（类 JS，继续下一个任务）。
+     */
+    private class TimerEvalTask extends EvalTask {
+        private final TimerScheduler.TimerTask task;
+        TimerEvalTask(TimerScheduler.TimerTask t) { this.task = t; }
+        void run() throws Throwable {
+            try {
+                callFunctionDirect(task.callback, task.args);
+            } catch (DebugAbortException e) {
+                throw e;  // 调试终止：透传给 worker 主循环检测
+            } catch (GSException e) {
+                System.err.println(e.formatMessage());  // 未捕获异常：打印后吞掉，继续下一个任务
+            }
         }
     }
 

@@ -1732,3 +1732,60 @@ user.dir=E:\JProjects\gscript
 [1783215213014] [FLOW] disconnect(attach): 分离调试器，解释器继续运行
 [1783215213014] >>> SEND {"seq":13,"type":"response","request_seq":10,"success":true,"command":"disconnect","body":{}}
 [FLOW] DapServer 主循环退出，关闭日志
+
+==== DapServer 启动 Mon Jul 06 11:16:39 CST 2026 ====
+user.dir=E:\JProjects\gscript
+日志文件: E:\JProjects\gscript\dap_debug.log
+[1783307799341] <<< RECV {"seq": 1, "type": "request", "command": "initialize", "arguments": {"clientID": "test", "adapterID": "gscript", "linesStartAt1": true, "columnsStartAt1": true, "pathFormat": "path"}}
+[1783307799348] >>> SEND {"seq":1,"type":"response","request_seq":1,"success":true,"command":"initialize","body":{"supportsConfigurationDoneRequest":true,"supportsEvaluateForHovers":false,"supportsStepBack":false,"supportsConditionalBreakpoints":false,"supportsHitConditionalBreakpoints":false,"supportsExceptionInfoRequest":false,"supportsSetVariable":false,"supportsTerminateRequest":true,"supportsLoadedSourcesRequest":false,"exceptionBreakpointFilters":[{"filter":"caught","label":"Caught Exceptions","default":false},{"filter":"uncaught","label":"Uncaught Exceptions","default":false}],"linesStartAt1":true,"columnsStartAt1":true}}
+[1783307799349] >>> SEND {"seq":2,"type":"event","event":"initialized"}
+[1783307799349] <<< RECV {"seq": 2, "type": "request", "command": "attach", "arguments": {"localRoot": "E:\\JProjects\\gscript\\src\\main\\resources", "remoteRoot": "", "stopOnEntry": false}}
+[1783307799350] [FLOW] attach(agent): localRoot=E:\JProjects\gscript\src\main\resources remoteRoot=
+[1783307799350] >>> SEND {"seq":3,"type":"response","request_seq":2,"success":true,"command":"attach","body":{}}
+[1783307799350] <<< RECV {"seq": 3, "type": "request", "command": "setBreakpoints", "arguments": {"source": {"path": "E:\\JProjects\\gscript\\src\\main\\resources\\debug_attach_test.script"}, "breakpoints": [{"line": 30}]}}
+[1783307799351] >>> SEND {"seq":4,"type":"response","request_seq":3,"success":true,"command":"setBreakpoints","body":{"breakpoints":[{"line":30,"verified":true}]}}
+[1783307799351] <<< RECV {"seq": 4, "type": "request", "command": "configurationDone"}
+[1783307799351] [FLOW] configurationDone(attach): 委托 DebugAgent
+[1783307799366] >>> SEND {"seq":5,"type":"response","request_seq":4,"success":true,"command":"configurationDone","body":{}}
+[1783307799374] [FLOW] onSuspended: reason=breakpoint depth=1 line=30 frame.func=null
+[1783307799375] >>> SEND {"seq":6,"type":"event","event":"stopped","body":{"reason":"breakpoint","threadId":1,"allThreadsStopped":true}}
+[1783307799376] <<< RECV {"seq": 5, "type": "request", "command": "stackTrace", "arguments": {"threadId": 1}}
+[1783307799376] >>> SEND {"seq":7,"type":"response","request_seq":5,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":0,"name":"<anonymous>","source":{"name":"debug_attach_test.script","sourceReference":1,"path":"debug_attach_test.script"},"line":30,"column":1,"endLine":30,"endColumn":1}],"totalFrames":1}}
+[1783307799376] <<< RECV {"seq": 6, "type": "request", "command": "continue", "arguments": {"threadId": 1}}
+[1783307799376] >>> SEND {"seq":8,"type":"response","request_seq":6,"success":true,"command":"continue","body":{"allThreadsContinued":true}}
+[1783307799379] [FLOW] 解释器线程结束，发送 terminated 事件
+[1783307799379] >>> SEND {"seq":9,"type":"event","event":"terminated","body":{}}
+[FLOW] DapServer 主循环退出，关闭日志
+
+==== DapServer 启动 Mon Jul 06 11:18:03 CST 2026 ====
+user.dir=E:\JProjects\gscript
+日志文件: E:\JProjects\gscript\dap_debug.log
+[1783307883824] <<< RECV {"seq": 1, "type": "request", "command": "initialize", "arguments": {"clientID": "test", "adapterID": "gscript", "linesStartAt1": true, "columnsStartAt1": true, "pathFormat": "path"}}
+[1783307883826] >>> SEND {"seq":1,"type":"response","request_seq":1,"success":true,"command":"initialize","body":{"supportsConfigurationDoneRequest":true,"supportsEvaluateForHovers":false,"supportsStepBack":false,"supportsConditionalBreakpoints":false,"supportsHitConditionalBreakpoints":false,"supportsExceptionInfoRequest":false,"supportsSetVariable":false,"supportsTerminateRequest":true,"supportsLoadedSourcesRequest":false,"exceptionBreakpointFilters":[{"filter":"caught","label":"Caught Exceptions","default":false},{"filter":"uncaught","label":"Uncaught Exceptions","default":false}],"linesStartAt1":true,"columnsStartAt1":true}}
+[1783307883826] >>> SEND {"seq":2,"type":"event","event":"initialized"}
+[1783307883828] <<< RECV {"seq": 2, "type": "request", "command": "attach", "arguments": {"localRoot": "E:\\JProjects\\gscript\\src\\main\\resources", "remoteRoot": "", "stopOnEntry": false}}
+[1783307883829] [FLOW] attach(agent): localRoot=E:\JProjects\gscript\src\main\resources remoteRoot=
+[1783307883837] >>> SEND {"seq":3,"type":"response","request_seq":2,"success":true,"command":"attach","body":{}}
+[1783307883837] [FLOW] onSuspended: reason=pause depth=3 line=22 frame.func=sumRange
+[1783307883837] >>> SEND {"seq":4,"type":"event","event":"stopped","body":{"reason":"pause","threadId":1,"allThreadsStopped":true}}
+[1783307883838] <<< RECV {"seq": 3, "type": "request", "command": "setBreakpoints", "arguments": {"source": {"path": "E:\\JProjects\\gscript\\src\\main\\resources\\debug_attach_runtime.script"}, "breakpoints": [{"line": 34}]}}
+[1783307883838] >>> SEND {"seq":5,"type":"response","request_seq":3,"success":true,"command":"setBreakpoints","body":{"breakpoints":[{"line":34,"verified":true}]}}
+[1783307883838] <<< RECV {"seq": 4, "type": "request", "command": "configurationDone"}
+[1783307883838] [FLOW] configurationDone(attach): 委托 DebugAgent
+[1783307883838] >>> SEND {"seq":6,"type":"response","request_seq":4,"success":true,"command":"configurationDone","body":{}}
+[1783307883839] <<< RECV {"seq": 5, "type": "request", "command": "stackTrace", "arguments": {"threadId": 1}}
+[1783307883839] >>> SEND {"seq":7,"type":"response","request_seq":5,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":0,"name":"sumRange","source":{"name":"debug_attach_runtime.script","sourceReference":1,"path":"debug_attach_runtime.script"},"line":22,"column":1,"endLine":22,"endColumn":1},{"id":1,"name":"runLongTask","source":{"name":"debug_attach_runtime.script","sourceReference":2,"path":"debug_attach_runtime.script"},"line":33,"column":1,"endLine":33,"endColumn":1},{"id":2,"name":"<anonymous>","source":{"name":"debug_attach_runtime.script","sourceReference":3,"path":"debug_attach_runtime.script"},"line":43,"column":1,"endLine":43,"endColumn":1}],"totalFrames":3}}
+[1783307883839] <<< RECV {"seq": 6, "type": "request", "command": "continue", "arguments": {"threadId": 1}}
+[1783307883841] >>> SEND {"seq":8,"type":"response","request_seq":6,"success":true,"command":"continue","body":{"allThreadsContinued":true}}
+[1783307883904] [FLOW] onSuspended: reason=breakpoint depth=2 line=34 frame.func=runLongTask
+[1783307883904] >>> SEND {"seq":9,"type":"event","event":"stopped","body":{"reason":"breakpoint","threadId":1,"allThreadsStopped":true}}
+[1783307883904] <<< RECV {"seq": 7, "type": "request", "command": "stackTrace", "arguments": {"threadId": 1}}
+[1783307883904] >>> SEND {"seq":10,"type":"response","request_seq":7,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":0,"name":"runLongTask","source":{"name":"debug_attach_runtime.script","sourceReference":4,"path":"debug_attach_runtime.script"},"line":34,"column":1,"endLine":34,"endColumn":1},{"id":1,"name":"<anonymous>","source":{"name":"debug_attach_runtime.script","sourceReference":5,"path":"debug_attach_runtime.script"},"line":43,"column":1,"endLine":43,"endColumn":1}],"totalFrames":2}}
+[1783307883905] <<< RECV {"seq": 8, "type": "request", "command": "scopes", "arguments": {"frameId": 0}}
+[1783307883905] >>> SEND {"seq":11,"type":"response","request_seq":8,"success":true,"command":"scopes","body":{"scopes":[{"name":"Local","variablesReference":1,"expensive":false},{"name":"Global","variablesReference":2,"expensive":false}]}}
+[1783307883905] <<< RECV {"seq": 9, "type": "request", "command": "variables", "arguments": {"variablesReference": 1}}
+[1783307883906] >>> SEND {"seq":12,"type":"response","request_seq":9,"success":true,"command":"variables","body":{"variables":[{"name":"s","value":"309270885","type":"number","variablesReference":0},{"name":"round","value":"2477","type":"number","variablesReference":0},{"name":"f","value":"144","type":"number","variablesReference":0},{"name":"this","value":"null","type":"null","variablesReference":0},{"name":"runLongTask","value":"[object Object]","type":"function","variablesReference":3},{"name":"rounds","value":"100000","type":"number","variablesReference":0}]}}
+[1783307883907] <<< RECV {"seq": 10, "type": "request", "command": "disconnect"}
+[1783307883907] [FLOW] disconnect(attach): 分离调试器，解释器继续运行
+[1783307883907] >>> SEND {"seq":13,"type":"response","request_seq":10,"success":true,"command":"disconnect","body":{}}
+[FLOW] DapServer 主循环退出，关闭日志

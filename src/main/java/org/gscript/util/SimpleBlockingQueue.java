@@ -56,4 +56,27 @@ public class SimpleBlockingQueue {
     public synchronized int size() {
         return queue.size();
     }
+
+    /**
+     * 无限阻塞取头部元素，直到有元素或被中断。
+     *
+     * <p>worker 主循环专用：无定时器任务时阻塞等待外部提交的 EvalTask。
+     * 与 {@link #poll(long)} 区别：无超时，仅被 offer 唤醒或 interrupt 中断。
+     *
+     * @return 头部元素
+     * @throws InterruptedException 被中断时抛出
+     */
+    public synchronized Object take() throws InterruptedException {
+        while (queue.isEmpty()) {
+            wait();
+        }
+        return queue.removeFirst();
+    }
+
+    /**
+     * 清空队列（shutdown 排空剩余任务用）。
+     */
+    public synchronized void clear() {
+        queue.clear();
+    }
 }

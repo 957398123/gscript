@@ -864,7 +864,7 @@ java -cp target/classes org.gscript.TestScript <name> [mode]
 
 | 模式 | 说明 |
 |------|------|
-| `run`（默认） | 编译源码 + 立即执行（含 runEventLoop，pump 定时器队列） |
+| `run`（默认） | 编译源码 + 立即执行（含 runEventLoop，awaitIdle 等待定时器排空） |
 | `dump` | 编译源码 + 打印字节码索引↔源码行映射（调试器源码映射验证用） |
 | `compile` | 编译源码 + 写出 `.gclass` 二进制文件（含 CRC32/SourceMap/FunctionTable） |
 | `rungclass` | 加载 `.gclass` + 反序列化 + 执行（无需重新编译） |
@@ -952,7 +952,8 @@ gscript → Java 方向已通过 `GSNativeFunction`（如 `Console`）实现；�
 | `scheduleTimeout(GSFunction cb, long delay, ArrayList args)` | 调度一次性定时器（setTimeout），返回 timer id |
 | `scheduleInterval(GSFunction cb, long period, ArrayList args)` | 调度周期性定时器（setInterval），返回 timer id |
 | `cancelTimer(int id)` | 取消定时器（clearTimeout/clearInterval 共用） |
-| `runEventLoop()` | 事件循环：pump 定时器队列直到排空（无定时器任务时立即返回） |
+| `runEventLoop()` | awaitIdle 语义：等待 worker 排空 taskQueue + 无 pending 定时器（10ms 轮询，无定时器任务时立即返回） |
+| `shutdown()` | 停止 worker 线程 + 关闭 TimerScheduler + 排空 taskQueue（幂等，长运行宿主释放资源时调用；CLI 场景无需调用） |
 | `installTimerGlobals()` | 注册 setTimeout/setInterval/clearTimeout/clearInterval 到 global 域（构造器已默认调用，宿主一般无需显式调用） |
 
 ### GSValue 类型转换方法
@@ -1022,7 +1023,7 @@ System.out.println(first.toIntValue());  // 1
 
 ## 定时器机制（EventLoop）
 
-gscript 内置 JS 风格的 `setTimeout`/`setInterval`/`clearTimeout`/`clearInterval`，采用**单线程事件循环**语义：守护线程 `gscript-timer` 只负责计时（不执行字节码），到期任务入队后由主线程串行执行回调。回调内设置的断点/单步天然工作。
+gscript 内置 JS 风格的 `setTimeout`/`setInterval`/`clearTimeout`/`clearInterval`，采用 **worker 线程独占执行 + 统一任务队列** 语义（V8 Isolate 模型）：守护线程 `gscript-timer` 只负责计时（不执行字节码），到期任务经 `TaskDispatcher` 投递到 worker 线程的统一任务队列；外部线程（主线程/业务线程）的 `eval`/`callFunction` 调用也包装为 `EvalTask` 提交到同一队列，由 worker 串行执行，调用方阻塞等结果（线性化语义）。回调内设置的断点/单步天然工作。
 
 ### 三层设计（核心机制默认就绪）
 
@@ -1030,20 +1031,49 @@ gscript 内置 JS 风格的 `setTimeout`/`setInterval`/`clearTimeout`/`clearInte
 
 | 层次 | 说明 | API |
 |------|------|-----|
-| ① 核心机制 | `TimerScheduler`（计时守护线程 + readyQueue），构造时默认就绪 | `ensureTimerScheduler()`（构造器调用） |
+| ① 核心机制 | `TimerScheduler`（计时守护线程 + `TaskDispatcher` 投递）+ `gscript-worker`（worker 线程 + taskQueue），构造时默认就绪 | `ensureTimerScheduler()` + `startWorker()`（构造器调用） |
 | ② 入口函数 | `setTimeout`/`setInterval`/`clearTimeout`/`clearInterval` 注册到 global 域，gscript 脚本用 | `installTimerGlobals()`（构造器调用） |
-| ③ 宿主直调 API | `scheduleTimeout`/`scheduleInterval`/`cancelTimer`，公开方法供宿主直接调度 | `GSInterpreter.scheduleTimeout` 等 |
+| ③ 宿主直调 API | `scheduleTimeout`/`scheduleInterval`/`cancelTimer`/`shutdown`，公开方法供宿主直接调度 | `GSInterpreter.scheduleTimeout` 等 |
 
-**解耦关系**：`ensureTimerScheduler()` 在 `installTimerGlobals()` 之前调用，核心机制不依赖入口函数注册。即使宿主从 global 移除 `setTimeout`，`TimerScheduler` 仍存在，宿主可通过 `scheduleTimeout` 直调。
+**解耦关系**：`ensureTimerScheduler()` 在 `installTimerGlobals()` 之前调用，核心机制不依赖入口函数注册。`TimerScheduler` 通过 `TaskDispatcher` 接口与 `GSInterpreter` 解耦，不直接持有解释器引用——到期任务经 `dispatch(task)` 投递到 worker 的 taskQueue。即使宿主从 global 移除 `setTimeout`，`TimerScheduler` 仍存在，宿主可通过 `scheduleTimeout` 直调。
 
 ```java
 public GSInterpreter() {
-    ensureTimerScheduler();      // 构造时就绪 TimerScheduler（核心机制默认初始化）
+    ensureTimerScheduler();      // 构造时就绪 TimerScheduler（this 作为 TaskDispatcher）
     installTimerGlobals();       // 默认注册 setTimeout/setInterval 等入口函数到 global 域
+    installTypeGlobals();        // 默认注册 parseInt/parseFloat/isNaN/String/Number/Boolean
+    startWorker();               // 启动 worker 线程（独占执行权，常驻守护）
 }
 ```
 
-> **无需显式调用 `installTimerGlobals()`**：构造器已默认调用。所有 `new GSInterpreter()` 后定时器机制立即可用。若宿主想自定义入口函数（如重命名），可从 global 移除默认函数后用 `scheduleTimeout` 自行封装。
+> **无需显式调用 `installTimerGlobals()`**：构造器已默认调用。所有 `new GSInterpreter()` 后定时器机制 + worker 线程立即可用。若宿主想自定义入口函数（如重命名），可从 global 移除默认函数后用 `scheduleTimeout` 自行封装。
+
+### 线程模型（worker 独占执行权）
+
+解释器内部维护一个常驻 worker 线程 `gscript-worker`（守护线程），**独占解释器执行权**——所有字节码执行（`stack`/`callStack` 操作）都在 worker 线程内完成，保证单线程串行，与调试器（`THREAD_ID=1`）兼容。
+
+| 线程 | 职责 | 跑字节码? |
+|------|------|----------|
+| `gscript-worker`（常驻守护） | 独占解释器执行权：消费 taskQueue，执行所有 eval/callFunction/定时器回调 | ✅ 全部 |
+| `gscript-timer`（守护） | 仅计时，到期后通过 `TaskDispatcher.dispatch(task)` 投递到 taskQueue | ❌ |
+| 外部业务线程（主线程等） | 调用 eval/callFunction → 包装 EvalTask 提交 → 阻塞 await 等结果 | ❌ |
+
+**双路径（避免递归死锁）**：所有 eval 入口（`eval`/`evalScript`/`evalExpression`）和 `callFunction` 都用 `Thread.currentThread() == workerThread` 判断：
+
+- **worker 自己调用**（定时器回调内 callFunction、eval 内部 OP_INVOKE 等）→ 直接执行 `xxxDirect`，无队列开销
+- **外部线程调用** → 包装 `EvalTask` 提交到 taskQueue + `submitAndAwait` 阻塞等结果
+
+**EvalTask 任务体系**：
+
+| 任务类型 | 包装目标 | 用途 |
+|----------|----------|------|
+| `RunnableEvalTask` | void 任务（`TaskRunnable`） | `eval`/`evalScript` 全家桶 |
+| `CallableEvalTask` | 返回 GSValue 任务（`TaskCallable`） | `callFunction`/`evalExpression` |
+| `TimerEvalTask` | 定时器回调（`TimerScheduler.TimerTask`） | 定时器到期回调，`run()` 调 `callFunctionDirect` |
+
+worker 主循环等待策略：无定时器时 `taskQueue.take()` 无限阻塞等外部任务；有定时器时 `taskQueue.poll(delay)` 等 `delay` 毫秒，超时表示定时器到点（`TimerScheduler` 已 dispatch 到 taskQueue），下一轮立即取到。
+
+> **调用点零改动**：所有 `runEventLoop()` 调用点（TestScript、DebugAgent launch、DapServer launch）语义从「主线程 pump readyQueue」升级为「awaitIdle 等待 worker 排空」，无需修改。`eval`/`callFunction` 自动经双路径路由到 worker。
 
 ### 全局函数（gscript 脚本用）
 
@@ -1058,20 +1088,23 @@ public GSInterpreter() {
 - `delayMs` / `periodMs` 为整数毫秒；负数延迟当 0 处理，`periodMs < 1` 当 1 处理（避免忙等）
 - `...args` 透传给回调（回调内从第 1 个参数起取，`this` 为 `null`）
 
-### 事件循环（runEventLoop）
+### 事件循环（awaitIdle 语义）
 
-主脚本 `eval` 返回后，调用 `runEventLoop` pump 定时器队列直到排空（`hasPending() == false`）：
+`runEventLoop()` 语义已升级为 **awaitIdle**：外部线程等待 worker 排空 taskQueue + 无 pending 定时器。不再直接 pump 队列——定时器回调由 worker 后台执行，本方法仅用于宿主需同步等待回调完成的场景。
 
-- **非阻塞**：`runEventLoop` 检查 `timerScheduler == null || !timerScheduler.hasPending()`，无定时器任务时立即返回
-- **纯 setTimeout 脚本**：所有回调执行完后队列排空，事件循环退出，进程正常终止
-- **纯 setInterval 脚本**：永不退出（需 `clearInterval` 或进程终止）
-- **异常策略（类 JS）**：回调内未捕获异常打印到 stderr 后继续下一个任务；`DebugAbortException`（调试终止请求）传播出循环终止事件循环
+- **退出条件**（10ms 轮询）：`!workerBusy && taskQueue.isEmpty() && !timerScheduler.hasPending()`，三者同时满足才返回
+- **worker 自己调用**：直接返回（死锁保护——worker 内部不能 await 自己排空）
+- **纯 setTimeout 脚本**：所有回调执行完后 taskQueue 排空 + hasPending=false → 返回，进程正常终止
+- **纯 setInterval 脚本**：hasPending 永远 true → 永不返回（需 `clearInterval` 或 DAP `terminate` 触发 `DebugAbortException` → worker 停止 → `workerStopped=true` → 本方法返回）
+- **异常策略（类 JS）**：回调内未捕获异常（`GSException`）打印到 stderr 后 worker 继续下一个任务；`DebugAbortException`（调试终止请求）使 worker 停止 + 排空 taskQueue
+- **workerStopped**：shutdown 或定时器回调抛 `DebugAbortException` 后置 true，`runEventLoop` 直接返回
 
-> **何时调用 `runEventLoop`**：仅在脚本使用了定时器且需同步等待回调完成时调用。宿主自行管理定时器线程的场景（如 `debugagent-eval` 模式）可不调用，主线程不被阻塞。
+> **何时调用 `runEventLoop`**：仅在脚本使用了定时器且需同步等待回调完成时调用（如 CLI 工具、launch 模式发 terminated 前）。宿主自行管理线程的场景（如 `debugagent-eval` 模式）可不调用——eval 提交给 worker 后立即返回，定时器回调由 worker 后台执行，主线程不被阻塞。
 
 ### 调试器交互
 
-- 回调在主线程执行（`callFunction` 复用 `callStack.push/pop` + `suspendCheck`），断点/单步/变量查看与普通函数调用一致
+- 回调在 worker 线程执行（`callFunctionDirect` 复用 `callStack.push/pop` + `suspendCheck`），断点/单步/变量查看与普通函数调用一致
+- 调试器挂起期间 worker 阻塞在 `suspendCheck`，DAP 线程通过 `getCallStackSnapshot()`（synchronized）安全读取调用栈。`THREAD_ID=1` 为逻辑 ID，worker 是唯一执行线程
 - `terminated` 事件时机延后到事件循环返回后（即所有定时器排空才发 terminated）
 - **attach 模式 disconnect**：仅分离调试器（如同 `node --inspect`），setInterval 程序继续运行；需发送 `terminate` 请求或 kill 进程终止
 
