@@ -1,0 +1,64 @@
+// 数组方法测试：length 可写
+// 覆盖截断/扩容/清空/同长/负值归零
+// 每个 check 打印 期望 vs 实际，便于人工核对
+
+function check(name, expected, actual) {
+    var mark = (expected == actual) ? "OK" : "FAIL";
+    console.log("[" + mark + "] " + name + ": expected=" + expected + ", actual=" + actual);
+}
+
+console.log("=== [1] 截断 ===");
+var a = [1, 2, 3, 4, 5];
+a.length = 3;
+check("length截断-长度", 3, a.length);
+check("length截断-a[0]", 1, a[0]);
+check("length截断-a[1]", 2, a[1]);
+check("length截断-a[2]", 3, a[2]);
+check("length截断-a[3]已删", null, a[3]);
+check("length截断-a[4]已删", null, a[4]);
+
+console.log("=== [2] 扩容补 null ===");
+var b = [1, 2];
+b.length = 4;
+check("length扩容-长度", 4, b.length);
+check("length扩容-b[0]", 1, b[0]);
+check("length扩容-b[1]", 2, b[1]);
+check("length扩容-b[2]为null", null, b[2]);
+check("length扩容-b[3]为null", null, b[3]);
+
+console.log("=== [3] 清空 ===");
+var c = [1, 2, 3];
+c.length = 0;
+check("length清空-长度", 0, c.length);
+check("length清空-c[0]为null", null, c[0]);
+check("length清空-c[1]为null", null, c[1]);
+
+console.log("=== [4] 设为同长（无操作）===");
+var d = [1, 2, 3];
+d.length = 3;
+check("length同长-长度", 3, d.length);
+check("length同长-d[0]", 1, d[0]);
+check("length同长-d[2]", 3, d[2]);
+
+console.log("=== [5] 负值归零 ===");
+var e = [1, 2, 3];
+e.length = -1;
+check("length负值归零-长度", 0, e.length);
+
+console.log("=== [6] 截断后再扩容（验证中间删除的 key 不复活）===");
+var f = [1, 2, 3, 4, 5];
+f.length = 2;                       // f=[1,2]
+f.length = 4;                       // f=[1,2,null,null]
+check("length截断后扩容-长度", 4, f.length);
+check("length截断后扩容-f[0]", 1, f[0]);
+check("length截断后扩容-f[1]", 2, f[1]);
+check("length截断后扩容-f[2]为null", null, f[2]);
+check("length截断后扩容-f[3]为null", null, f[3]);
+
+console.log("=== [7] 截断后原元素赋值（验证 key 真被删除）===");
+var g = [10, 20, 30];
+g.length = 1;                       // g=[10]
+g[1] = 99;                          // g=[10, 99]
+check("length截断后赋值-长度", 2, g.length);
+check("length截断后赋值-g[0]", 10, g[0]);
+check("length截断后赋值-g[1]", 99, g[1]);

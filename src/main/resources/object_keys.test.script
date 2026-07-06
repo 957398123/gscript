@@ -1,0 +1,52 @@
+// 对象方法测试：keys()
+// 覆盖属性名返回/自有属性优先/数组 keys/空对象
+// 每个 check 打印 期望 vs 实际，便于人工核对
+
+function check(name, expected, actual) {
+    var mark = (expected == actual) ? "OK" : "FAIL";
+    console.log("[" + mark + "] " + name + ": expected=" + expected + ", actual=" + actual);
+}
+
+console.log("=== [1] 基础 keys() ===");
+var o = {a: 1, b: 2, c: 3};
+var k = o.keys();
+check("keys-长度", 3, k.length);
+check("keys-含a", true, k.indexOf("a") >= 0);
+check("keys-含b", true, k.indexOf("b") >= 0);
+check("keys-含c", true, k.indexOf("c") >= 0);
+
+console.log("=== [2] 自有属性 keys 优先于 keys() 方法 ===");
+var o2 = {keys: 99};
+check("keys-自有属性优先", 99, o2.keys);
+
+// 注意：o2.keys() 此时不可调用（自有属性遮蔽了方法），
+// 但 o2.keys 直接访问应返回 99，而非方法对象
+var o3 = {keys: "hello"};
+check("keys-自有属性为字符串", "hello", o3.keys);
+
+console.log("=== [3] 空对象 keys() ===");
+var o4 = {};
+var k4 = o4.keys();
+check("keys-空对象长度", 0, k4.length);
+
+console.log("=== [4] 数组 keys() ===");
+// 数组继承 GSObject.keys()，返回数字索引字符串数组
+var arr = [10, 20, 30];
+var ka = arr.keys();
+check("keys-数组长度", 3, ka.length);
+check("keys-数组含0", true, ka.indexOf("0") >= 0);
+check("keys-数组含1", true, ka.indexOf("1") >= 0);
+check("keys-数组含2", true, ka.indexOf("2") >= 0);
+
+console.log("=== [5] keys() 返回值是新数组（修改不影响原对象）===");
+var o5 = {x: 1};
+var k5 = o5.keys();
+k5.push("injected");
+check("keys-返回值是新数组-原对象不含injected", null, o5.injected);
+check("keys-返回值是新数组-原对象 keys 长度不变", 1, o5.keys().length);
+
+console.log("=== [6] 含 null 值的属性也列出 ===");
+var o6 = {a: null, b: 1};
+var k6 = o6.keys();
+check("keys-null值属性也列出-长度", 2, k6.length);
+check("keys-null值属性也列出-含a", true, k6.indexOf("a") >= 0);

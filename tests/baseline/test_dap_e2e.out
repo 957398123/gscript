@@ -33,7 +33,7 @@
 
 [9] variables (Local)
   [PASS] variables 返回非空
-       局部变量: ['console', 'fibonacci', 'setTimeout', 'sumRange', 'setInterval', 'buildPerson', 'clearTimeout', 'tryCatchDemo', 'globalCount', 'clearInterval']
+       局部变量: ['parseFloat', 'console', 'fibonacci', 'sumRange', 'buildPerson', 'tryCatchDemo', 'globalCount', 'String', 'isNaN', 'clearInterval', 'parseInt', 'setTimeout', 'Number', 'setInterval', 'clearTimeout', 'Boolean']
   [PASS] 能找到 globalCount 变量
 
 [10] continue

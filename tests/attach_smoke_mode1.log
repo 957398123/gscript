@@ -1,0 +1,9 @@
+gclass loaded: /gtxt/debug_attach_test.gclass (bytecode=164 instructions)
+[DebugAgent] waitForDebugger 模式，监听端口 4711，等待 VSCode 连接...
+[DebugAgent] VSCode 已连接
+=== attach 调试测试开始 ===
+5! = 120
+sum = 150
+counter = 270
+=== attach 调试测试结束 ===
+[测试] 调试会话结束

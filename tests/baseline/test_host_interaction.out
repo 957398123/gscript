@@ -15,7 +15,8 @@ obj.scores=[90, 85, 95]
 config.timeout=5000
 config.retries=3
 tags[0]=1
-Uncaught Error: TypeError: function not exist. at <anonymous>:2
+Uncaught Error: TypeError: function not exist.
+  at <anonymous>:1 (in <anonymous>)
 err_is_null=true
 
 --- 断言 ---

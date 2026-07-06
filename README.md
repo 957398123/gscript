@@ -357,12 +357,181 @@ NullLiteral
 {fn: function(){return 42;}}.fn()   // 42
 [1, 2, 3][0]              // 1
 [[1,2],[3,4]][1][0]       // 3
-"str".length              // null（GSString 暂无 length 属性）
+"str".length              // 3（字符串长度）
 null.foo                  // 抛 TypeError: Cannot read properties of null
 (42).foo                  // null（数值字面量无属性，静默返回 null）
 ```
 
 > **词法注意**：`42.foo` 会被词法器解析为浮点字面量 `42.` 加标识符 `foo`（与 JS 一致），需写成 `(42).foo` 或 `42..foo` 才能访问整数字面量的属性；`3.14.bar` 则可直接使用。
+
+## 内置类型与方法
+
+gscript 内置 10 种数据类型（bool / int / float / str / object / array / null / nan / function / native），其中 str / object / array 提供与 JS 对标的属性和方法。所有原生方法以**静态共享 `GSNativeFunction`** 形式实现（语义等价于 JS 的 `Array.prototype.xxx` / `String.prototype.xxx`），所有同类对象共用同一组函数对象，`OP_INVOKE` 调用时 `args[0]` 为对象本身（this）。
+
+### 字符串（str）
+
+字符串字面量 `"hello"` 或 `String(x)` 转换得到。`length` 为数值属性，另支持 17 个方法（对标 JS `String.prototype`）：
+
+| 方法/属性 | 说明 |
+|-----------|------|
+| `length` | 字符串长度（数值属性） |
+| `charAt(i)` / `charCodeAt(i)` | 取字符 / 取字符码（`charAt` 越界返回空串，`charCodeAt` 越界返回 NaN） |
+| `indexOf(s[, from])` / `lastIndexOf(s[, from])` | 正向 / 反向查找子串，返回索引，未找到返回 -1 |
+| `substring(s, e)` / `slice(s, e)` / `substr(s, len)` | 截取子串（`substring` 不支持负索引且 start>end 时交换；`slice` 支持负索引；`substr` 第二参为长度） |
+| `split(sep)` | 按分隔符拆分为数组（无参返回 `[原串]`，空分隔按字符拆） |
+| `replace(old, new)` | 替换**首次**出现（非正则，手写 indexOf + substring 拼接） |
+| `trim()` / `toUpperCase()` / `toLowerCase()` | 去首尾空白 / 转大写 / 转小写 |
+| `startsWith(s)` / `endsWith(s)` / `includes(s)` | 前缀 / 后缀 / 包含判断 |
+| `repeat(n)` | 重复 n 次（n<0 抛 `RangeError: Invalid count value`） |
+| `concat(s)` | 拼接字符串 |
+
+```javascript
+"hello".length;              // 5
+"hello".charAt(1);           // "e"
+"hello".indexOf("l");        // 2
+"hello".slice(-2);           // "lo"
+"a,b,c".split(",");          // ["a","b","c"]
+"hello".replace("l", "L");   // "heLlo"（仅首次）
+"  hi  ".trim();             // "hi"
+"abc".repeat(3);             // "abcabcabc"
+```
+
+### 数组（array）
+
+数组字面量 `[1,2,3]` 或 `new Array()`。`length` **可读可写**（写时按 JS 语义截断或扩容），另支持 8 个方法（对标 JS `Array.prototype`）：
+
+| 方法/属性 | 说明 |
+|-----------|------|
+| `length` | 元素个数（**可写**：`arr.length = n` 截断到 n，或扩容补 `null`） |
+| `push(...items)` / `pop()` | 尾部追加（返回新长度）/ 删除并返回尾部元素（空数组返回 `null`） |
+| `shift()` / `unshift(...items)` | 头部删除并返回 / 头部插入（返回新长度） |
+| `indexOf(item[, from])` | 严格相等（`seq`）查找，返回索引，未找到返回 -1；支持 `from` 负索引 |
+| `join([sep])` | 用分隔符连接（默认 `,`），`null` 元素输出空串 |
+| `slice([start[, end]])` | 区间浅拷贝（新数组），支持负索引 |
+| `splice(start[, deleteCount[, ...items]])` | 删除 / 插入 / 替换，返回被删元素数组（JS 语义） |
+
+**`length` 可写语义**（JS 对标）：
+
+```javascript
+var a = [1, 2, 3, 4, 5];
+a.length = 3;                // 截断，a=[1,2,3]
+a.length = 5;                // 扩容，a=[1,2,3,null,null]
+a.length = 0;                // 清空
+```
+
+**`splice` 语义**（ES5 `Array.prototype.splice` 规范）：
+
+```javascript
+var a = [1, 2, 3, 4, 5];
+a.splice(1, 2);              // 返回 [2,3]，a=[1,4,5]（删除）
+a.splice(1, 0, 9, 9);        // 返回 []，a=[1,9,9,4,5]（插入）
+a.splice(1, 1, 8);           // 返回 [9]，a=[1,8,9,4,5]（替换）
+a.splice(-1, 1);             // 负索引：start+=len
+a.splice(2);                 // deleteCount 缺省：删到末尾
+a.splice();                  // 0 实参：无操作（返回 []，原数组不变）
+```
+
+> **gscript 无 hole 概念**：JS 数组扩容产生 empty slot（hole），gscript 用 `null` 近似。`computeLength` 从索引 0 开始取最大连续索引 + 1，遇 hole 停止。
+
+### 对象（object）
+
+对象字面量 `{a: 1}` 或 `new Object()`。支持 `keys()` 方法返回属性名数组：
+
+| 方法 | 说明 |
+|------|------|
+| `keys()` | 返回全部属性名数组（对标 `Object.keys()`，顺序不保证） |
+
+```javascript
+var o = {a: 1, b: 2, c: 3};
+o.keys();                    // 例如 ["a","b","c"]（顺序不保证）
+o.keys().length;             // 3
+```
+
+> **自有属性优先**：成员中已有同名 key 时优先返回成员值。如 `{keys: 99}.keys` 返回 `99` 而非 `keys()` 方法对象，对标 JS 自有属性优先于原型方法。仅当成员不存在时才返回内置方法。
+
+### 闭包与作用域
+
+gscript 支持**词法作用域 + 闭包**：函数定义时捕获外层 `GSEnv` 作用域引用，调用时沿作用域链（`env.parent`）查找变量。
+
+```javascript
+function makeCounter() {
+    var count = 0;
+    return function() {       // 闭包捕获外层 count
+        count = count + 1;
+        return count;
+    };
+}
+var c1 = makeCounter();
+var c2 = makeCounter();
+c1(); c1();                   // c1: 2
+c2();                         // c2: 1（c1/c2 独立计数，各自的环境互不影响）
+```
+
+### this 绑定
+
+对象方法内的 `this` 绑定到调用对象（`OP_INVOKE` 将 `objectRef` 作为 `args[0]` 即隐式 `this` 传入）：
+
+```javascript
+var obj = {
+    name: "Tom",
+    getName: function() { return this.name; }
+};
+obj.getName();                // "Tom"
+```
+
+对象字面量可直接定义函数属性并调用：`{fn: function(){return 42;}}.fn()` 返回 42。
+
+### 异常处理
+
+gscript 支持 `try / catch / finally / throw`，语义对标 JS。`throw` 可抛出任意 GSValue（字符串/对象/数组等），异常沿调用栈传播直到被 `catch` 捕获，`finally` 块无论是否异常都执行。
+
+```javascript
+try {
+    throw "boom";
+} catch (e) {
+    console.log("caught: " + e);    // caught: boom
+} finally {
+    console.log("finally");          // finally（始终执行）
+}
+```
+
+**异常信息格式**（`GSException.formatMessage()`）：未捕获异常打印多行格式，列出 throw 点 + caller 调用栈（替代旧的 `at <anonymous>:<ip>` 字节码 IP，对用户无意义）：
+
+```
+Uncaught Error: boom
+  at timer.script:3 (in badCall)
+  at timer.script:6 (in <anonymous>)
+```
+
+`GSException` 携带源码映射字段（`sourceLines`/`sourcePath`/`originIp`/`originSourceLine`）+ `callStack`（caller 帧列表，从内到外）。`OP_INVOKE`/`OP_CONSTRUCTOR` catch 块中 `appendCaller(frame)` 追加调用者帧，`ex.setIp(frame.getIP() - 1)` rebase 到 invoke 指令位置——保证跨函数抛出的异常能被调用者 try-catch 捕获（否则 `handleException` 会用 callee 的 ip 空间比对 caller 的 monitor 范围，导致捕获失败）。
+
+原生函数抛出的异常（如 `"x".repeat(-1)` 抛 `RangeError: Invalid count value`）同样支持 rebase，`OP_INVOKE` type==9 分支 try-catch 同构处理。
+
+### 全局类型转换函数
+
+构造器默认注册到 global 域（`installTypeGlobals()`，与 `installTimerGlobals()` 并列）：
+
+| 函数 | 说明 |
+|------|------|
+| `parseInt(s[, radix])` | 解析整数：提取前导数字，支持 radix 2-36，`"0x"` 前缀自动切 16 进制 |
+| `parseFloat(s)` | 解析浮点：手写提取 `[符号][整数][.小数][e±指数]` 前缀 |
+| `isNaN(x)` | 判断 NaN：NaN 直接判断；字符串走 `Number` 转换后判断（`isNaN("")` = `true` 是 JS 特例） |
+| `String(x)` | 转 gscript 字符串 |
+| `Number(x)` | 转 gscript 数值（要求整体合法，否则返回 NaN） |
+| `Boolean(x)` | 转 gscript 布尔（等价 `toBoolean`：falsy = `0`/`""`/`null`/`NaN`） |
+
+```javascript
+parseInt("123abc");          // 123（提取前导数字）
+parseInt("0xFF");            // 255（0x 前缀自动切 16 进制）
+parseInt("3.14");            // 3（截断小数）
+Number("123abc");            // NaN（要求整体合法）
+Number("3.14");              // 3.14
+isNaN("abc");                // true
+String(42);                  // "42"
+Boolean(0);                  // false
+```
+
+> **parseInt vs Number 最易混淆**：`parseInt` 容错提取前导，`Number` 严格整体合法。数值类型参数有短路优化（`parseInt(int)` 直接返回，避免 ToString 往返），但 `bool`/`null` 不短路（`parseInt(true)` = `NaN`，因 `ToString("true")` 非数字）。
 
 ## 字节码
 
@@ -1167,6 +1336,16 @@ interp.enableDebugMode(agent);  // 主入口：setInterpreter + setDebugMode(tru
 
 `prepareDebugEntry` 在所有顶层 eval 入口（5-arg eval / evalScript / evalExpression / evalScriptFile）调用，确保首次 `suspendCheck` 命中 entry stop。
 
+### pause on exceptions 机制
+
+`DebugController.checkException(frame, depth, exception)` 在解释器 `catch(GSException)` 块中调用，实现异常断点挂起：
+
+- `DapServer.handleSetExceptionBreakpoints` 据 DAP `filters`（如 `["uncaught"]`）设置 `debugController.pauseOnException`
+- 异常抛出时 `checkException` 检查：若 `pauseOnException` 启用且异常未被 catch，挂起 worker（reason=`exception`），stackTrace 从 `interpreter.getCallStackSnapshot()` 读取
+- **「只挂起一次」语义**：`GSException.paused` 标志（运行时字段，不参与 gclass 序列化）。`checkException` 首次挂起时置 `paused=true`，后续跨帧传播路径上的 `checkException` 调用见此标志即跳过——避免同一异常在每帧 catch 块反复触发 `stopped(exception)`，用户只需 continue 一次
+
+> **时序注意**：`debugagent-eval` 模式（`startAttachListener` 非阻塞 + 主线程立即 eval）下，若 VSCode 未及时连接，`debugController` 为 null 时异常已抛出，`checkException` 不被调用。**测试 pause on exceptions 必须用 `debugagent-waitattach` 模式**（阻塞等 configurationDone，确保 controller 就位后再 eval）。详见 `test_pause_exception.py`。
+
 ### eval sourcePath 生成
 
 debug 模式下，`evalScript` / `evalExpression` 用 `generateEvalPath()` 生成唯一 sourcePath（`"eval-" + counter + ".script"`，AtomicCounter 自增），VSCode 可通过 source 请求获取源码内容。`evalExpression` 的源码形式为 `"return (1 + 2);"`。
@@ -1497,7 +1676,7 @@ Attach 模式下若 gclass 携带 `SourceContent` 属性，VSCode 会通过 DAP 
 | `stopOnEntry` | ✅ | launch + attach 均支持 |
 | 路径映射 | ✅ | attach 模式 `localRoot`/`remoteRoot` |
 | 条件断点 | ❌ | 暂不支持 |
-| 异常断点 | ❌ | 暂不支持（预留） |
+| 异常断点（pause on exceptions） | ✅ | DAP `setExceptionBreakpoints` filters 控制；未捕获异常首次抛出时挂起（reason=`exception`），`GSException.paused` 标志保证"只挂起一次"，跨帧传播不重复触发 |
 
 ### 故障排查
 
@@ -1531,7 +1710,7 @@ cd tests
 python run_baseline.py
 ```
 
-当前测试覆盖（228 passed, 0 failed）：
+当前测试覆盖（301 passed, 0 failed）：
 
 | 测试文件 | 用例数 | 覆盖内容 |
 |----------|--------|----------|
@@ -1551,3 +1730,19 @@ python run_baseline.py
 | test_debug_mode_eval_expression.py | 8 | evalExpression 调试 |
 | test_debug_mode_unconnected.py | 6 | VSCode 未连不阻塞 |
 | test_debug_mode_wait_attach.py | 10 | waitAttach 模式 |
+| test_pause_exception.py | 16 | pause on exceptions（异常断点 + 只挂起一次语义） |
+| test_callfn_breakpoint.py | 17 | 宿主 callFunction 触发函数体内断点（虚拟源 sourceReference>0） |
+| test_attach_smoke.py | 23 | attach 冒烟（模式1 waitForDebugger 10 + 模式2 attachReady 13） |
+
+### 脚本测试
+
+内置类型与方法的回归测试脚本位于 `src/main/resources/`，命名约定 `<name>.test.script`，通过 `TestScript <name> run` 执行：
+
+```bash
+java -cp target/classes org.gscript.TestScript array_methods_test run        # 数组基础方法 7 个
+java -cp target/classes org.gscript.TestScript array_splice.test run         # splice（删除/插入/替换/负索引/缺省/清空）
+java -cp target/classes org.gscript.TestScript array_length_set.test run     # length 可写（截断/扩容/清空/负值归零）
+java -cp target/classes org.gscript.TestScript object_keys.test run          # keys()（属性名/自有属性优先/数组 keys）
+java -cp target/classes org.gscript.TestScript string_methods_test run       # 字符串 17 方法
+java -cp target/classes org.gscript.TestScript type_conversion_test run      # 全局类型转换函数（parseInt/Number/...）
+```

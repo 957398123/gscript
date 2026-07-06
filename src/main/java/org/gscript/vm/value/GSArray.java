@@ -171,6 +171,80 @@ public class GSArray extends GSObject {
     };
 
     /**
+     * splice(start, deleteCount, ...items): 删除/插入/替换，返回被删元素数组（JS 语义）。
+     * <ul>
+     *   <li>{@code splice(start)} 不传 deleteCount：删到末尾</li>
+     *   <li>{@code splice(start, 0, ...items)}：纯插入</li>
+     *   <li>{@code splice(start, n, ...items)}：替换（n 个删除，items 插入）</li>
+     *   <li>start 支持负索引（+= len）</li>
+     * </ul>
+     */
+    private static final GSNativeFunction SPLICE = new GSNativeFunction("splice") {
+        public GSValue call(ArrayList args) {
+            GSArray arr = (GSArray) args.get(0);
+            int len = computeLength(arr.members);
+
+            // start 归一化
+            int start = 0;
+            if (args.size() >= 2) {
+                start = ((GSValue) args.get(1)).toIntValue();
+                if (start < 0) { start += len; if (start < 0) start = 0; }
+                if (start > len) start = len;
+            }
+
+            // deleteCount（ES5 Array.prototype.splice 规范）：
+            //   0 实参（args.size()==1）：actualDeleteCount=0，无操作
+            //   1 实参（args.size()==2，只传 start）：删到末尾
+            //   2+ 实参（args.size()>=3，传了 deleteCount）：删除 deleteCount 个
+            int deleteCount;
+            if (args.size() == 1) {
+                deleteCount = 0;
+            } else if (args.size() == 2) {
+                deleteCount = len - start;
+            } else {
+                deleteCount = ((GSValue) args.get(2)).toIntValue();
+                if (deleteCount < 0) deleteCount = 0;
+                if (deleteCount > len - start) deleteCount = len - start;
+            }
+
+            // args[3..] 为插入项；args.size() < 3 时无插入项，clamp 到 0 避免负数导致尾部写回 key 偏移
+            int insertCount = args.size() > 3 ? args.size() - 3 : 0;
+
+            // 1. 收集被删元素 → removed
+            GSArray removed = new GSArray();
+            for (int i = 0; i < deleteCount; i++) {
+                GSValue v = (GSValue) arr.members.get(Integer.toString(start + i));
+                if (v != null) removed.members.put(Integer.toString(i), v);
+            }
+
+            // 2. 读出尾部元素（start+deleteCount 之后的部分）
+            int tailCount = len - start - deleteCount;
+            GSValue[] tail = new GSValue[tailCount];
+            for (int i = 0; i < tailCount; i++) {
+                tail[i] = (GSValue) arr.members.get(Integer.toString(start + deleteCount + i));
+            }
+
+            // 3. 删除从 start 到原末尾的所有 key
+            for (int i = start; i < len; i++) {
+                arr.members.remove(Integer.toString(i));
+            }
+
+            // 4. 写入新插入项
+            for (int i = 0; i < insertCount; i++) {
+                arr.members.put(Integer.toString(start + i), (GSValue) args.get(3 + i));
+            }
+
+            // 5. 写回尾部
+            for (int i = 0; i < tailCount; i++) {
+                if (tail[i] != null) {
+                    arr.members.put(Integer.toString(start + insertCount + i), tail[i]);
+                }
+            }
+            return removed;
+        }
+    };
+
+    /**
      * 计算数组长度（从索引 0 开始的最大连续索引 + 1）。
      * 遇到空洞（key 不存在）即停止，与现有 length 语义一致。
      */
@@ -212,7 +286,7 @@ public class GSArray extends GSObject {
      * 获取数组属性：
      * <ul>
      *   <li>{@code length} 返回元素个数（连续索引数）</li>
-     *   <li>{@code push/pop/shift/unshift/indexOf/join/slice} 返回共享的静态原生方法</li>
+     *   <li>{@code push/pop/shift/unshift/indexOf/join/slice/splice} 返回共享的静态原生方法</li>
      * </ul>
      * 方法以共享的静态 {@link GSNativeFunction} 形式返回（所有数组共用同一组函数对象，
      * 语义等价于 JS 的 Array.prototype.xxx）。由 OP_INVOKE 的 type==9 分支直接调用，
@@ -229,6 +303,37 @@ public class GSArray extends GSObject {
         if ("indexOf".equals(name)) return INDEX_OF;
         if ("join".equals(name)) return JOIN;
         if ("slice".equals(name)) return SLICE;
+        if ("splice".equals(name)) return SPLICE;
         return super.getProperty(name);
+    }
+
+    /**
+     * 重写 setProperty：拦截 {@code "length"} 赋值，按 JS 语义截断或扩容数组。
+     * <ul>
+     *   <li>{@code arr.length = n}（n &lt; 当前长度）：截断，删除 n..len-1 的元素</li>
+     *   <li>{@code arr.length = n}（n &gt; 当前长度）：扩容，补 GSNull（gscript 无 hole 概念，用 null 近似）</li>
+     *   <li>{@code arr.length = 0}：清空数组</li>
+     * </ul>
+     * 其余属性（数字索引等）走父类 {@code members.put(name, value)}，与 JS 数组下标赋值一致。
+     */
+    public void setProperty(String name, GSValue value) {
+        if ("length".equals(name)) {
+            int newLen = value.toIntValue();
+            if (newLen < 0) newLen = 0;
+            int curLen = computeLength(members);
+            if (newLen < curLen) {
+                // 截断：删除 newLen ~ curLen-1 的元素
+                for (int i = newLen; i < curLen; i++) {
+                    members.remove(Integer.toString(i));
+                }
+            } else if (newLen > curLen) {
+                // 扩容：补 GSNull（JS 语义为 empty slot/hole，gscript 无 hole 概念，用 GSNull 近似）
+                for (int i = curLen; i < newLen; i++) {
+                    members.put(Integer.toString(i), GSNull.NULL);
+                }
+            }
+            return;
+        }
+        super.setProperty(name, value);
     }
 }

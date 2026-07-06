@@ -3,7 +3,7 @@
   [PASS] initialize 成功
   [PASS] attach 成功
   [PASS] 收到 stopped（主线程首次 eval 挂起）
-  [PASS] stopped 原因 = pause（pauseOnAttach）
+  [PASS] stopped 原因 = entry（entryStopRequested）
   [PASS] stackTrace 有帧
   [PASS] 栈顶帧行号 > 0
   [PASS] source.sourceReference > 0（源码来自 gclass）
