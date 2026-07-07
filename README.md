@@ -1380,6 +1380,7 @@ worker 主循环等待策略：无定时器时 `taskQueue.take()` 无限阻塞�
 - 调试器挂起期间 worker 阻塞在 `suspendCheck`，DAP 线程通过 `getCallStackSnapshot()`（synchronized）安全读取调用栈。`THREAD_ID=1` 为逻辑 ID，worker 是唯一执行线程
 - `terminated` 事件时机延后到事件循环返回后（即所有定时器排空才发 terminated）
 - **attach 模式 disconnect**：仅分离调试器（如同 `node --inspect`），setInterval 程序继续运行；需发送 `terminate` 请求或 kill 进程终止
+- **disconnect 后重新 attach**：`startAttachListener` 的 accept 线程以 `while(true)` 循环 accept，disconnect 后 `dapServer.run()` 返回，线程回到 accept 等待新连接。VSCode 可重新 attach（每次创建新 DapServer 实例，状态自然重置），controller 重新注入 + `pauseOnAttach` 触发挂起。适用于"天劫辅助软件"等需反复调试同一运行中进程的场景
 
 ### 示例
 
@@ -1768,13 +1769,22 @@ Attach 模式下若 gclass 携带 `SourceContent` 属性，VSCode 会通过 DAP 
 
 > **sourceReference 稳定映射**：同一 `sourcePath` 在整个 attach 会话期间永远返回同一 `sourceReference`（`sourcePathToRef` 反向映射复用，不随 stackTrace 重新分配）。源码内容（`agent.getSourceContents()`）在 attach 期间不变，故 ref→path 映射也应稳定。早期实现每次 stackTrace 都 `sourceRefs.clear()` + `nextSourceRef++` 重新分配，导致 VSCode 持有的旧 ref 失效——VSCode 在单次 stopped 内可能连发多次 stackTrace（UI 刷新），或跨 stopped 缓存旧 ref，用旧 ref 发 source 请求时 DapServer 查不到 path，返回 "source not available"。稳定映射后此问题消除。
 
-#### 已加载源码列表（loadedSources 请求）
+#### 已加载源码列表（loadedSources 请求 + loadedSource 事件）
 
 Attach 模式下，远程源码只有出现在 callStack 中时才会被 stackTrace 报告，VSCode 才能通过 source 请求获取。文件不在 callStack 时（如已 continue 跳过），用户无法重新打开源码下断点。
 
 `loadedSources` 请求（`supportsLoadedSourcesRequest=true`）解决此问题：返回 `agent.getSourceContents()` 中所有已 eval 的源文件列表（含不在 callStack 的）。VSCode 据此在 **CALL STACK 视图底部**显示"**LOADED SCRIPTS**"折叠节点，用户展开即可看到所有已加载的远程文件，点击任意文件 → VSCode 发 source 请求获取源码 → 可直接下断点。
 
 `sourceReference` 复用 `sourcePathToRef` 稳定映射，与 stackTrace 同一套映射，保证用户从 LOADED SCRIPTS 打开的文件与 callStack 帧的 source 是同一 sourceReference。
+
+> **LOADED SCRIPTS 不显示问题**：VSCode 在 `configurationDone` 之前就发送 `loadedSources` 请求，此时 `getSourceContents()` 可能为空（脚本尚未 eval），返回空列表后 VSCode 不主动刷新——导致 LOADED SCRIPTS 节点不显示已加载文件，需手动 toggle 视图设置才出现。
+>
+> 修复采用**推拉双保险**机制：
+> - **拉模式（loadedSources 请求）**：VSCode 主动请求全量列表，DapServer 返回 `getSourceContents()` 所有源文件。
+> - **推模式（loadedSource 事件）**：首次 `onSuspended` 时（脚本已 eval），DapServer 主动发送 `loadedSource` 事件（`reason="new"`）逐个通知 VSCode 新加载的源文件，VSCode 收到后立即加入 LOADED SCRIPTS 视图。
+> - **process 事件**：首次 `onSuspended` 时还发送 `process` 事件（`startMethod="attach"`），VSCode 收到后重新请求 `loadedSources` 作为全量刷新。
+>
+> `announcedSources` 集合跟踪已通知的源文件路径，避免重复发送 `loadedSource` 事件。每次 attach 会话（DapServer 实例）独立维护，disconnect 后重建自然清空。
 
 ### 调试功能矩阵
 
@@ -1791,7 +1801,8 @@ Attach 模式下，远程源码只有出现在 callStack 中时才会被 stackTr
 | 路径映射 | ✅ | attach 模式 `localRoot`/`remoteRoot` |
 | 条件断点 | ❌ | 暂不支持 |
 | 异常断点（pause on exceptions） | ✅ | DAP `setExceptionBreakpoints` filters 控制；未捕获异常首次抛出时挂起（reason=`exception`），`GSException.paused` 标志保证"只挂起一次"，跨帧传播不重复触发 |
-| 已加载源码（LOADED SCRIPTS） | ✅ | DAP `loadedSources` 请求（`supportsLoadedSourcesRequest=true`）。attach 模式下 VSCode 在 CALL STACK 视图底部显示"LOADED SCRIPTS"节点，列出所有已 eval 的远程源码文件。用户可随时打开任意已加载文件下断点，无需从别的文件步进进入 |
+| 已加载源码（LOADED SCRIPTS） | ✅ | DAP `loadedSources` 请求（`supportsLoadedSourcesRequest=true`）+ `loadedSource` 事件（推模式，`reason="new"`）+ `process` 事件（触发全量刷新）。attach 模式下 VSCode 在 CALL STACK 视图底部显示"LOADED SCRIPTS"节点，列出所有已 eval 的远程源码文件。首次挂起时主动推送，解决 VSCode 缓存空列表不刷新的问题。用户可随时打开任意已加载文件下断点，无需从别的文件步进进入 |
+| disconnect 后重新 attach | ✅ | `startAttachListener` accept 线程 `while(true)` 循环 accept，disconnect 后不退出，VSCode 可重新连接。每次连接创建新 DapServer 实例（状态重置），controller 重新注入 + `pauseOnAttach` 挂起 |
 
 ### 故障排查
 
@@ -1806,6 +1817,8 @@ Attach 模式下，远程源码只有出现在 callStack 中时才会被 stackTr
 | VSCode 收不到 terminated 事件 | `startAttachListener`/`waitForDebuggerAndAttach` 模式下需显式调用 `agent.notifyScriptCompleted()`（launch 模式自动发） |
 | source 请求返回 "source not available" | 确认 gclass 含 sourceContent（`compile` 模式生成）；确认 DAP Source 字段名是 `sourceReference`（非 `reference`）；若偶发（VSCode 多次 stackTrace 或缓存旧 ref 触发），检查 `sourceRefs` 是否被 `clear()`——已改为 `sourcePathToRef` 稳定映射，不再 clear |
 | 远程源码跳过后难以重新下断点 | attach 模式下文件不在 callStack 时 stackTrace 不返回它，VSCode 无法重新打开源码。展开 CALL STACK 视图底部的"LOADED SCRIPTS"节点（`loadedSources` 请求），列出所有已 eval 的远程文件，点击即可打开下断点 |
+| LOADED SCRIPTS 节点不显示文件 | VSCode 在 `configurationDone` 前发 `loadedSources` 请求，此时 `getSourceContents()` 可能为空（脚本尚未 eval），返回空列表后 VSCode 不主动刷新。已修复：首次 `onSuspended` 时发送 `loadedSource` 事件（推模式）+ `process` 事件（触发全量刷新），VSCode 收到后立即显示已加载文件 |
+| disconnect 后无法重新 attach | `startAttachListener` 的 accept 线程原实现 `dapServer.run()` 返回后即退出，无人 accept 新连接。已修复：accept 线程以 `while(true)` 循环 accept，disconnect 后回到等待状态，VSCode 可重新 attach。每次连接创建新 DapServer 实例（状态重置），controller 重新注入 + `pauseOnAttach` 挂起 |
 
 ## 测试
 

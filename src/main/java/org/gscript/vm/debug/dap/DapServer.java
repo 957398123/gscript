@@ -38,9 +38,11 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * DAP（Debug Adapter Protocol）适配器。
@@ -115,12 +117,37 @@ public class DapServer implements DebugController.SuspendListener {
      * 导致 VSCode 持有的旧 sourceReference 失效（VSCode 在单次 stopped 内可能连发多次 stackTrace，
      * 或跨 stopped 缓存旧 ref），handleSource 查不到 path 返回 "source not available"。
      * 修复后同一 sourcePath 永远返回同一 ref，VSCode 用任何时刻拿到的 ref 都能查到。
+     *
+     * <p><b>线程安全</b>：DAP 线程（handleStackTrace/handleLoadedSources/handleSource）与
+     * 解释器线程（announceNewLoadedSources via onSuspended）均会读写，用 synchronizedMap
+     * 防止 HashMap 并发修改导致的结构损坏。
      */
-    private final Map sourceRefs = new HashMap();
+    private final Map sourceRefs = Collections.synchronizedMap(new HashMap());
     /** sourcePath → sourceRef 的反向映射，用于复用已分配的 ref（稳定映射核心） */
-    private final Map sourcePathToRef = new HashMap();
+    private final Map sourcePathToRef = Collections.synchronizedMap(new HashMap());
     /** 下一个源码引用 ID（从 1 开始，0 表示按 path 读） */
     private int nextSourceRef = 1;
+    /**
+     * process 事件是否已发送（每次 attach 会话只发一次）。
+     *
+     * <p>VSCode attach 后立即发 loadedSources 请求，此时 getSourceContents() 为空（脚本尚未 eval），
+     * 返回空列表。VSCode 缓存空结果不主动刷新，导致 LOADED SCRIPTS 视图不显示已加载文件。
+     * 首次 onSuspended 时（脚本已 eval，getSourceContents 有内容）发送 process 事件，
+     * VSCode 收到后会重新请求 loadedSources，此时返回完整列表。
+     */
+    private boolean processEventSent = false;
+    /**
+     * 已通过 loadedSource 事件通知 VSCode 的源文件路径集合。
+     *
+     * <p>每次 onSuspended 时比较 agent.getSourceContents() 与此集合，
+     * 对未通知过的源文件发送 loadedSource 事件（reason="new"），
+     * VSCode 收到后立即将其加入 LOADED SCRIPTS 视图，无需等待用户手动刷新。
+     *
+     * <p>与 handleLoadedSources（全量列表请求）互补：loadedSource 事件是增量推送，
+     * 解决 VSCode 缓存首次空 loadedSources 结果不主动刷新的核心问题。
+     * 每次 attach 会话（DapServer 实例）独立维护，disconnect 后重建自然清空。
+     */
+    private final Set announcedSources = new HashSet();
 
     /**
      * 调试代理（attach 模式非 null，launch 模式 null）。
@@ -739,15 +766,7 @@ public class DapServer implements DebugController.SuspendListener {
             if (srcContent != null) {
                 // 稳定映射：同一 sourcePath 复用已分配的 ref，避免 clear 导致 VSCode 持有的旧 ref 失效。
                 // 修复前每次 stackTrace 都 nextSourceRef++ 重新分配，VSCode 缓存的旧 ref 在 sourceRefs 中查不到。
-                Integer existingRef = (Integer) sourcePathToRef.get(framePath);
-                int ref;
-                if (existingRef != null) {
-                    ref = existingRef.intValue();
-                } else {
-                    ref = nextSourceRef++;
-                    sourcePathToRef.put(framePath, new Integer(ref));
-                    sourceRefs.put(new Integer(ref), framePath);
-                }
+                int ref = getOrCreateSourceRef(framePath);
                 // DAP 规范 Source 对象字段名为 sourceReference（非 reference），
                 // VSCode 据此发 source 请求时回填顶层 sourceReference，handleSource 用它查 sourceRefs
                 source.addProperty("sourceReference", ref);
@@ -936,6 +955,30 @@ public class DapServer implements DebugController.SuspendListener {
     }
 
     /**
+     * 获取或创建 sourcePath 对应的稳定 sourceReference。
+     *
+     * <p>同一 sourcePath 永远返回同一 ref：首次调用时分配新 ref 并建立双向映射
+     * （sourcePathToRef / sourceRefs），后续调用直接复用。
+     *
+     * <p><b>线程安全</b>：DAP 线程（handleStackTrace/handleLoadedSources）与解释器线程
+     * （announceNewLoadedSources via onSuspended）均会调用，用 synchronized 保证
+     * check-then-act 原子性，避免两线程同时为不同 path 分配相同 ref。
+     *
+     * @param sourcePath 源码路径（作映射 key）
+     * @return 稳定的 sourceReference（正整数）
+     */
+    private synchronized int getOrCreateSourceRef(String sourcePath) {
+        Integer existingRef = (Integer) sourcePathToRef.get(sourcePath);
+        if (existingRef != null) {
+            return existingRef.intValue();
+        }
+        int ref = nextSourceRef++;
+        sourcePathToRef.put(sourcePath, new Integer(ref));
+        sourceRefs.put(new Integer(ref), sourcePath);
+        return ref;
+    }
+
+    /**
      * source：返回源码内容（attach 模式按 sourceReference 从 agent 获取）。
      *
      * <p>attach 模式下 stackTrace 响应中设置了 source.reference > 0，VSCode 据此
@@ -982,15 +1025,7 @@ public class DapServer implements DebugController.SuspendListener {
                 src.addProperty("name", new File(path).getName());
                 src.addProperty("path", path);
                 // 复用稳定 sourceReference（与 handleStackTrace 共用 sourcePathToRef）
-                Integer existingRef = (Integer) sourcePathToRef.get(path);
-                int ref;
-                if (existingRef != null) {
-                    ref = existingRef.intValue();
-                } else {
-                    ref = nextSourceRef++;
-                    sourcePathToRef.put(path, new Integer(ref));
-                    sourceRefs.put(new Integer(ref), path);
-                }
+                int ref = getOrCreateSourceRef(path);
                 src.addProperty("sourceReference", ref);
                 sources.add(src);
             }
@@ -1023,6 +1058,74 @@ public class DapServer implements DebugController.SuspendListener {
         body.addProperty("threadId", THREAD_ID);
         body.addProperty("allThreadsStopped", true);
         sendEvent("stopped", body);
+        // attach 模式：首次挂起时发送 process 事件 + loadedSource 事件
+        // 修复 LOADED SCRIPTS 视图不显示已加载脚本的问题：
+        //   VSCode 在 configurationDone 前发 loadedSources 请求，此时 getSourceContents() 为空
+        //   （脚本尚未 eval），返回空列表后 VSCode 不主动刷新。
+        //   首次挂起时脚本已 eval（registerSource 已调用），主动推送 loadedSource 事件让 VSCode
+        //   立即将新源文件加入 LOADED SCRIPTS 视图，无需用户手动 toggle 视图设置。
+        if (agent != null) {
+            if (!processEventSent) {
+                sendProcessEvent();
+                processEventSent = true;
+            }
+            announceNewLoadedSources();
+        }
+    }
+
+    /**
+     * 发送 DAP process 事件（每次 attach 会话只发一次）。
+     *
+     * <p>VSCode 收到 process 事件后会重新请求 loadedSources，作为 LOADED SCRIPTS 视图的全量刷新。
+     * 与 {@link #announceNewLoadedSources()} 的增量推送互补，双保险确保视图正确显示。
+     */
+    private void sendProcessEvent() {
+        JsonObject body = new JsonObject();
+        body.addProperty("name", "gscript interpreter");
+        body.addProperty("isLocalProcess", true);
+        body.addProperty("startMethod", "attach");
+        sendEvent("process", body);
+        log("[FLOW] 发送 process 事件（触发 VSCode 刷新 loadedSources）");
+    }
+
+    /**
+     * 增量推送新加载的源文件给 VSCode（loadedSource 事件，reason="new"）。
+     *
+     * <p>比较 agent.getSourceContents() 与 {@link #announcedSources}，对未通知过的源文件
+     * 逐个发送 loadedSource 事件。VSCode 收到后立即将其加入 LOADED SCRIPTS 视图。
+     *
+     * <p>这是解决"LOADED SCRIPTS 不显示"问题的核心机制：
+     * <ul>
+     *   <li>loadedSources 请求是拉模式（VSCode 主动请求，可能拿到空列表后不刷新）</li>
+     *   <li>loadedSource 事件是推模式（适配器主动通知，VSCode 必须处理）</li>
+     * </ul>
+     * sourceReference 复用 {@link #sourcePathToRef} 稳定映射，与 handleStackTrace /
+     * handleLoadedSources 共用同一套映射，保证 VSCode 从 LOADED SCRIPTS 打开的文件
+     * 与 callStack 帧的 source 是同一 sourceReference。
+     */
+    private void announceNewLoadedSources() {
+        if (agent == null || agent.getSourceContents() == null) {
+            return;
+        }
+        Iterator it = agent.getSourceContents().keySet().iterator();
+        while (it.hasNext()) {
+            String path = (String) it.next();
+            if (announcedSources.contains(path)) {
+                continue;
+            }
+            // 复用稳定 sourceReference（与 handleStackTrace/handleLoadedSources 共用 sourcePathToRef）
+            int ref = getOrCreateSourceRef(path);
+            JsonObject source = new JsonObject();
+            source.addProperty("name", new File(path).getName());
+            source.addProperty("path", path);
+            source.addProperty("sourceReference", ref);
+            JsonObject eventBody = new JsonObject();
+            eventBody.addProperty("reason", "new");
+            eventBody.add("source", source);
+            sendEvent("loadedSource", eventBody);
+            announcedSources.add(path);
+            log("[FLOW] 发送 loadedSource 事件(new): " + path + " ref=" + ref);
+        }
     }
 
     // =========================================================================

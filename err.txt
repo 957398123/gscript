@@ -1,4 +1,0 @@
-gclass loaded: /gtxt/debug_attach_test.gclass (bytecode=164 instructions)
-[测试] enableDebugMode 已启用，VSCode 可随时附加（端口 4711）
-[测试] VSCode 未连：eval 正常执行；连接后：每次 eval 断第一行
-[DebugAgent] attachReady 模式，监听端口 4711，等待 VSCode 附加...

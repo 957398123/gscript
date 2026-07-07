@@ -214,21 +214,31 @@ public class DebugAgent {
                 try {
                     serverSocket = new ServerSocket(port);
                     System.err.println("[DebugAgent] attachReady 模式，监听端口 " + port + "，等待 VSCode 附加...");
-                    Socket socket = serverSocket.accept();
-                    try {
-                        System.err.println("[DebugAgent] VSCode 已附加");
-                        // 注意：controller 不在此创建，由 DapServer.handleLaunchAttach 创建并通过
-                        // setController 共享。setController 内部会根据 interpreterAlreadyRunning
-                        // 立即设置到已运行的解释器（volatile 字段）并按需 pause()
-                        dapServer = new DapServer(socket.getInputStream(),
-                                new PrintStream(socket.getOutputStream(), true), DebugAgent.this);
-                        dapServer.run();  // 阻塞直到 disconnect
-                    } finally {
+                    // 循环 accept：disconnect 后不退出，等待 VSCode 重新 attach。
+                    // 修复"断开后无法重新附加"问题：原实现 dapServer.run() 返回后线程即结束，
+                    // serverSocket 虽在监听但无人 accept，新连接无人处理。
+                    while (true) {
+                        Socket socket = serverSocket.accept();
                         try {
-                            socket.close();
-                        } catch (Exception e) {
+                            System.err.println("[DebugAgent] VSCode 已附加");
+                            // 注意：controller 不在此创建，由 DapServer.handleLaunchAttach 创建并通过
+                            // setController 共享。setController 内部会根据 interpreterAlreadyRunning
+                            // 立即设置到已运行的解释器（volatile 字段）并按需 pause()
+                            // 每次 accept 创建新 DapServer 实例，状态（sourceRefs/varRefs/breakpoints）自然重置
+                            dapServer = new DapServer(socket.getInputStream(),
+                                    new PrintStream(socket.getOutputStream(), true), DebugAgent.this);
+                            dapServer.run();  // 阻塞直到 disconnect
+                            System.err.println("[DebugAgent] VSCode 已断开，解释器继续运行，等待重新附加...");
+                        } finally {
+                            try {
+                                socket.close();
+                            } catch (Exception e) {
+                            }
                         }
                     }
+                } catch (java.net.SocketException e) {
+                    // serverSocket.close()（stop() 调用）导致 accept() 抛 SocketException，正常退出
+                    System.err.println("[DebugAgent] accept 线程退出: " + e.getMessage());
                 } catch (Exception e) {
                     System.err.println("[DebugAgent] accept 异常: " + e);
                 }
