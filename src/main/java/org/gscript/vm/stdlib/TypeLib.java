@@ -11,9 +11,9 @@ import org.gscript.vm.value.GSValue;
 import java.util.ArrayList;
 
 /**
- * 类型转换库：向 gscript 暴露 parseInt/parseFloat/isNaN/String/Number/Boolean 全局函数。
+ * 类型转换库：向 gscript 暴露 parseInt/parseFloat/isNaN/String/Number/Boolean/parseBool 全局函数。
  *
- * <p>与 {@link TimerLib} 不同，本库的 6 个函数都是**无状态纯函数**，不依赖 {@link org.gscript.vm.GSInterpreter}
+ * <p>与 {@link TimerLib} 不同，本库的 7 个函数都是**无状态纯函数**，不依赖 {@link org.gscript.vm.GSInterpreter}
  * 实例，故全部声明为 {@code static final} 共享实例（语义等价于 JS 的全局函数对象）。
  * 所有 interpreter 实例共用同一组函数对象，{@link org.gscript.vm.GSInterpreter#installTypeGlobals()}
  * 仅将引用注册到 global 域，不创建新对象。
@@ -30,6 +30,9 @@ import java.util.ArrayList;
  *   <li>{@code Number(value)}：严格语义，整体必须合法数字（"123abc"→NaN），
  *       bool→0/1，null→0，其他→NaN</li>
  *   <li>{@code isNaN(value)}：判断 value 是否 NaN（type==10），或字符串转 Number 后是否 NaN</li>
+ *   <li>{@code parseBool(value)}：字符串解析为 bool（trim+忽略大小写后 "true"/"1"→true，
+ *       其他→false）；与 {@code Boolean(x)} 的 JS ToBoolean 语义不同——
+ *       {@code Boolean("false")=true}（非空串 truthy），{@code parseBool("false")=false}（字面量解析）</li>
  * </ul>
  */
 public class TypeLib {
@@ -266,6 +269,53 @@ public class TypeLib {
                 return GSBool.FALSE;
             }
             return GSBool.getGSBool(((GSValue) args.get(1)).toBoolean());
+        }
+    };
+
+    /** parseBool(v): 字符串解析为 bool（"true"/"1" 忽略大小写 → true, 其他字符串 → false）。
+     *  <p>与 {@link #BOOLEAN} 的区别：
+     *  <ul>
+     *   <li>{@code Boolean(x)} 走 JS {@code ToBoolean} 抽象操作（非空字符串都为 true，
+     *       即 {@code Boolean("false")=true}），用于 {@code if}/{@code &&} 等隐式转换</li>
+     *   <li>{@code parseBool(v)} 走字符串解析语义（{@code parseBool("false")=false}），
+     *       适合配置文件/命令行参数/HTTP 请求参数等 "true"/"false" 字面量的解析场景</li>
+     *  </ul>
+     *
+     *  <p>规则：
+     *  <ul>
+     *   <li>bool → 原值返回</li>
+     *   <li>int/float → 0 → false，非0 → true（对齐 Python bool()）</li>
+     *   <li>null/NaN → false</li>
+     *   <li>string → trim 后忽略大小写："true"/"1" → true，其他 → false
+     *       （容错语义，与 parseInt 容错提取前缀一致，不抛异常）</li>
+     *   <li>object/array/function → false</li>
+     *  </ul>
+     */
+    public static final GSNativeFunction PARSE_BOOL = new GSNativeFunction("parseBool") {
+        public GSValue call(ArrayList args) {
+            if (args.size() < 2) {
+                return GSBool.FALSE;
+            }
+            GSValue v = (GSValue) args.get(1);
+            switch (v.type) {
+                case 1:  // bool → 原值返回
+                    return v;
+                case 2:  // int
+                case 3:  // float → 0=false, 非0=true
+                    return GSBool.getGSBool(v.toFloatValue() != 0f);
+                case 8:  // null
+                case 10: // NaN
+                    return GSBool.FALSE;
+                case 5: {  // string: trim + 忽略大小写，仅 "true"/"1" 为 true
+                    String s = v.toStringValue().trim().toLowerCase();
+                    if ("true".equals(s) || "1".equals(s)) {
+                        return GSBool.TRUE;
+                    }
+                    return GSBool.FALSE;
+                }
+                default:  // object/array/function → false
+                    return GSBool.FALSE;
+            }
         }
     };
 }

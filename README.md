@@ -555,6 +555,7 @@ Uncaught Error: boom
 | `String(x)` | 转 gscript 字符串 |
 | `Number(x)` | 转 gscript 数值（要求整体合法，否则返回 NaN） |
 | `Boolean(x)` | 转 gscript 布尔（等价 `toBoolean`：falsy = `0`/`""`/`null`/`NaN`） |
+| `parseBool(v)` | **字符串解析为 bool**：trim+忽略大小写后 `"true"`/`"1"` → `true`，其他 → `false`；数值 `0` → `false` 非0 → `true`；`null`/`NaN`/object/array/function → `false`。与 `Boolean(x)` 语义不同，见下方说明 |
 
 ```javascript
 parseInt("123abc");          // 123（提取前导数字）
@@ -565,9 +566,27 @@ Number("3.14");              // 3.14
 isNaN("abc");                // true
 String(42);                  // "42"
 Boolean(0);                  // false
+parseBool("true");           // true
+parseBool("false");          // false
+parseBool("  TRUE  ");       // true（trim + 忽略大小写）
+parseBool("1");              // true
+parseBool("0");              // false
+parseBool("yes");            // false（未识别容错为 false，不抛异常）
+parseBool(0);                // false
+parseBool(42);               // true（非0数值）
 ```
 
 > **parseInt vs Number 最易混淆**：`parseInt` 容错提取前导，`Number` 严格整体合法。数值类型参数有短路优化（`parseInt(int)` 直接返回，避免 ToString 往返），但 `bool`/`null` 不短路（`parseInt(true)` = `NaN`，因 `ToString("true")` 非数字）。
+
+> **parseBool vs Boolean 最易混淆**：两者语义不同，用途不同。
+> - `Boolean(x)` 走 JS `ToBoolean` 抽象操作（用于 `if`/`&&`/`||` 等隐式转换）：任何非空字符串都为 `true`，即 `Boolean("false")` = `true`、`Boolean("0")` = `true`。
+> - `parseBool(v)` 走**字符串字面量解析**：`parseBool("false")` = `false`、`parseBool("0")` = `false`，适合配置文件/命令行参数/HTTP 请求参数等 `"true"`/`"false"` 字面量的解析场景。未识别字符串容错为 `false`（与 `parseInt` 容错提取语义一致，不抛异常）。
+>
+> ```javascript
+> var config = { debug: "true", verbose: "false" };
+> if (Boolean(config.verbose)) { ... }    // 进入分支！("false" 是非空串 truthy) — 坑
+> if (parseBool(config.verbose)) { ... }  // 不进入分支（字面量解析为 false）— 符合预期
+> ```
 
 ### 隐式类型转换（JS 语义对齐）
 

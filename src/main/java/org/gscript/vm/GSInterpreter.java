@@ -112,7 +112,7 @@ public class GSInterpreter implements TimerScheduler.TaskDispatcher {
     public GSInterpreter() {
         ensureTimerScheduler();      // 构造时就绪 TimerScheduler（核心机制默认初始化，this 作为 TaskDispatcher）
         installTimerGlobals();       // 默认注册 setTimeout/setInterval 等入口函数
-        installTypeGlobals();        // 默认注册 parseInt/parseFloat/isNaN/String/Number/Boolean
+        installTypeGlobals();        // 默认注册 parseInt/parseFloat/isNaN/String/Number/Boolean/parseBool
         startWorker();               // 启动 worker 线程（独占执行权）
     }
 
@@ -1761,9 +1761,9 @@ public class GSInterpreter implements TimerScheduler.TaskDispatcher {
     }
 
     /**
-     * 注册类型转换全局函数（parseInt/parseFloat/isNaN/String/Number/Boolean）到 global 域。
+     * 注册类型转换全局函数（parseInt/parseFloat/isNaN/String/Number/Boolean/parseBool）到 global 域。
      *
-     * <p>6 个函数都是无状态纯函数，声明为 {@link org.gscript.vm.stdlib.TypeLib} 的 static final
+     * <p>7 个函数都是无状态纯函数，声明为 {@link org.gscript.vm.stdlib.TypeLib} 的 static final
      * 共享实例（所有 interpreter 共用同一组函数对象，语义等价于 JS 的全局函数对象）。
      * 本方法仅将引用注册到 global 域，不创建新对象，与 {@link #installTimerGlobals()} 的 per-interpreter
      * 创建模式不同（定时器函数依赖 interpreter 实例，类型转换函数不需要）。
@@ -1776,6 +1776,9 @@ public class GSInterpreter implements TimerScheduler.TaskDispatcher {
      *   <li>{@code Number(value)}：严格语义，整体必须合法数字（"123abc"→NaN），
      *       bool→0/1，null→0，其他→NaN</li>
      *   <li>{@code isNaN(value)}：判断 value 是否 NaN（type==10），或字符串转 Number 后是否 NaN</li>
+     *   <li>{@code parseBool(value)}：字符串解析为 bool（trim+忽略大小写后 "true"/"1"→true，
+     *       其他→false）；与 {@code Boolean(x)} 的 JS ToBoolean 语义不同——
+     *       {@code Boolean("false")=true}（非空串 truthy），{@code parseBool("false")=false}（字面量解析）</li>
      * </ul>
      */
     public void installTypeGlobals() {
@@ -1785,5 +1788,6 @@ public class GSInterpreter implements TimerScheduler.TaskDispatcher {
         addVariableToGlobal("String", TypeLib.STRING);
         addVariableToGlobal("Number", TypeLib.NUMBER);
         addVariableToGlobal("Boolean", TypeLib.BOOLEAN);
+        addVariableToGlobal("parseBool", TypeLib.PARSE_BOOL);
     }
 }

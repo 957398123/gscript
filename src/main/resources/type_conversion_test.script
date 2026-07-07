@@ -152,4 +152,86 @@ check("parseFloat(NaN)", "NaN", "" + parseFloat(NaN));
 check("parseFloat(true)", "NaN", "" + parseFloat(true));  // bool 不短路
 check("parseFloat(null)", "NaN", "" + parseFloat(null));  // ToString="null"
 
+console.log("=== [12] parseBool ===");
+// parseBool 走「字符串解析」语义：trim+忽略大小写后 "true"/"1" → true，其他 → false
+// 与 Boolean(x) 的 JS ToBoolean 语义不同：Boolean("false")=true（非空串 truthy）
+
+// 字符串字面量解析（核心场景）
+check("parseBool('true')", true, parseBool("true"));
+check("parseBool('false')", false, parseBool("false"));
+check("parseBool('1')", true, parseBool("1"));
+check("parseBool('0')", false, parseBool("0"));
+// 忽略大小写
+check("parseBool('TRUE')", true, parseBool("TRUE"));
+check("parseBool('False')", false, parseBool("False"));
+check("parseBool('Yes')", false, parseBool("Yes"));  // 不识别 yes，容错为 false
+// trim 前后空白
+check("parseBool('  true  ')", true, parseBool("  true  "));
+check("parseBool('  false ')", false, parseBool("  false "));
+// 未识别字符串容错为 false（与 parseInt 容错提取语义一致，不抛异常）
+check("parseBool('')", false, parseBool(""));
+check("parseBool('abc')", false, parseBool("abc"));
+check("parseBool('yes')", false, parseBool("yes"));
+check("parseBool('2')", false, parseBool("2"));  // 非 0/1 数字串 → false
+
+// bool 原值返回
+check("parseBool(true)", true, parseBool(true));
+check("parseBool(false)", false, parseBool(false));
+
+// 数值：0→false，非0→true（对齐 Python bool()）
+check("parseBool(0)", false, parseBool(0));
+check("parseBool(1)", true, parseBool(1));
+check("parseBool(-1)", true, parseBool(-1));  // 负数非0
+check("parseBool(42)", true, parseBool(42));
+check("parseBool(3.14)", true, parseBool(3.14));
+check("parseBool(0.0)", false, parseBool(0.0));
+check("parseBool(-0.5)", true, parseBool(-0.5));
+
+// null / NaN → false
+check("parseBool(null)", false, parseBool(null));
+check("parseBool(NaN)", false, parseBool(NaN));
+
+// object / array / function → false
+check("parseBool({a:1})", false, parseBool({a:1}));
+check("parseBool([1,2])", false, parseBool([1,2]));
+check("parseBool(function(){})", false, parseBool(function(){}));
+
+// 空参 → false
+check("parseBool() 空参", false, parseBool());
+
+console.log("=== [13] parseBool vs Boolean 对比 ===");
+// 核心差异：Boolean 走 ToBoolean（非空串都 truthy），parseBool 走字面量解析
+check("Boolean('true')", true, Boolean("true"));
+check("parseBool('true')", true, parseBool("true"));
+check("Boolean('false')", true, Boolean("false"));    // 非空串 truthy（JS 语义）
+check("parseBool('false')", false, parseBool("false"));  // 字面量解析为 false
+check("Boolean('0')", true, Boolean("0"));            // 非空串 truthy
+check("parseBool('0')", false, parseBool("0"));       // 字面量解析为 false
+check("Boolean('')", false, Boolean(""));             // 空串 falsy
+check("parseBool('')", false, parseBool(""));         // 空串解析为 false
+check("Boolean(0)", false, Boolean(0));               // 数值 0 falsy
+check("parseBool(0)", false, parseBool(0));           // 数值 0 → false
+
+console.log("=== [14] parseBool 实际场景 ===");
+// 配置文件 / 命令行参数 / HTTP 请求参数的 "true"/"false" 字面量解析
+var config = {
+    debug: "true",
+    verbose: "false",
+    cache: "1",
+    dryRun: "0",
+    timeout: "100"
+};
+check("config.debug", true, parseBool(config.debug));
+check("config.verbose", false, parseBool(config.verbose));
+check("config.cache", true, parseBool(config.cache));
+check("config.dryRun", false, parseBool(config.dryRun));
+check("config.timeout", false, parseBool(config.timeout));  // 非 0/1 数字串 → false
+
+// 配合 if 使用：parseBool 后再判断，避免 "false" 被当成 truthy 的坑
+if (parseBool(config.verbose)) {
+    console.log("[FAIL] verbose 不应进入此分支");
+} else {
+    console.log("[OK] verbose=false 跳过分支");
+}
+
 console.log("=== 测试完成 ===");
