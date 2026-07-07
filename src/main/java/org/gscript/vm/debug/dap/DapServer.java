@@ -107,8 +107,18 @@ public class DapServer implements DebugController.SuspendListener {
     /** 下一个变量引用 ID（从 1 开始，0 表示不可展开） */
     private int nextVarRef = 1;
 
-    /** 源码引用映射：sourceReference → sourcePath（attach 模式 stackTrace 用） */
+    /**
+     * 源码引用映射：sourceReference → sourcePath（attach 模式 stackTrace 用）。
+     *
+     * <p><b>不再 clear</b>：源码内容（{@code agent.getSourceContents()}）在 attach 期间不变，
+     * 故 sourceReference → sourcePath 的映射也应稳定。早期实现每次 stackTrace 都 clear + 重新分配，
+     * 导致 VSCode 持有的旧 sourceReference 失效（VSCode 在单次 stopped 内可能连发多次 stackTrace，
+     * 或跨 stopped 缓存旧 ref），handleSource 查不到 path 返回 "source not available"。
+     * 修复后同一 sourcePath 永远返回同一 ref，VSCode 用任何时刻拿到的 ref 都能查到。
+     */
     private final Map sourceRefs = new HashMap();
+    /** sourcePath → sourceRef 的反向映射，用于复用已分配的 ref（稳定映射核心） */
+    private final Map sourcePathToRef = new HashMap();
     /** 下一个源码引用 ID（从 1 开始，0 表示按 path 读） */
     private int nextSourceRef = 1;
 
@@ -427,6 +437,8 @@ public class DapServer implements DebugController.SuspendListener {
                 handleThreads(requestSeq);
             } else if ("source".equals(command)) {
                 handleSource(requestSeq, args);
+            } else if ("loadedSources".equals(command)) {
+                handleLoadedSources(requestSeq);
             } else {
                 sendResponse(requestSeq, command, new JsonObject());
             }
@@ -457,7 +469,7 @@ public class DapServer implements DebugController.SuspendListener {
         body.addProperty("supportsExceptionInfoRequest", false);
         body.addProperty("supportsSetVariable", false);
         body.addProperty("supportsTerminateRequest", true);
-        body.addProperty("supportsLoadedSourcesRequest", false);
+        body.addProperty("supportsLoadedSourcesRequest", true);
         // 异常断点过滤器：VSCode 据此在断点面板显示"被捕获的异常/未捕获的异常"勾选项
         JsonArray excFilters = new JsonArray();
         JsonObject caughtFilter = new JsonObject();
@@ -698,7 +710,8 @@ public class DapServer implements DebugController.SuspendListener {
         // 但 LinkedList 非线程安全，防御性同步保证内存可见性与并发安全
         frameList = interp != null ? interp.getCallStackSnapshot() : new ArrayList();
         varRefs.clear();
-        sourceRefs.clear();
+        // 注意：sourceRefs 不再 clear——源码内容在 attach 期间不变，sourceReference 应稳定映射。
+        // 详见字段 sourceRefs 的注释。varRefs 仍需 clear（变量引用随帧 env 变化而失效）。
 
         JsonArray framesArray = new JsonArray();
         for (int i = 0; i < frameList.size(); i++) {
@@ -724,8 +737,17 @@ public class DapServer implements DebugController.SuspendListener {
             String srcContent = (agent != null && framePath != null)
                     ? (String) agent.getSourceContents().get(framePath) : null;
             if (srcContent != null) {
-                int ref = nextSourceRef++;
-                sourceRefs.put(new Integer(ref), framePath);
+                // 稳定映射：同一 sourcePath 复用已分配的 ref，避免 clear 导致 VSCode 持有的旧 ref 失效。
+                // 修复前每次 stackTrace 都 nextSourceRef++ 重新分配，VSCode 缓存的旧 ref 在 sourceRefs 中查不到。
+                Integer existingRef = (Integer) sourcePathToRef.get(framePath);
+                int ref;
+                if (existingRef != null) {
+                    ref = existingRef.intValue();
+                } else {
+                    ref = nextSourceRef++;
+                    sourcePathToRef.put(framePath, new Integer(ref));
+                    sourceRefs.put(new Integer(ref), framePath);
+                }
                 // DAP 规范 Source 对象字段名为 sourceReference（非 reference），
                 // VSCode 据此发 source 请求时回填顶层 sourceReference，handleSource 用它查 sourceRefs
                 source.addProperty("sourceReference", ref);
@@ -934,6 +956,48 @@ public class DapServer implements DebugController.SuspendListener {
             }
         }
         sendErrorResponse(requestSeq, "source", "source not available");
+    }
+
+    /**
+     * loadedSources：返回所有已加载的远程源码（attach 模式）。
+     *
+     * <p>initialize 已声明 {@code supportsLoadedSourcesRequest=true}，VSCode 据此在
+     * CALL STACK 视图底部显示"LOADED SCRIPTS"折叠节点。用户展开即调用本请求，
+     * 返回 {@code agent.getSourceContents()} 中所有已注册源文件（每个含稳定 sourceReference）。
+     *
+     * <p><b>解决远程源码断点痛点</b>：attach 模式下，文件不在 callStack 时 stackTrace 不返回它，
+     * 用户无法重新打开源码下断点。loadedSources 列出所有已 eval 的文件（含未在 callStack 的），
+     * 用户可随时从 LOADED SCRIPTS 视图打开任意已加载文件下断点，无需从别的文件步进进入。
+     *
+     * <p>sourceReference 复用 {@link #sourcePathToRef} 稳定映射，与 handleStackTrace 同一套映射，
+     * 保证用户从 LOADED SCRIPTS 打开的文件与 callStack 帧的 source 是同一 sourceReference。
+     */
+    private void handleLoadedSources(int requestSeq) {
+        JsonArray sources = new JsonArray();
+        if (agent != null && agent.getSourceContents() != null) {
+            Iterator it = agent.getSourceContents().keySet().iterator();
+            while (it.hasNext()) {
+                String path = (String) it.next();
+                JsonObject src = new JsonObject();
+                src.addProperty("name", new File(path).getName());
+                src.addProperty("path", path);
+                // 复用稳定 sourceReference（与 handleStackTrace 共用 sourcePathToRef）
+                Integer existingRef = (Integer) sourcePathToRef.get(path);
+                int ref;
+                if (existingRef != null) {
+                    ref = existingRef.intValue();
+                } else {
+                    ref = nextSourceRef++;
+                    sourcePathToRef.put(path, new Integer(ref));
+                    sourceRefs.put(new Integer(ref), path);
+                }
+                src.addProperty("sourceReference", ref);
+                sources.add(src);
+            }
+        }
+        JsonObject body = new JsonObject();
+        body.add("sources", sources);
+        sendResponse(requestSeq, "loadedSources", body);
     }
 
     /**

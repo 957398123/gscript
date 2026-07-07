@@ -17,6 +17,8 @@
 *   `/vscode-extension` - gscript的vscode调试器扩展代码目录
 *   `/tests` - 测试py脚本目录
 *   `/README.md` - 项目说明书，包括了语法定义和字节码定义
+*   `E:\IdeaProjects\S60-new\dap_debug.log` - 使用gscript的实际项目调试日志文件
+
 
 ## 4. 环境
 命令行支持java运行时环境，命令行java版本是1.8，路径在C:\Program Files\Java\jdk1.8.0_202。

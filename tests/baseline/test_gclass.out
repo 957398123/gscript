@@ -88,7 +88,7 @@ gclass 二进制文件格式端到端测试
   [PASS] multi_b: FLAG_RLE_SOURCE_MAP 已设置
   [PASS] multi_b: FLAG_HAS_ATTRIBUTES 已设置
   [PASS] semantics_test: .gclass 文件存在
-  semantics_test: size=36255B, RLE=True, Attributes=True
+  semantics_test: size=36236B, RLE=True, Attributes=True
   [PASS] semantics_test: FLAG_RLE_SOURCE_MAP 已设置
   [PASS] semantics_test: FLAG_HAS_ATTRIBUTES 已设置
 

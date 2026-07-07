@@ -5,21 +5,21 @@
   [PASS] setBreakpoints 文件 A 成功
   [PASS] setBreakpoints 文件 B 成功
   [PASS] 断点1 命中文件 A line 5 (A.greet)
-  [PASS] 断点1 顶部帧 source.path = multi_a.script
+  [FAIL] 断点1 顶部帧 source.path = multi_a.script path=E:\JProjects\gscript\src\main\resources\multi_a.script
   [PASS] 断点1 顶部帧名称 = greet
-  [PASS] 断点1 调用帧 source.path = multi_a.script
+  [FAIL] 断点1 调用帧 source.path = multi_a.script path=E:\JProjects\gscript\src\main\resources\multi_a.script
   [PASS] 断点2 命中文件 B line 5 (B.greet 覆盖 A.greet)
-  [PASS] 断点2 顶部帧 source.path = multi_b.script
+  [FAIL] 断点2 顶部帧 source.path = multi_b.script path=E:\JProjects\gscript\src\main\resources\multi_b.script
   [PASS] 断点2 顶部帧名称 = greet（覆盖后）
   [PASS] 断点3 命中文件 B line 9 (调用 shared)
-  [PASS] 断点3 顶部帧 source.path = multi_b.script
+  [FAIL] 断点3 顶部帧 source.path = multi_b.script path=E:\JProjects\gscript\src\main\resources\multi_b.script
   [PASS] 断点4 命中文件 A line 9 (shared，跨文件调用)
-  [PASS] 断点4 顶部帧 source.path = multi_a.script
+  [FAIL] 断点4 顶部帧 source.path = multi_a.script path=E:\JProjects\gscript\src\main\resources\multi_a.script
   [PASS] 断点4 顶部帧名称 = shared
-  [PASS] 断点4 调用帧 source.path = multi_b.script（跨文件）
+  [FAIL] 断点4 调用帧 source.path = multi_b.script（跨文件） path=E:\JProjects\gscript\src\main\resources\multi_b.script
   [PASS] 断点4 调用帧 line = 9 (B 的 console.log(shared()) 行)
   [PASS] 脚本正常终止
 
-==== 结果: 19 passed, 0 failed ====
+==== 结果: 13 passed, 6 failed ====
 
 === STDERR ===
